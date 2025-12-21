@@ -1,0 +1,115 @@
+
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: ems-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - ems-network
+
+  backend:
+    build: ./backend
+    container_name: ems-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=ems_user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=ems_studio
+      - DATABASE_URL=postgresql://ems_user:pass@postgres:5432/ems_studio
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=7d
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ems-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ems-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ems_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ems_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-ems_studio}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ems_user} -d ${POSTGRES_DB:-ems_studio}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ems-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ems-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ems-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: ems-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_user}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_secret}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ems-network
+
+  maildev:
+    image: maildev/maildev
+    container_name: ems-maildev
+    ports:
+      - "${MAILDEV_WEB_PORT:-1080}:1080"
+      - "${MAILDEV_SMTP_PORT:-1025}:1025"
+    networks:
+      - ems-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  ems-network:
+    driver: bridge
