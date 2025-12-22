@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto, SessionQueryDto, UpdateSessionStatusDto } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
 @ApiTags('sessions')
 @ApiBearerAuth()
@@ -14,6 +15,8 @@ export class SessionsController {
     constructor(private readonly sessionsService: SessionsService) { }
 
     @Get()
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(30000) // 30 seconds
     @ApiOperation({ summary: 'List sessions with filters' })
     findAll(@Query() query: SessionQueryDto, @TenantId() tenantId: string) {
         return this.sessionsService.findAll(tenantId, query);

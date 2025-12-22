@@ -9,13 +9,24 @@ import { CoachesModule } from './modules/coaches/coaches.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { HealthController } from './common/health.controller';
+import { StorageModule } from './modules/storage/storage.module';
+import { MailerModule } from './modules/mailer/mailer.module';
+
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
     // Configuration
-    ConfigModule.forRoot({
+    ConfigModule.forRoot({ isGlobal: true }),
+    CacheModule.registerAsync({
       isGlobal: true,
-      envFilePath: ['.env', '../.env'],
+      useFactory: async () => ({
+        store: await redisStore({
+          url: process.env.REDIS_URL || 'redis://redis:6379',
+          ttl: 60000, // 60 seconds default
+        }),
+      }),
     }),
 
     // Database
@@ -44,6 +55,8 @@ import { HealthController } from './common/health.controller';
     CoachesModule,
     ClientsModule,
     SessionsModule,
+    StorageModule,
+    MailerModule,
   ],
   controllers: [HealthController],
 })

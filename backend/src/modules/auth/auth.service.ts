@@ -41,9 +41,25 @@ export class AuthService {
     }
 
     async login(dto: LoginDto) {
-        const user = await this.userRepository.findOne({
-            where: { email: dto.email, tenantId: dto.tenantId },
-        });
+        let user: User | null = null;
+
+        if (dto.tenantId) {
+            user = await this.userRepository.findOne({
+                where: { email: dto.email, tenantId: dto.tenantId },
+            });
+        } else {
+            // Try to find user by email alone (for Super Admin or if unique)
+            const users = await this.userRepository.find({
+                where: { email: dto.email },
+            });
+
+            if (users.length === 1) {
+                user = users[0];
+            } else if (users.length > 1) {
+                // Ambiguous login without tenantId
+                throw new UnauthorizedException('Tenant ID required for ambiguous user');
+            }
+        }
 
         if (!user || !user.active) {
             throw new UnauthorizedException('Invalid credentials');

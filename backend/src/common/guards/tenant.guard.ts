@@ -12,6 +12,10 @@ export class TenantGuard implements CanActivate {
         const user = request.user;
 
         if (!user?.tenantId) {
+            // Allow Super Admin to bypass tenant check (Global Access)
+            if (user?.role === 'admin') {
+                return true;
+            }
             throw new ForbiddenException('Tenant context required');
         }
 

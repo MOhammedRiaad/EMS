@@ -4,8 +4,13 @@ import { Session } from './entities/session.entity';
 import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
 
+import { ClientsModule } from '../clients/clients.module';
+
 @Module({
-    imports: [TypeOrmModule.forFeature([Session])],
+    imports: [
+        TypeOrmModule.forFeature([Session]),
+        ClientsModule,
+    ],
     controllers: [SessionsController],
     providers: [SessionsService],
     exports: [SessionsService],

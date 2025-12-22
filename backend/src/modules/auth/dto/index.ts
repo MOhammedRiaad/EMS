@@ -11,10 +11,10 @@ export class LoginDto {
     @MinLength(6)
     password: string;
 
-    @ApiProperty({ example: '00000000-0000-0000-0000-000000000001' })
+    @ApiPropertyOptional({ example: '00000000-0000-0000-0000-000000000001' })
     @IsString()
-    @IsNotEmpty()
-    tenantId: string;
+    @IsOptional()
+    tenantId?: string;
 }
 
 export class RegisterDto {

@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Session } from './entities/session.entity';
 import { CreateSessionDto, SessionQueryDto } from './dto';
+import { MailerService } from '../mailer/mailer.service';
+import { ClientsService } from '../clients/clients.service';
 
 export interface ConflictResult {
     hasConflicts: boolean;
@@ -15,9 +17,13 @@ export interface ConflictResult {
 
 @Injectable()
 export class SessionsService {
+    private readonly logger = new Logger(SessionsService.name);
+
     constructor(
         @InjectRepository(Session)
         private readonly sessionRepository: Repository<Session>,
+        private mailerService: MailerService,
+        private clientsService: ClientsService,
     ) { }
 
     async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
@@ -81,7 +87,24 @@ export class SessionsService {
             tenantId,
         });
 
-        return this.sessionRepository.save(session);
+        const savedSession = await this.sessionRepository.save(session);
+
+        // Send confirmation email
+        try {
+            const client = await this.clientsService.findOne(dto.clientId, tenantId);
+            if (client && client.email) {
+                await this.mailerService.sendMail(
+                    client.email,
+                    'Session Confirmed - EMS Studio',
+                    `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}.`,
+                    `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>.</p><p>See you there!</p>`
+                );
+            }
+        } catch (error) {
+            this.logger.error('Failed to send session confirmation email', error);
+        }
+
+        return savedSession;
     }
 
     async checkConflicts(dto: CreateSessionDto, tenantId: string, excludeSessionId?: string): Promise<ConflictResult> {
