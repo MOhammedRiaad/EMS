@@ -26,9 +26,9 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=ems_user
-      - POSTGRES_PASSWORD=pass
+      - POSTGRES_PASSWORD=ems_secret
       - POSTGRES_DB=ems_studio
-      - DATABASE_URL=postgresql://ems_user:pass@postgres:5432/ems_studio
+      - DATABASE_URL=postgresql://ems_user:ems_secret@postgres:5432/ems_studio
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - JWT_EXPIRES_IN=7d
@@ -40,8 +40,10 @@ services:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - ems-network
 
@@ -53,7 +55,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ems_secret}
       POSTGRES_DB: ${POSTGRES_DB:-ems_studio}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d

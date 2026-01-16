@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from './entities/user.entity';
+import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
     imports: [
@@ -22,9 +23,11 @@ import { User } from './entities/user.entity';
             }),
             inject: [ConfigService],
         }),
+        TenantsModule,
     ],
     controllers: [AuthController],
     providers: [AuthService, JwtStrategy],
     exports: [AuthService, JwtStrategy, PassportModule],
 })
 export class AuthModule { }
+

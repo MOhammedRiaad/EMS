@@ -1,11 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
-import { LoginDto, RegisterDto } from './dto';
+import { LoginDto, RegisterTenantOwnerDto, CreateUserDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class AuthService {
@@ -13,31 +14,78 @@ export class AuthService {
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly jwtService: JwtService,
+        private readonly tenantsService: TenantsService,
     ) { }
 
-    async register(dto: RegisterDto) {
+    // Public registration - creates new Tenant + Tenant Owner
+    async register(dto: RegisterTenantOwnerDto) {
+        // Check if email is already used (globally for safety)
         const existingUser = await this.userRepository.findOne({
-            where: { email: dto.email, tenantId: dto.tenantId },
+            where: { email: dto.email },
         });
 
         if (existingUser) {
             throw new UnauthorizedException('Email already registered');
         }
 
+        // Create the Tenant
+        const tenant = await this.tenantsService.create({
+            name: dto.businessName,
+        });
+
+        // Create the Tenant Owner user
         const passwordHash = await bcrypt.hash(dto.password, 10);
 
         const user = this.userRepository.create({
-            tenantId: dto.tenantId,
+            tenantId: tenant.id,
             email: dto.email,
             passwordHash,
             firstName: dto.firstName,
             lastName: dto.lastName,
-            role: dto.role || 'client',
+            role: 'tenant_owner',
         });
 
         await this.userRepository.save(user);
 
-        return this.generateTokens(user);
+        return this.generateTokens(user, tenant);
+    }
+
+    // Create user within a tenant (for admins/owners)
+    async createUser(dto: CreateUserDto, currentUser: User) {
+        // Only tenant_owner or admin can create users
+        if (!['tenant_owner', 'admin'].includes(currentUser.role)) {
+            throw new ForbiddenException('Only tenant owners or admins can create users');
+        }
+
+        // Check if email already exists in this tenant
+        const existingUser = await this.userRepository.findOne({
+            where: { email: dto.email, tenantId: currentUser.tenantId },
+        });
+
+        if (existingUser) {
+            throw new UnauthorizedException('Email already registered in this tenant');
+        }
+
+        const passwordHash = await bcrypt.hash(dto.password, 10);
+
+        const user = this.userRepository.create({
+            tenantId: currentUser.tenantId,
+            email: dto.email,
+            passwordHash,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            role: dto.role,
+        });
+
+        await this.userRepository.save(user);
+
+        return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+        };
     }
 
     async login(dto: LoginDto) {
@@ -48,7 +96,7 @@ export class AuthService {
                 where: { email: dto.email, tenantId: dto.tenantId },
             });
         } else {
-            // Try to find user by email alone (for Super Admin or if unique)
+            // Try to find user by email alone (for tenant owners or unique emails)
             const users = await this.userRepository.find({
                 where: { email: dto.email },
             });
@@ -74,7 +122,10 @@ export class AuthService {
         user.lastLoginAt = new Date();
         await this.userRepository.save(user);
 
-        return this.generateTokens(user);
+        // Get tenant info
+        const tenant = await this.tenantsService.findOne(user.tenantId);
+
+        return this.generateTokens(user, tenant);
     }
 
     async validateUser(userId: string, tenantId: string): Promise<User | null> {
@@ -83,7 +134,7 @@ export class AuthService {
         });
     }
 
-    private generateTokens(user: User) {
+    private generateTokens(user: User, tenant?: { id: string; name: string; isComplete: boolean }) {
         const payload: JwtPayload = {
             sub: user.id,
             tenantId: user.tenantId,
@@ -99,7 +150,14 @@ export class AuthService {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 role: user.role,
+                tenantId: user.tenantId,
             },
+            tenant: tenant ? {
+                id: tenant.id,
+                name: tenant.name,
+                isComplete: tenant.isComplete,
+            } : undefined,
         };
     }
 }
+

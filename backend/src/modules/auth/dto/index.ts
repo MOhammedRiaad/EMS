@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -17,7 +17,14 @@ export class LoginDto {
     tenantId?: string;
 }
 
-export class RegisterDto {
+// For public registration - creates new Tenant + Tenant Owner
+export class RegisterTenantOwnerDto {
+    @ApiProperty({ description: 'Business name for the tenant' })
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(255)
+    businessName: string;
+
     @ApiProperty()
     @IsEmail()
     email: string;
@@ -27,10 +34,27 @@ export class RegisterDto {
     @MinLength(6)
     password: string;
 
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    firstName?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    lastName?: string;
+}
+
+// For admin/owner to create users within their tenant
+export class CreateUserDto {
+    @ApiProperty()
+    @IsEmail()
+    email: string;
+
     @ApiProperty()
     @IsString()
-    @IsNotEmpty()
-    tenantId: string;
+    @MinLength(6)
+    password: string;
 
     @ApiPropertyOptional()
     @IsOptional()
@@ -42,10 +66,9 @@ export class RegisterDto {
     @IsString()
     lastName?: string;
 
-    @ApiPropertyOptional({ enum: ['admin', 'coach', 'client'] })
-    @IsOptional()
+    @ApiProperty({ enum: ['admin', 'coach', 'client'] })
     @IsIn(['admin', 'coach', 'client'])
-    role?: 'admin' | 'coach' | 'client';
+    role: 'admin' | 'coach' | 'client';
 }
 
 export class AuthResponseDto {
@@ -59,5 +82,13 @@ export class AuthResponseDto {
         firstName: string | null;
         lastName: string | null;
         role: string;
+        tenantId: string;
+    };
+
+    @ApiPropertyOptional()
+    tenant?: {
+        id: string;
+        name: string;
+        isComplete: boolean;
     };
 }

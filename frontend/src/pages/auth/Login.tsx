@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, User, Lock, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/variables.css';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -31,8 +33,14 @@ const Login: React.FC = () => {
             }
 
             const data = await response.json();
-            localStorage.setItem('token', data.accessToken);
-            navigate('/');
+            login(data.accessToken, data.user, data.tenant);
+
+            // Check if tenant owner needs to complete onboarding
+            if (data.user.role === 'tenant_owner' && data.tenant && !data.tenant.isComplete) {
+                navigate('/onboarding');
+            } else {
+                navigate('/');
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -121,7 +129,7 @@ const Login: React.FC = () => {
                                     outline: 'none',
                                     transition: 'border-color 0.2s'
                                 }}
-                                placeholder="admin@demo.ems"
+                                placeholder="your@email.com"
                             />
                         </div>
                     </div>

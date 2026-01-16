@@ -3,7 +3,7 @@ import { Exclude } from 'class-transformer';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 
-export type UserRole = 'admin' | 'coach' | 'client';
+export type UserRole = 'tenant_owner' | 'admin' | 'coach' | 'client';
 
 @Entity('users')
 export class User extends TenantScopedEntityWithUpdate {
@@ -16,7 +16,7 @@ export class User extends TenantScopedEntityWithUpdate {
 
     @Column({
         type: 'enum',
-        enum: ['admin', 'coach', 'client'],
+        enum: ['tenant_owner', 'admin', 'coach', 'client'],
         default: 'client',
     })
     role: UserRole;

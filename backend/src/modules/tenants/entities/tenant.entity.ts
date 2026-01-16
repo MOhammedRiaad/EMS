@@ -14,6 +14,24 @@ export class Tenant extends BaseEntityWithUpdate {
     @Column({ length: 50, default: 'starter' })
     plan: string;
 
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    address: string | null;
+
+    @Column({ type: 'varchar', length: 50, nullable: true })
+    phone: string | null;
+
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    city: string | null;
+
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    state: string | null;
+
+    @Column({ name: 'zip_code', type: 'varchar', length: 20, nullable: true })
+    zipCode: string | null;
+
+    @Column({ name: 'is_complete', default: false })
+    isComplete: boolean;
+
     @Column({ type: 'jsonb', default: {} })
     features: Record<string, boolean>;
 
