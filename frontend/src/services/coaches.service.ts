@@ -28,6 +28,7 @@ export interface CoachDisplay {
     email: string;
     bio: string | null;
     specializations: string[];
+    studioId: string;
     studioName: string;
     active: boolean;
 }
@@ -41,6 +42,7 @@ export function transformCoachForDisplay(coach: Coach): CoachDisplay {
         email: coach.user?.email || '',
         bio: coach.bio,
         specializations: coach.specializations || [],
+        studioId: coach.studioId || '',
         studioName: coach.studio?.name || '',
         active: coach.active,
     };

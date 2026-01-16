@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
-import DataTable from '../../components/common/DataTable';
-import type { Column } from '../../components/common/DataTable';
+import DataTable, { type Column } from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
+import ActionButtons from '../../components/common/ActionButtons';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { sessionsService, type Session } from '../../services/sessions.service';
 import { clientsService, type Client } from '../../services/clients.service';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
@@ -10,8 +11,10 @@ import { studiosService, type Studio } from '../../services/studios.service';
 import { roomsService, type Room } from '../../services/rooms.service';
 import { devicesService, type Device } from '../../services/devices.service';
 import { User, Building2, DoorOpen, AlertCircle, Cpu } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const Sessions: React.FC = () => {
+    const { canEdit, canDelete } = usePermissions();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [coaches, setCoaches] = useState<CoachDisplay[]>([]);
@@ -20,11 +23,14 @@ const Sessions: React.FC = () => {
     const [devices, setDevices] = useState<Device[]>([]);
 
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [creating, setCreating] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [newSession, setNewSession] = useState({
+    const initialFormState = {
         studioId: '',
         roomId: '',
         emsDeviceId: '',
@@ -33,7 +39,9 @@ const Sessions: React.FC = () => {
         startTime: '',
         duration: 20,
         notes: ''
-    });
+    };
+
+    const [formData, setFormData] = useState(initialFormState);
 
     const fetchData = async () => {
         try {
@@ -56,10 +64,10 @@ const Sessions: React.FC = () => {
 
     // Fetch rooms and devices when studio changes
     useEffect(() => {
-        if (newSession.studioId) {
+        if (formData.studioId) {
             Promise.all([
-                roomsService.getByStudio(newSession.studioId),
-                devicesService.getAvailableByStudio(newSession.studioId)
+                roomsService.getByStudio(formData.studioId),
+                devicesService.getAvailableByStudio(formData.studioId)
             ]).then(([roomsData, devicesData]) => {
                 setRooms(roomsData);
                 setDevices(devicesData);
@@ -68,36 +76,40 @@ const Sessions: React.FC = () => {
             setRooms([]);
             setDevices([]);
         }
-    }, [newSession.studioId]);
+    }, [formData.studioId]);
 
     useEffect(() => {
         fetchData();
     }, []);
 
+    const resetForm = () => {
+        setFormData(initialFormState);
+        setError(null);
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setCreating(true);
+        setSaving(true);
         try {
-            const start = new Date(newSession.startTime);
-            const end = new Date(start.getTime() + newSession.duration * 60000);
+            const start = new Date(formData.startTime);
+            const end = new Date(start.getTime() + formData.duration * 60000);
 
             await sessionsService.create({
-                studioId: newSession.studioId,
-                roomId: newSession.roomId,
-                clientId: newSession.clientId,
-                coachId: newSession.coachId,
+                studioId: formData.studioId,
+                roomId: formData.roomId,
+                clientId: formData.clientId,
+                coachId: formData.coachId,
                 startTime: start.toISOString(),
                 endTime: end.toISOString(),
-                emsDeviceId: newSession.emsDeviceId || undefined,
-                notes: newSession.notes || undefined
+                emsDeviceId: formData.emsDeviceId || undefined,
+                notes: formData.notes || undefined
             });
 
-            setIsModalOpen(false);
-            setNewSession({ studioId: '', roomId: '', emsDeviceId: '', clientId: '', coachId: '', startTime: '', duration: 20, notes: '' });
+            setIsCreateModalOpen(false);
+            resetForm();
             fetchData();
         } catch (err: any) {
-            // Check if error has conflict details
             if (err.conflicts && Array.isArray(err.conflicts)) {
                 const conflictMessages = err.conflicts.map((c: { message: string }) => c.message).join('. ');
                 setError(`Scheduling conflicts: ${conflictMessages}`);
@@ -105,7 +117,85 @@ const Sessions: React.FC = () => {
                 setError(err.message || 'Failed to create session');
             }
         } finally {
-            setCreating(false);
+            setSaving(false);
+        }
+    };
+
+    const handleEdit = (session: Session) => {
+        setSelectedSession(session);
+        const startTime = new Date(session.startTime);
+        const endTime = new Date(session.endTime);
+        const duration = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+
+        // Format datetime-local string (YYYY-MM-DDTHH:mm)
+        const formattedStartTime = new Date(session.startTime).toISOString().slice(0, 16);
+
+        setFormData({
+            studioId: session.studioId,
+            roomId: session.roomId,
+            emsDeviceId: (session as any).emsDeviceId || '', // Cast to any as interface update might be pending
+            clientId: session.clientId,
+            coachId: session.coachId,
+            startTime: formattedStartTime,
+            duration: duration,
+            notes: session.notes || ''
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedSession) return;
+        setError(null);
+        setSaving(true);
+        try {
+            const start = new Date(formData.startTime);
+            const end = new Date(start.getTime() + formData.duration * 60000);
+
+            await sessionsService.update(selectedSession.id, {
+                studioId: formData.studioId,
+                roomId: formData.roomId,
+                clientId: formData.clientId,
+                coachId: formData.coachId,
+                startTime: start.toISOString(),
+                endTime: end.toISOString(),
+                emsDeviceId: formData.emsDeviceId || undefined,
+                notes: formData.notes || undefined
+            });
+
+            setIsEditModalOpen(false);
+            setSelectedSession(null);
+            resetForm();
+            fetchData();
+        } catch (err: any) {
+            if (err.conflicts && Array.isArray(err.conflicts)) {
+                const conflictMessages = err.conflicts.map((c: { message: string }) => c.message).join('. ');
+                setError(`Scheduling conflicts: ${conflictMessages}`);
+            } else {
+                setError(err.message || 'Failed to update session');
+            }
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteClick = (session: Session) => {
+        setSelectedSession(session);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!selectedSession) return;
+        setSaving(true);
+        try {
+            await sessionsService.delete(selectedSession.id);
+            setIsDeleteDialogOpen(false);
+            setSelectedSession(null);
+            fetchData();
+        } catch (err) {
+            console.error('Failed to delete session', err);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -168,7 +258,19 @@ const Sessions: React.FC = () => {
                     {session.status}
                 </span>
             )
-        }
+        },
+        ...(canEdit || canDelete ? [{
+            key: 'actions' as keyof Session,
+            header: '',
+            render: (session: Session) => (
+                <ActionButtons
+                    showEdit={canEdit && session.status === 'scheduled'}
+                    showDelete={canDelete}
+                    onEdit={() => handleEdit(session)}
+                    onDelete={() => handleDeleteClick(session)}
+                />
+            )
+        }] : [])
     ];
 
     const inputStyle = {
@@ -177,130 +279,128 @@ const Sessions: React.FC = () => {
         color: 'var(--color-text-primary)', outline: 'none'
     };
 
+    const renderForm = (onSubmit: (e: React.FormEvent) => void, isEdit: boolean) => (
+        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {error && (
+                <div style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--color-danger)',
+                    color: 'var(--color-danger)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem'
+                }}>
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            {/* Studio Selection */}
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                    <Building2 size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Studio
+                </label>
+                <select
+                    required
+                    value={formData.studioId}
+                    onChange={e => setFormData({ ...formData, studioId: e.target.value, roomId: '', emsDeviceId: '' })}
+                    style={inputStyle}
+                    disabled={isEdit}
+                >
+                    <option value="">Select a Studio</option>
+                    {studios.filter(s => s.isActive).map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Room and Device Selection */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                        <DoorOpen size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Room
+                    </label>
+                    <select
+                        required
+                        value={formData.roomId}
+                        onChange={e => setFormData({ ...formData, roomId: e.target.value })}
+                        style={inputStyle}
+                        disabled={!formData.studioId}
+                    >
+                        <option value="">{formData.studioId ? 'Select a Room' : 'Select Studio first'}</option>
+                        {rooms.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                        <Cpu size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> EMS Device (optional)
+                    </label>
+                    <select
+                        value={formData.emsDeviceId}
+                        onChange={e => setFormData({ ...formData, emsDeviceId: e.target.value })}
+                        style={inputStyle}
+                        disabled={!formData.studioId}
+                    >
+                        <option value="">{formData.studioId ? (devices.length > 0 ? 'Select a Device' : 'No devices available') : 'Select Studio first'}</option>
+                        {devices.map(d => (
+                            <option key={d.id} value={d.id}>{d.label} {d.model ? `(${d.model})` : ''}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {/* Client and Coach Selection */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Client</label>
+                    <select required value={formData.clientId} onChange={e => setFormData({ ...formData, clientId: e.target.value })} style={inputStyle}>
+                        <option value="">Select a Client</option>
+                        {clients.map(c => (<option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>))}
+                    </select>
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Coach</label>
+                    <select required value={formData.coachId} onChange={e => setFormData({ ...formData, coachId: e.target.value })} style={inputStyle}>
+                        <option value="">Select a Coach</option>
+                        {coaches.map(c => (<option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>))}
+                    </select>
+                </div>
+            </div>
+
+            {/* Date/Time and Duration */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Date & Time</label>
+                    <input type="datetime-local" required value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} style={inputStyle} />
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Duration (min)</label>
+                    <input type="number" min="10" step="5" value={formData.duration} onChange={e => setFormData({ ...formData, duration: parseInt(e.target.value) })} style={inputStyle} />
+                </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
+                <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }} />
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                <button type="button" onClick={() => { isEdit ? setIsEditModalOpen(false) : setIsCreateModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
+                <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>
+                    {saving ? 'Saving...' : isEdit ? 'Reschedule Session' : 'Schedule Session'}
+                </button>
+            </div>
+        </form>
+    );
+
     return (
         <div>
-            <PageHeader
-                title="Sessions"
-                description="Schedule and manage training sessions"
-                actionLabel="New Session"
-                onAction={() => setIsModalOpen(true)}
-            />
-
+            <PageHeader title="Sessions" description="Schedule and manage training sessions" actionLabel="New Session" onAction={() => setIsCreateModalOpen(true)} />
             <DataTable columns={columns} data={sessions} isLoading={loading} />
-
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Schedule Session">
-                <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {error && (
-                        <div style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--color-danger)',
-                            color: 'var(--color-danger)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem'
-                        }}>
-                            <AlertCircle size={16} />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    {/* Studio Selection */}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                            <Building2 size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Studio
-                        </label>
-                        <select
-                            required
-                            value={newSession.studioId}
-                            onChange={e => setNewSession({ ...newSession, studioId: e.target.value, roomId: '', emsDeviceId: '' })}
-                            style={inputStyle}
-                        >
-                            <option value="">Select a Studio</option>
-                            {studios.filter(s => s.isActive).map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Room and Device Selection */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                <DoorOpen size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Room
-                            </label>
-                            <select
-                                required
-                                value={newSession.roomId}
-                                onChange={e => setNewSession({ ...newSession, roomId: e.target.value })}
-                                style={inputStyle}
-                                disabled={!newSession.studioId}
-                            >
-                                <option value="">{newSession.studioId ? 'Select a Room' : 'Select Studio first'}</option>
-                                {rooms.map(r => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                <Cpu size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> EMS Device (optional)
-                            </label>
-                            <select
-                                value={newSession.emsDeviceId}
-                                onChange={e => setNewSession({ ...newSession, emsDeviceId: e.target.value })}
-                                style={inputStyle}
-                                disabled={!newSession.studioId}
-                            >
-                                <option value="">{newSession.studioId ? (devices.length > 0 ? 'Select a Device' : 'No devices available') : 'Select Studio first'}</option>
-                                {devices.map(d => (
-                                    <option key={d.id} value={d.id}>{d.label} {d.model ? `(${d.model})` : ''}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Client and Coach Selection */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Client</label>
-                            <select required value={newSession.clientId} onChange={e => setNewSession({ ...newSession, clientId: e.target.value })} style={inputStyle}>
-                                <option value="">Select a Client</option>
-                                {clients.map(c => (<option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Coach</label>
-                            <select required value={newSession.coachId} onChange={e => setNewSession({ ...newSession, coachId: e.target.value })} style={inputStyle}>
-                                <option value="">Select a Coach</option>
-                                {coaches.map(c => (<option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Date/Time and Duration */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Date & Time</label>
-                            <input type="datetime-local" required value={newSession.startTime} onChange={e => setNewSession({ ...newSession, startTime: e.target.value })} style={inputStyle} />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Duration (min)</label>
-                            <input type="number" min="10" step="5" value={newSession.duration} onChange={e => setNewSession({ ...newSession, duration: parseInt(e.target.value) })} style={inputStyle} />
-                        </div>
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
-                        <textarea value={newSession.notes} onChange={e => setNewSession({ ...newSession, notes: e.target.value })} style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }} />
-                    </div>
-
-                    {/* Buttons */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                        <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
-                        <button type="submit" disabled={creating} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: creating ? 0.6 : 1 }}>
-                            {creating ? 'Scheduling...' : 'Schedule'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Schedule Session">{renderForm(handleCreate, false)}</Modal>
+            <Modal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); resetForm(); }} title="Reschedule Session">{renderForm(handleUpdate, true)}</Modal>
+            <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => { setIsDeleteDialogOpen(false); setSelectedSession(null); }} onConfirm={handleDeleteConfirm} title="Cancel Session" message="Are you sure you want to cancel this session? This action cannot be undone." confirmLabel="Cancel Session" isDestructive loading={saving} />
         </div>
     );
 };

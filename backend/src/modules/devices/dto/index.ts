@@ -68,5 +68,13 @@ export class UpdateDeviceDto {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
     notes?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsUUID()
+    studioId?: string;
 }

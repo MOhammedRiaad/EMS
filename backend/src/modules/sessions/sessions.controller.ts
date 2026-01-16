@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterce
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { SessionsService } from './sessions.service';
-import { CreateSessionDto, SessionQueryDto, UpdateSessionStatusDto } from './dto';
+import { CreateSessionDto, SessionQueryDto, UpdateSessionStatusDto, UpdateSessionDto } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
@@ -38,6 +38,12 @@ export class SessionsController {
     @ApiOperation({ summary: 'Check for scheduling conflicts without creating' })
     checkConflicts(@Body() dto: CreateSessionDto, @TenantId() tenantId: string) {
         return this.sessionsService.checkConflicts(dto, tenantId);
+    }
+
+    @Patch(':id')
+    @ApiOperation({ summary: 'Update a session' })
+    update(@Param('id') id: string, @Body() dto: UpdateSessionDto, @TenantId() tenantId: string) {
+        return this.sessionsService.update(id, dto, tenantId);
     }
 
     @Patch(':id/status')

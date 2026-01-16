@@ -32,10 +32,29 @@ export interface CreateSessionInput {
     emsDeviceId?: string;
 }
 
+export interface SessionQuery {
+    from?: string;
+    to?: string;
+    studioId?: string;
+    coachId?: string;
+    clientId?: string;
+    status?: string;
+}
+
 export const sessionsService = {
-    async getAll(): Promise<Session[]> {
+    async getAll(query?: SessionQuery): Promise<Session[]> {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/sessions`, {
+        const params = new URLSearchParams();
+        if (query) {
+            if (query.from) params.append('from', query.from);
+            if (query.to) params.append('to', query.to);
+            if (query.studioId) params.append('studioId', query.studioId);
+            if (query.coachId) params.append('coachId', query.coachId);
+            if (query.clientId) params.append('clientId', query.clientId);
+            if (query.status) params.append('status', query.status);
+        }
+
+        const response = await fetch(`${API_URL}/sessions?${params.toString()}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -66,5 +85,39 @@ export const sessionsService = {
             throw error;
         }
         return response.json();
+    },
+
+    async update(id: string, data: Partial<CreateSessionInput>): Promise<Session> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/sessions/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const error: any = new Error(errorData.message || 'Failed to update session');
+            if (errorData.conflicts) {
+                error.conflicts = errorData.conflicts;
+            }
+            throw error;
+        }
+        return response.json();
+    },
+
+    async delete(id: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/sessions/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete session');
     }
 };

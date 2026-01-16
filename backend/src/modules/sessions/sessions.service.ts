@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from './entities/session.entity';
-import { CreateSessionDto, SessionQueryDto } from './dto';
+import { CreateSessionDto, SessionQueryDto, UpdateSessionDto } from './dto';
 import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
 
@@ -105,6 +105,50 @@ export class SessionsService {
         }
 
         return savedSession;
+    }
+
+    async update(id: string, dto: UpdateSessionDto, tenantId: string): Promise<Session> {
+        const session = await this.findOne(id, tenantId);
+
+        // Merge existing session with new data to check conflicts correctly
+        // We need to construct a "would-be" session object for conflict checking
+        const mergedData = {
+            ...session,
+            ...dto,
+            // Ensure IDs are strings
+            studioId: dto.studioId || session.studioId,
+            roomId: dto.roomId || session.roomId,
+            coachId: dto.coachId || session.coachId,
+            clientId: dto.clientId || session.clientId,
+            startTime: dto.startTime ? new Date(dto.startTime) : session.startTime,
+            endTime: dto.endTime ? new Date(dto.endTime) : session.endTime,
+            emsDeviceId: dto.emsDeviceId !== undefined ? dto.emsDeviceId : session.emsDeviceId,
+        };
+
+        // If time or resources changed, check for conflicts
+        if (dto.startTime || dto.endTime || dto.roomId || dto.coachId || dto.clientId || dto.emsDeviceId) {
+            const checkDto: CreateSessionDto = {
+                studioId: mergedData.studioId,
+                roomId: mergedData.roomId,
+                coachId: mergedData.coachId,
+                clientId: mergedData.clientId,
+                startTime: mergedData.startTime.toISOString(),
+                endTime: mergedData.endTime.toISOString(),
+                emsDeviceId: mergedData.emsDeviceId || undefined,
+                // other fields irrelevant for conflict check
+            };
+
+            const conflicts = await this.checkConflicts(checkDto, tenantId, id);
+            if (conflicts.hasConflicts) {
+                throw new BadRequestException({
+                    message: 'Scheduling conflict detected',
+                    conflicts: conflicts.conflicts,
+                });
+            }
+        }
+
+        Object.assign(session, dto);
+        return this.sessionRepository.save(session);
     }
 
     async checkConflicts(dto: CreateSessionDto, tenantId: string, excludeSessionId?: string): Promise<ConflictResult> {

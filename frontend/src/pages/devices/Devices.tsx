@@ -1,34 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
-import DataTable from '../../components/common/DataTable';
-import type { Column } from '../../components/common/DataTable';
+import DataTable, { type Column } from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
+import ActionButtons from '../../components/common/ActionButtons';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { devicesService, type Device } from '../../services/devices.service';
 import { studiosService, type Studio } from '../../services/studios.service';
-import { Cpu, Building2, AlertCircle, Wrench, CheckCircle, Play } from 'lucide-react';
+import { Cpu, Building2, CheckCircle, Play, Wrench } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const Devices: React.FC = () => {
+    const { canEdit, canDelete } = usePermissions();
     const [devices, setDevices] = useState<Device[]>([]);
     const [studios, setStudios] = useState<Studio[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [creating, setCreating] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const [newDevice, setNewDevice] = useState({
-        studioId: '',
-        label: '',
-        serialNumber: '',
-        model: '',
-        notes: ''
-    });
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [formData, setFormData] = useState({ studioId: '', label: '', serialNumber: '', model: '', notes: '' });
 
     const fetchData = async () => {
         try {
-            const [devicesData, studiosData] = await Promise.all([
-                devicesService.getAll(),
-                studiosService.getAll()
-            ]);
+            const [devicesData, studiosData] = await Promise.all([devicesService.getAll(), studiosService.getAll()]);
             setDevices(devicesData);
             setStudios(studiosData);
         } catch (err) {
@@ -38,29 +33,65 @@ const Devices: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useEffect(() => { fetchData(); }, []);
+
+    const resetForm = () => setFormData({ studioId: '', label: '', serialNumber: '', model: '', notes: '' });
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
-        setCreating(true);
+        setSaving(true);
         try {
-            await devicesService.create({
-                studioId: newDevice.studioId,
-                label: newDevice.label,
-                serialNumber: newDevice.serialNumber || undefined,
-                model: newDevice.model || undefined,
-                notes: newDevice.notes || undefined
-            });
-            setIsModalOpen(false);
-            setNewDevice({ studioId: '', label: '', serialNumber: '', model: '', notes: '' });
+            await devicesService.create({ studioId: formData.studioId, label: formData.label, serialNumber: formData.serialNumber || undefined, model: formData.model || undefined, notes: formData.notes || undefined });
+            setIsCreateModalOpen(false);
+            resetForm();
             fetchData();
-        } catch (err: any) {
-            setError(err.message || 'Failed to create device');
+        } catch (err) {
+            console.error('Failed to create device', err);
         } finally {
-            setCreating(false);
+            setSaving(false);
+        }
+    };
+
+    const handleEdit = (device: Device) => {
+        setSelectedDevice(device);
+        setFormData({ studioId: device.studioId, label: device.label, serialNumber: device.serialNumber || '', model: device.model || '', notes: device.notes || '' });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedDevice) return;
+        setSaving(true);
+        try {
+            await devicesService.update(selectedDevice.id, formData);
+            setIsEditModalOpen(false);
+            setSelectedDevice(null);
+            resetForm();
+            fetchData();
+        } catch (err) {
+            console.error('Failed to update device', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteClick = (device: Device) => {
+        setSelectedDevice(device);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!selectedDevice) return;
+        setSaving(true);
+        try {
+            await devicesService.delete(selectedDevice.id);
+            setIsDeleteDialogOpen(false);
+            setSelectedDevice(null);
+            fetchData();
+        } catch (err) {
+            console.error('Failed to delete device', err);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -82,125 +113,76 @@ const Devices: React.FC = () => {
 
     const columns: Column<Device>[] = [
         {
-            key: 'label',
-            header: 'Device',
+            key: 'label', header: 'Device',
             render: (device) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                        width: '32px', height: '32px', borderRadius: '8px',
-                        backgroundColor: 'var(--color-primary)', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', color: 'white'
-                    }}>
-                        <Cpu size={16} />
-                    </div>
-                    <div>
-                        <div style={{ fontWeight: 500 }}>{device.label}</div>
-                        {device.model && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{device.model}</div>}
-                    </div>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}><Cpu size={16} /></div>
+                    <div><div style={{ fontWeight: 500 }}>{device.label}</div>{device.model && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{device.model}</div>}</div>
                 </div>
             )
         },
+        { key: 'serialNumber', header: 'Serial #', render: (device) => <span style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>{device.serialNumber || '-'}</span> },
+        { key: 'studio', header: 'Studio', render: (device) => <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-secondary)' }}><Building2 size={14} />{device.studio?.name || '-'}</div> },
         {
-            key: 'serialNumber',
-            header: 'Serial #',
-            render: (device) => <span style={{ color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>{device.serialNumber || '-'}</span>
-        },
-        {
-            key: 'studio',
-            header: 'Studio',
-            render: (device) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-secondary)' }}>
-                    <Building2 size={14} />
-                    {device.studio?.name || '-'}
-                </div>
-            )
-        },
-        {
-            key: 'status',
-            header: 'Status',
+            key: 'status', header: 'Status',
             render: (device) => {
                 const colors = getStatusColor(device.status);
                 return (
-                    <span style={{
-                        padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500,
-                        backgroundColor: colors.bg, color: colors.color,
-                        display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
-                    }}>
-                        {getStatusIcon(device.status)}
-                        {device.status.replace('_', ' ')}
+                    <span style={{ padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500, backgroundColor: colors.bg, color: colors.color, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        {getStatusIcon(device.status)}{device.status.replace('_', ' ')}
                     </span>
                 );
             }
-        }
+        },
+        ...(canEdit || canDelete ? [{
+            key: 'actions' as keyof Device, header: '',
+            render: (device: Device) => <ActionButtons showEdit={canEdit} showDelete={canDelete} onEdit={() => handleEdit(device)} onDelete={() => handleDeleteClick(device)} />
+        }] : [])
     ];
 
-    const inputStyle = {
-        width: '100%', padding: '0.75rem', borderRadius: 'var(--border-radius-md)',
-        border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)',
-        color: 'var(--color-text-primary)', outline: 'none'
-    };
+    const inputStyle = { width: '100%', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', outline: 'none' };
+
+    const renderForm = (onSubmit: (e: React.FormEvent) => void, isEdit: boolean) => (
+        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Studio</label>
+                <select required value={formData.studioId} onChange={e => setFormData({ ...formData, studioId: e.target.value })} style={inputStyle} disabled={isEdit}>
+                    <option value="">Select a Studio</option>
+                    {studios.filter(s => s.isActive).map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                </select>
+            </div>
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Device Label</label>
+                <input type="text" required value={formData.label} onChange={e => setFormData({ ...formData, label: e.target.value })} style={inputStyle} placeholder="e.g. EMS Unit #1" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Serial Number</label>
+                    <input type="text" value={formData.serialNumber} onChange={e => setFormData({ ...formData, serialNumber: e.target.value })} style={inputStyle} placeholder="Optional" />
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Model</label>
+                    <input type="text" value={formData.model} onChange={e => setFormData({ ...formData, model: e.target.value })} style={inputStyle} placeholder="Optional" />
+                </div>
+            </div>
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
+                <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }} placeholder="Optional notes..." />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                <button type="button" onClick={() => { isEdit ? setIsEditModalOpen(false) : setIsCreateModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
+                <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : isEdit ? 'Update Device' : 'Add Device'}</button>
+            </div>
+        </form>
+    );
 
     return (
         <div>
-            <PageHeader
-                title="EMS Devices"
-                description="Manage your EMS training equipment"
-                actionLabel="Add Device"
-                onAction={() => setIsModalOpen(true)}
-            />
-
+            <PageHeader title="EMS Devices" description="Manage your EMS training equipment" actionLabel="Add Device" onAction={() => setIsCreateModalOpen(true)} />
             <DataTable columns={columns} data={devices} isLoading={loading} />
-
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add EMS Device">
-                <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {error && (
-                        <div style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--color-danger)',
-                            color: 'var(--color-danger)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem'
-                        }}>
-                            <AlertCircle size={16} />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Studio</label>
-                        <select required value={newDevice.studioId} onChange={e => setNewDevice({ ...newDevice, studioId: e.target.value })} style={inputStyle}>
-                            <option value="">Select a Studio</option>
-                            {studios.filter(s => s.isActive).map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Device Label</label>
-                        <input type="text" required value={newDevice.label} onChange={e => setNewDevice({ ...newDevice, label: e.target.value })} style={inputStyle} placeholder="e.g. EMS Unit #1" />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Serial Number</label>
-                            <input type="text" value={newDevice.serialNumber} onChange={e => setNewDevice({ ...newDevice, serialNumber: e.target.value })} style={inputStyle} placeholder="Optional" />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Model</label>
-                            <input type="text" value={newDevice.model} onChange={e => setNewDevice({ ...newDevice, model: e.target.value })} style={inputStyle} placeholder="Optional" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
-                        <textarea value={newDevice.notes} onChange={e => setNewDevice({ ...newDevice, notes: e.target.value })} style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }} placeholder="Optional notes..." />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                        <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
-                        <button type="submit" disabled={creating} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: creating ? 0.6 : 1 }}>
-                            {creating ? 'Adding...' : 'Add Device'}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Add EMS Device">{renderForm(handleCreate, false)}</Modal>
+            <Modal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); resetForm(); }} title="Edit EMS Device">{renderForm(handleUpdate, true)}</Modal>
+            <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => { setIsDeleteDialogOpen(false); setSelectedDevice(null); }} onConfirm={handleDeleteConfirm} title="Delete Device" message={`Are you sure you want to delete "${selectedDevice?.label}"?`} confirmLabel="Delete" isDestructive loading={saving} />
         </div>
     );
 };

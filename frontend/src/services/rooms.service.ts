@@ -46,5 +46,32 @@ export const roomsService = {
 
         if (!response.ok) throw new Error('Failed to fetch rooms');
         return response.json();
+    },
+
+    async update(id: string, data: Partial<Room>): Promise<Room> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/rooms/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to update room');
+        return response.json();
+    },
+
+    async delete(id: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/rooms/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete room');
     }
 };

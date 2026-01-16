@@ -47,4 +47,9 @@ export class UpdateRoomDto {
     @IsOptional()
     @IsBoolean()
     active?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsUUID()
+    studioId?: string;
 }

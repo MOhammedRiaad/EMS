@@ -1,5 +1,5 @@
 import { IsDateString, IsNotEmpty, IsOptional, IsString, IsInt, Min, Max, IsIn, IsUUID } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export class CreateSessionDto {
@@ -92,3 +92,5 @@ export class UpdateSessionStatusDto {
     @IsString()
     cancelledReason?: string;
 }
+
+export class UpdateSessionDto extends PartialType(CreateSessionDto) { }

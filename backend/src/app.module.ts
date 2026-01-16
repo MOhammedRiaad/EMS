@@ -9,6 +9,7 @@ import { CoachesModule } from './modules/coaches/coaches.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { DevicesModule } from './modules/devices/devices.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthController } from './common/health.controller';
 import { StorageModule } from './modules/storage/storage.module';
 import { MailerModule } from './modules/mailer/mailer.module';
@@ -58,6 +59,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     ClientsModule,
     SessionsModule,
     DevicesModule,
+    DashboardModule,
     StorageModule,
     MailerModule,
   ],

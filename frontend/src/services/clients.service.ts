@@ -36,5 +36,31 @@ export const clientsService = {
 
         if (!response.ok) throw new Error('Failed to create client');
         return response.json();
+    },
+    async update(id: string, data: Partial<Client>): Promise<Client> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to update client');
+        return response.json();
+    },
+
+    async delete(id: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete client');
     }
 };
