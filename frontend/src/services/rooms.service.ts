@@ -34,5 +34,17 @@ export const roomsService = {
 
         if (!response.ok) throw new Error('Failed to create room');
         return response.json();
+    },
+
+    async getByStudio(studioId: string): Promise<Room[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/rooms?studioId=${studioId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch rooms');
+        return response.json();
     }
 };

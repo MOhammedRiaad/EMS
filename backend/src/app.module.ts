@@ -8,6 +8,7 @@ import { RoomsModule } from './modules/rooms/rooms.module';
 import { CoachesModule } from './modules/coaches/coaches.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
+import { DevicesModule } from './modules/devices/devices.module';
 import { HealthController } from './common/health.controller';
 import { StorageModule } from './modules/storage/storage.module';
 import { MailerModule } from './modules/mailer/mailer.module';
@@ -33,15 +34,16 @@ import { redisStore } from 'cache-manager-redis-yet';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-
         type: 'postgres',
         host: configService.get('POSTGRES_HOST') || 'postgres',
         port: parseInt(configService.get('POSTGRES_PORT') || '5432', 10),
         username: configService.get('POSTGRES_USER') || 'ems_user',
-        password: configService.get('POSTGRES_PASSWORD') || 'pass',
+        password: configService.get('POSTGRES_PASSWORD') || 'ems_secret',
         database: configService.get('POSTGRES_DB') || 'ems_studio',
         autoLoadEntities: true,
-        synchronize: false, // Using init SQL scripts
+        synchronize: false,
+        migrationsRun: true, // Auto-run migrations on startup
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],
@@ -55,6 +57,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     CoachesModule,
     ClientsModule,
     SessionsModule,
+    DevicesModule,
     StorageModule,
     MailerModule,
   ],

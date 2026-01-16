@@ -88,6 +88,25 @@ export class AuthService {
         };
     }
 
+    async findAllByTenant(tenantId: string, role?: string): Promise<Partial<User>[]> {
+        const where: any = { tenantId };
+        if (role) {
+            where.role = role;
+        }
+        const users = await this.userRepository.find({
+            where,
+            order: { lastName: 'ASC', firstName: 'ASC' },
+        });
+        // Return safe user data without password
+        return users.map(u => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            role: u.role,
+        }));
+    }
+
     async login(dto: LoginDto) {
         let user: User | null = null;
 

@@ -1,5 +1,5 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Body, Get, UseGuards, Request, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterTenantOwnerDto, CreateUserDto, AuthResponseDto } from './dto';
@@ -21,20 +21,21 @@ export class AuthController {
         return this.authService.register(dto);
     }
 
+    @Get('users')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'List users in tenant' })
+    @ApiQuery({ name: 'role', required: false })
+    async listUsers(@Request() req: any, @Query('role') role?: string) {
+        return this.authService.findAllByTenant(req.user.tenantId, role);
+    }
+
     @Post('users')
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Create a new user within the tenant (admin/owner only)' })
     async createUser(@Body() dto: CreateUserDto, @Request() req: any) {
         return this.authService.createUser(dto, req.user);
-    }
-
-    @Get('me')
-    @UseGuards(AuthGuard('jwt'))
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get current user info' })
-    me(@Request() req: any) {
-        return req.user;
     }
 }
 

@@ -9,6 +9,7 @@ import Coaches from './pages/coaches/Coaches';
 import Sessions from './pages/sessions/Sessions';
 import Studios from './pages/studios/Studios';
 import Rooms from './pages/rooms/Rooms';
+import Devices from './pages/devices/Devices';
 import UserManagement from './pages/admin/UserManagement';
 import { AuthProvider } from './contexts/AuthContext';
 import './styles/variables.css';
@@ -31,7 +32,7 @@ function App() {
 
             <Route path="studios" element={<Studios />} />
             <Route path="rooms" element={<Rooms />} />
-            <Route path="devices" element={<div>Devices Page</div>} />
+            <Route path="devices" element={<Devices />} />
 
             <Route path="admin/users" element={<UserManagement />} />
           </Route>
@@ -43,4 +44,3 @@ function App() {
 }
 
 export default App;
-

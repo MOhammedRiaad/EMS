@@ -44,6 +44,9 @@ export class Client extends TenantScopedEntityWithUpdate {
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 
+    @Column({ name: 'avatar_url', type: 'text', nullable: true })
+    avatarUrl: string | null;
+
     @OneToOne(() => User, { onDelete: 'SET NULL', nullable: true })
     @JoinColumn({ name: 'user_id' })
     user: User | null;
