@@ -18,6 +18,7 @@ const Rooms: React.FC = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
     const [saving, setSaving] = useState(false);
+    const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false);
     const [formData, setFormData] = useState({ name: '', capacity: 2, studioId: '' });
 
     const fetchData = async () => {
@@ -94,14 +95,71 @@ const Rooms: React.FC = () => {
         }
     };
 
+    const handleToggleClick = (room: Room) => {
+        setSelectedRoom(room);
+        setIsToggleDialogOpen(true);
+    };
+
+    const handleToggleConfirm = async () => {
+        if (!selectedRoom) return;
+        setSaving(true);
+        try {
+            await roomsService.update(selectedRoom.id, { active: !selectedRoom.active });
+            setIsToggleDialogOpen(false);
+            setSelectedRoom(null);
+            fetchData();
+        } catch (error) {
+            console.error('Failed to toggle room availability', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const columns: Column<Room>[] = [
         { key: 'name', header: 'Room Name' },
         { key: 'studio', header: 'Studio', render: (room) => room.studio?.name || '-' },
         { key: 'capacity', header: 'Capacity' },
+        {
+            key: 'active' as keyof Room,
+            header: 'Status',
+            render: (room: Room) => (
+                <span style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    backgroundColor: room.active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: room.active ? '#10b981' : '#ef4444'
+                }}>
+                    {room.active ? 'Available' : 'Unavailable'}
+                </span>
+            )
+        },
         ...(canEdit || canDelete ? [{
             key: 'actions' as keyof Room,
-            header: '',
-            render: (room: Room) => <ActionButtons showEdit={canEdit} showDelete={canDelete} onEdit={() => handleEdit(room)} onDelete={() => handleDeleteClick(room)} />
+            header: 'Actions',
+            render: (room: Room) => (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {canEdit && (
+                        <button
+                            onClick={() => handleToggleClick(room)}
+                            style={{
+                                padding: '0.25rem 0.75rem',
+                                fontSize: '0.75rem',
+                                borderRadius: '4px',
+                                border: room.active ? '1px solid #ef4444' : '1px solid #10b981',
+                                backgroundColor: room.active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                color: room.active ? '#ef4444' : '#10b981',
+                                cursor: 'pointer',
+                                fontWeight: 500
+                            }}
+                        >
+                            {room.active ? 'Mark Unavailable' : 'Mark Available'}
+                        </button>
+                    )}
+                    <ActionButtons showEdit={canEdit} showDelete={canDelete} onEdit={() => handleEdit(room)} onDelete={() => handleDeleteClick(room)} />
+                </div>
+            )
         }] : [])
     ];
 
@@ -140,6 +198,16 @@ const Rooms: React.FC = () => {
             <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="New Room">{renderForm(handleCreate, false)}</Modal>
             <Modal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); resetForm(); }} title="Edit Room">{renderForm(handleUpdate, true)}</Modal>
             <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => { setIsDeleteDialogOpen(false); setSelectedRoom(null); }} onConfirm={handleDeleteConfirm} title="Delete Room" message={`Are you sure you want to delete "${selectedRoom?.name}"?`} confirmLabel="Delete" isDestructive loading={saving} />
+            <ConfirmDialog
+                isOpen={isToggleDialogOpen}
+                onClose={() => { setIsToggleDialogOpen(false); setSelectedRoom(null); }}
+                onConfirm={handleToggleConfirm}
+                title={selectedRoom?.active ? "Mark Room Unavailable" : "Mark Room Available"}
+                message={selectedRoom?.active ? `Mark "${selectedRoom?.name}" as unavailable? It will not appear in session scheduling.` : `Mark "${selectedRoom?.name}" as available? It will be available for session scheduling.`}
+                confirmLabel={selectedRoom?.active ? "Mark Unavailable" : "Mark Available"}
+                isDestructive={selectedRoom?.active || false}
+                loading={saving}
+            />
         </div>
     );
 };

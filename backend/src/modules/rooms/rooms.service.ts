@@ -13,7 +13,7 @@ export class RoomsService {
 
     async findAll(tenantId: string): Promise<Room[]> {
         return this.roomRepository.find({
-            where: { tenantId, active: true },
+            where: { tenantId },
             relations: ['studio'],
             order: { name: 'ASC' },
         });

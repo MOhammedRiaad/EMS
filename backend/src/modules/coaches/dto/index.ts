@@ -45,4 +45,8 @@ export class UpdateCoachDto {
     @IsOptional()
     @IsUUID()
     studioId?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    availabilityRules?: any[];
 }

@@ -9,7 +9,9 @@ import {
     LogOut,
     Building2,
     DoorOpen,
-    UserCog
+    UserCog,
+    TrendingUp,
+    Activity
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Layout.css';
@@ -106,12 +108,21 @@ const Layout: React.FC = () => {
                         <span>Devices</span>
                     </NavLink>
 
+                    <NavLink to="/inbody" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <Activity className="nav-icon" />
+                        <span>InBody Scans</span>
+                    </NavLink>
+
                     {canSeeAdminMenu && (
                         <>
                             <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '8px 0' }} />
                             <NavLink to="/admin/users" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                                 <UserCog className="nav-icon" />
                                 <span>User Management</span>
+                            </NavLink>
+                            <NavLink to="/admin/coach-performance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                                <TrendingUp className="nav-icon" />
+                                <span>Coach Performance</span>
                             </NavLink>
                         </>
                     )}

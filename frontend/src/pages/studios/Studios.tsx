@@ -17,7 +17,22 @@ const Studios: React.FC = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedStudio, setSelectedStudio] = useState<Studio | null>(null);
     const [saving, setSaving] = useState(false);
-    const [formData, setFormData] = useState({ name: '', address: '', city: '', country: '' });
+    const initialFormState = {
+        name: '',
+        address: '',
+        city: '',
+        country: '',
+        openingHours: {
+            monday: { open: '09:00', close: '21:00' },
+            tuesday: { open: '09:00', close: '21:00' },
+            wednesday: { open: '09:00', close: '21:00' },
+            thursday: { open: '09:00', close: '21:00' },
+            friday: { open: '09:00', close: '21:00' },
+            saturday: { open: '10:00', close: '18:00' },
+            sunday: null // Closed
+        }
+    };
+    const [formData, setFormData] = useState(initialFormState);
 
     const fetchStudios = async () => {
         try {
@@ -32,7 +47,7 @@ const Studios: React.FC = () => {
 
     useEffect(() => { fetchStudios(); }, []);
 
-    const resetForm = () => setFormData({ name: '', address: '', city: '', country: '' });
+    const resetForm = () => setFormData(initialFormState);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,7 +66,13 @@ const Studios: React.FC = () => {
 
     const handleEdit = (studio: Studio) => {
         setSelectedStudio(studio);
-        setFormData({ name: studio.name, address: studio.address || '', city: studio.city || '', country: studio.country || '' });
+        setFormData({
+            name: studio.name,
+            address: studio.address || '',
+            city: studio.city || '',
+            country: studio.country || '',
+            openingHours: studio.openingHours || initialFormState.openingHours
+        });
         setIsEditModalOpen(true);
     };
 
@@ -148,6 +169,60 @@ const Studios: React.FC = () => {
                     <input type="text" value={formData.country} onChange={e => setFormData({ ...formData, country: e.target.value })} style={inputStyle} />
                 </div>
             </div>
+
+            {/* Opening Hours */}
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Opening Hours</label>
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                    const hours = formData.openingHours[day];
+                    const isClosed = !hours;
+                    return (
+                        <div key={day} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                            <span style={{ textTransform: 'capitalize', fontSize: '0.875rem' }}>{day}</span>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!isClosed}
+                                        onChange={(e) => {
+                                            const newHours = { ...formData.openingHours };
+                                            newHours[day] = e.target.checked ? { open: '09:00', close: '21:00' } : null;
+                                            setFormData({ ...formData, openingHours: newHours });
+                                        }}
+                                    />
+                                    Open
+                                </label>
+                                {!isClosed && (
+                                    <>
+                                        <input
+                                            type="time"
+                                            value={hours.open}
+                                            onChange={(e) => {
+                                                const newHours = { ...formData.openingHours };
+                                                newHours[day] = { ...hours, open: e.target.value };
+                                                setFormData({ ...formData, openingHours: newHours });
+                                            }}
+                                            style={{ ...inputStyle, width: 'auto', padding: '0.5rem' }}
+                                        />
+                                        <span>to</span>
+                                        <input
+                                            type="time"
+                                            value={hours.close}
+                                            onChange={(e) => {
+                                                const newHours = { ...formData.openingHours };
+                                                newHours[day] = { ...hours, close: e.target.value };
+                                                setFormData({ ...formData, openingHours: newHours });
+                                            }}
+                                            style={{ ...inputStyle, width: 'auto', padding: '0.5rem' }}
+                                        />
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                 <button type="button" onClick={() => { isEdit ? setIsEditModalOpen(false) : setIsCreateModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
                 <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>

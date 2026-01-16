@@ -12,6 +12,8 @@ import { roomsService, type Room } from '../../services/rooms.service';
 import { devicesService, type Device } from '../../services/devices.service';
 import { User, Building2, DoorOpen, AlertCircle, Cpu } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
+import ReviewModal from '../../components/sessions/ReviewModal';
+import { reviewsService } from '../../services/reviews.service';
 
 const Sessions: React.FC = () => {
     const { canEdit, canDelete } = usePermissions();
@@ -26,9 +28,13 @@ const Sessions: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [statusAction, setStatusAction] = useState<'completed' | 'no_show' | 'cancelled' | null>(null);
+    const [cancelReason, setCancelReason] = useState('');
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
     const initialFormState = {
         studioId: '',
@@ -38,7 +44,8 @@ const Sessions: React.FC = () => {
         coachId: '',
         startTime: '',
         duration: 20,
-        notes: ''
+        notes: '',
+        intensityLevel: 5
     };
 
     const [formData, setFormData] = useState(initialFormState);
@@ -138,7 +145,8 @@ const Sessions: React.FC = () => {
             coachId: session.coachId,
             startTime: formattedStartTime,
             duration: duration,
-            notes: session.notes || ''
+            notes: session.notes || '',
+            intensityLevel: session.intensityLevel || 5
         });
         setIsEditModalOpen(true);
     };
@@ -197,6 +205,48 @@ const Sessions: React.FC = () => {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleStatusClick = (session: Session, action: 'completed' | 'no_show' | 'cancelled') => {
+        setSelectedSession(session);
+        setStatusAction(action);
+        setIsStatusModalOpen(true);
+    };
+
+    const handleStatusConfirm = async () => {
+        if (!selectedSession || !statusAction) return;
+        setSaving(true);
+        try {
+            await sessionsService.updateStatus(
+                selectedSession.id,
+                statusAction,
+                statusAction === 'cancelled' ? cancelReason : undefined
+            );
+            setIsStatusModalOpen(false);
+
+            // If marking as completed, open review modal
+            if (statusAction === 'completed') {
+                setIsReviewModalOpen(true);
+                // Don't clear selectedSession yet - we need it for review
+            } else {
+                setSelectedSession(null);
+            }
+
+            setStatusAction(null);
+            setCancelReason('');
+            fetchData();
+        } catch (err) {
+            console.error('Failed to update status', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSubmitReview = async (rating: number, comments: string) => {
+        if (!selectedSession) return;
+        await reviewsService.submitReview(selectedSession.id, rating, comments);
+        setSelectedSession(null);
+        fetchData(); // Refresh to update UI if needed
     };
 
     const columns: Column<Session>[] = [
@@ -261,14 +311,23 @@ const Sessions: React.FC = () => {
         },
         ...(canEdit || canDelete ? [{
             key: 'actions' as keyof Session,
-            header: '',
+            header: 'Actions',
             render: (session: Session) => (
-                <ActionButtons
-                    showEdit={canEdit && session.status === 'scheduled'}
-                    showDelete={canDelete}
-                    onEdit={() => handleEdit(session)}
-                    onDelete={() => handleDeleteClick(session)}
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {session.status === 'scheduled' && canEdit && (
+                        <>
+                            <button onClick={() => handleStatusClick(session, 'completed')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', cursor: 'pointer' }}>Complete</button>
+                            <button onClick={() => handleStatusClick(session, 'no_show')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', cursor: 'pointer' }}>No-Show</button>
+                            <button onClick={() => handleStatusClick(session, 'cancelled')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', cursor: 'pointer' }}>Cancel</button>
+                        </>
+                    )}
+                    <ActionButtons
+                        showEdit={canEdit && session.status === 'scheduled'}
+                        showDelete={canDelete}
+                        onEdit={() => handleEdit(session)}
+                        onDelete={() => handleDeleteClick(session)}
+                    />
+                </div>
             )
         }] : [])
     ];
@@ -378,10 +437,31 @@ const Sessions: React.FC = () => {
                 </div>
             </div>
 
-            {/* Notes */}
-            <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
-                <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }} />
+            {/* Intensity Level and Notes */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Intensity  Level</label>
+                    <select
+                        value={formData.intensityLevel}
+                        onChange={e => setFormData({ ...formData, intensityLevel: parseInt(e.target.value) })}
+                        style={inputStyle}
+                    >
+                        <option value="1">1 - Very Light</option>
+                        <option value="2">2 - Light</option>
+                        <option value="3">3 - Light-Moderate</option>
+                        <option value="4">4 - Moderate</option>
+                        <option value="5">5 - Moderate-Hard</option>
+                        <option value="6">6 - Hard</option>
+                        <option value="7">7 - Hard-Very Hard</option>
+                        <option value="8">8 - Very Hard</option>
+                        <option value="9">9 - Extremely Hard</option>
+                        <option value="10">10 - Maximum</option>
+                    </select>
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes (Optional)</label>
+                    <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }} placeholder="Session notes..." />
+                </div>
             </div>
 
             {/* Buttons */}
@@ -401,6 +481,41 @@ const Sessions: React.FC = () => {
             <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Schedule Session">{renderForm(handleCreate, false)}</Modal>
             <Modal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); resetForm(); }} title="Reschedule Session">{renderForm(handleUpdate, true)}</Modal>
             <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => { setIsDeleteDialogOpen(false); setSelectedSession(null); }} onConfirm={handleDeleteConfirm} title="Cancel Session" message="Are you sure you want to cancel this session? This action cannot be undone." confirmLabel="Cancel Session" isDestructive loading={saving} />
+
+            {/* Status Change Modal */}
+            <Modal isOpen={isStatusModalOpen} onClose={() => { setIsStatusModalOpen(false); setStatusAction(null); setCancelReason(''); }} title={`Mark as ${statusAction?.replace('_', ' ')}`}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <p>Are you sure you want to mark this session as <strong>{statusAction?.replace('_', ' ')}</strong>?</p>
+                    {statusAction === 'cancelled' && (
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Cancellation Reason (Optional)</label>
+                            <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', outline: 'none', resize: 'vertical', minHeight: '80px' }}
+                                placeholder="Reason for cancellation..."
+                            />
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                        <button type="button" onClick={() => { setIsStatusModalOpen(false); setStatusAction(null); setCancelReason(''); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
+                        <button onClick={handleStatusConfirm} disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>
+                            {saving ? 'Updating...' : 'Confirm'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Review Modal */}
+            <ReviewModal
+                isOpen={isReviewModalOpen}
+                onClose={() => { setIsReviewModalOpen(false); setSelectedSession(null); }}
+                onSubmit={handleSubmitReview}
+                sessionInfo={selectedSession ? {
+                    coachName: `${selectedSession.coach?.user?.firstName || 'Unknown'} ${selectedSession.coach?.user?.lastName || 'Coach'}`,
+                    date: new Date(selectedSession.startTime).toLocaleDateString()
+                } : undefined}
+            />
         </div>
     );
 };

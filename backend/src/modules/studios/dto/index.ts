@@ -42,6 +42,10 @@ export class CreateStudioDto {
     @IsString()
     @MaxLength(50)
     contactPhone?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    openingHours?: Record<string, { open: string; close: string } | null>;
 }
 
 export class UpdateStudioDto {
@@ -90,4 +94,8 @@ export class UpdateStudioDto {
     @IsOptional()
     @IsBoolean()
     active?: boolean;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    openingHours?: Record<string, { open: string; close: string } | null>;
 }

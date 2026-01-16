@@ -10,6 +10,7 @@ export interface Studio {
     timezone: string;
     contactEmail: string | null;
     contactPhone: string | null;
+    openingHours?: Record<string, { open: string; close: string } | null>;
     active: boolean;
     // Computed for UI compatibility
     isActive: boolean;

@@ -31,6 +31,7 @@ export interface CoachDisplay {
     studioId: string;
     studioName: string;
     active: boolean;
+    availabilityRules?: any[];
 }
 
 // Transform backend Coach to display format

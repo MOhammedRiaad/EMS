@@ -25,7 +25,22 @@ const Coaches: React.FC = () => {
     const [selectedCoach, setSelectedCoach] = useState<CoachDisplay | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ userId: '', studioId: '', bio: '', specializations: '' });
+    const initialFormState = {
+        userId: '',
+        studioId: '',
+        bio: '',
+        specializations: '',
+        availabilityRules: [
+            { dayOfWeek: 'monday', available: true, startTime: '09:00', endTime: '17:00' },
+            { dayOfWeek: 'tuesday', available: true, startTime: '09:00', endTime: '17:00' },
+            { dayOfWeek: 'wednesday', available: true, startTime: '09:00', endTime: '17:00' },
+            { dayOfWeek: 'thursday', available: true, startTime: '09:00', endTime: '17:00' },
+            { dayOfWeek: 'friday', available: true, startTime: '09:00', endTime: '17:00' },
+            { dayOfWeek: 'saturday', available: false, startTime: '09:00', endTime: '17:00' },
+            { dayOfWeek: 'sunday', available: false, startTime: '09:00', endTime: '17:00' }
+        ] as any
+    };
+    const [formData, setFormData] = useState(initialFormState);
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -54,7 +69,7 @@ const Coaches: React.FC = () => {
     useEffect(() => { fetchData(); }, []);
     useEffect(() => { if (isCreateModalOpen) fetchUsers(); }, [isCreateModalOpen]);
 
-    const resetForm = () => { setFormData({ userId: '', studioId: '', bio: '', specializations: '' }); setError(null); };
+    const resetForm = () => { setFormData(initialFormState); setError(null); };
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -74,7 +89,13 @@ const Coaches: React.FC = () => {
 
     const handleEdit = (coach: CoachDisplay) => {
         setSelectedCoach(coach);
-        setFormData({ userId: '', studioId: coach.studioId || '', bio: coach.bio || '', specializations: coach.specializations?.join(', ') || '' });
+        setFormData({
+            userId: '',
+            studioId: coach.studioId || '',
+            bio: coach.bio || '',
+            specializations: coach.specializations?.join(', ') || '',
+            availabilityRules: (coach.availabilityRules as any) || initialFormState.availabilityRules
+        });
         setIsEditModalOpen(true);
     };
 
@@ -194,6 +215,56 @@ const Coaches: React.FC = () => {
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Specializations (comma-separated)</label>
                         <input type="text" value={formData.specializations} onChange={e => setFormData({ ...formData, specializations: e.target.value })} style={inputStyle} placeholder="e.g. EMS Training, Weight Loss" />
                     </div>
+
+                    {/* Availability Rules */}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Weekly Availability</label>
+                        {(formData.availabilityRules as any[]).map((rule, index) => (
+                            <div key={rule.dayOfWeek} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                <span style={{ textTransform: 'capitalize', fontSize: '0.875rem' }}>{rule.dayOfWeek}</span>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={rule.available}
+                                            onChange={(e) => {
+                                                const newRules = [...formData.availabilityRules as any[]];
+                                                newRules[index] = { ...newRules[index], available: e.target.checked };
+                                                setFormData({ ...formData, availabilityRules: newRules });
+                                            }}
+                                        />
+                                        Available
+                                    </label>
+                                    {rule.available && (
+                                        <>
+                                            <input
+                                                type="time"
+                                                value={rule.startTime}
+                                                onChange={(e) => {
+                                                    const newRules = [...formData.availabilityRules as any[]];
+                                                    newRules[index] = { ...newRules[index], startTime: e.target.value };
+                                                    setFormData({ ...formData, availabilityRules: newRules });
+                                                }}
+                                                style={{ ...inputStyle, width: 'auto', padding: '0.5rem' }}
+                                            />
+                                            <span>to</span>
+                                            <input
+                                                type="time"
+                                                value={rule.endTime}
+                                                onChange={(e) => {
+                                                    const newRules = [...formData.availabilityRules as any[]];
+                                                    newRules[index] = { ...newRules[index], endTime: e.target.value };
+                                                    setFormData({ ...formData, availabilityRules: newRules });
+                                                }}
+                                                style={{ ...inputStyle, width: 'auto', padding: '0.5rem' }}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                         <button type="button" onClick={() => { setIsEditModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
                         <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving...' : 'Update Coach'}</button>

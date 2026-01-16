@@ -10,9 +10,11 @@ import { ClientsModule } from './modules/clients/clients.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { DevicesModule } from './modules/devices/devices.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 import { HealthController } from './common/health.controller';
 import { StorageModule } from './modules/storage/storage.module';
 import { MailerModule } from './modules/mailer/mailer.module';
+import { InBodyScansModule } from './modules/inbody-scans/inbody-scans.module';
 
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -60,8 +62,10 @@ import { redisStore } from 'cache-manager-redis-yet';
     SessionsModule,
     DevicesModule,
     DashboardModule,
+    ReviewsModule,
     StorageModule,
     MailerModule,
+    InBodyScansModule,
   ],
   controllers: [HealthController],
 })

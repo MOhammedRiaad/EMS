@@ -11,6 +11,7 @@ export interface Session {
     status: string;
     programType?: string;
     notes?: string;
+    intensityLevel?: number;
     client?: { firstName: string; lastName: string; avatarUrl?: string };
     coach?: {
         id: string;
@@ -119,5 +120,20 @@ export const sessionsService = {
         });
 
         if (!response.ok) throw new Error('Failed to delete session');
+    },
+
+    async updateStatus(id: string, status: string, cancelledReason?: string): Promise<Session> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/sessions/${id}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ status, cancelledReason })
+        });
+
+        if (!response.ok) throw new Error('Failed to update session status');
+        return response.json();
     }
 };

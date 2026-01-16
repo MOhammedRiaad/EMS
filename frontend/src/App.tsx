@@ -10,7 +10,10 @@ import Sessions from './pages/sessions/Sessions';
 import Studios from './pages/studios/Studios';
 import Rooms from './pages/rooms/Rooms';
 import Devices from './pages/devices/Devices';
+import InBodyScans from './pages/inbody/InBodyScans';
+import InBodyScanForm from './pages/inbody/InBodyScanForm';
 import UserManagement from './pages/admin/UserManagement';
+import CoachPerformance from './pages/admin/CoachPerformance';
 import { AuthProvider } from './contexts/AuthContext';
 import './styles/variables.css';
 
@@ -34,7 +37,12 @@ function App() {
             <Route path="rooms" element={<Rooms />} />
             <Route path="devices" element={<Devices />} />
 
+            <Route path="inbody" element={<InBodyScans />} />
+            <Route path="inbody/new" element={<InBodyScanForm />} />
+            <Route path="inbody/edit/:scanId" element={<InBodyScanForm />} />
+
             <Route path="admin/users" element={<UserManagement />} />
+            <Route path="admin/coach-performance" element={<CoachPerformance />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
