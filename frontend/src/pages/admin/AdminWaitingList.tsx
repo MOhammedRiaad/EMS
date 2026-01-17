@@ -5,9 +5,9 @@ import { waitingListService, type WaitingListEntry, type CreateWaitingListEntryD
 import { clientsService, type Client } from '../../services/clients.service';
 import { studiosService, type Studio } from '../../services/studios.service';
 import { sessionsService } from '../../services/sessions.service';
-import { coachesService, type Coach } from '../../services/coaches.service';
-import { roomsService, type Room } from '../../services/rooms.service';
-import { Check, X, ArrowUp, ArrowDown, Clock, User, Calendar, CalendarPlus } from 'lucide-react';
+import { coachesService } from '../../services/coaches.service';
+import { roomsService } from '../../services/rooms.service';
+import { Check, X, ArrowUp, ArrowDown, Clock, User, Calendar } from 'lucide-react';
 
 const AdminWaitingList: React.FC = () => {
     // const { user } = useAuth(); // Unused
