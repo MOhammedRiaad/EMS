@@ -63,6 +63,12 @@ export class InBodyScan extends TenantScopedEntityWithUpdate {
     @Column({ name: 'created_by', type: 'uuid' })
     createdBy: string;
 
+    @Column({ name: 'file_url', type: 'text', nullable: true })
+    fileUrl: string | null;
+
+    @Column({ name: 'file_name', type: 'text', nullable: true })
+    fileName: string | null;
+
     // Relations
     @ManyToOne(() => Client, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'client_id' })

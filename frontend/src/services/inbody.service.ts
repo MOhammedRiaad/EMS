@@ -26,6 +26,8 @@ export interface InBodyScan {
         firstName: string;
         lastName: string;
     };
+    fileUrl?: string;
+    fileName?: string;
 }
 
 export interface CreateInBodyScanInput {
@@ -46,6 +48,7 @@ export interface CreateInBodyScanInput {
     protein?: number;
     mineral?: number;
     notes?: string;
+    file?: File;
 }
 
 export interface ProgressData {
@@ -73,19 +76,43 @@ export interface ProgressData {
 }
 
 class InBodyService {
-    private getAuthHeaders(): HeadersInit {
+    private getAuthHeaders(contentType?: string): HeadersInit {
         const token = localStorage.getItem('token');
-        return {
-            'Content-Type': 'application/json',
+        const headers: HeadersInit = {
             ...(token && { Authorization: `Bearer ${token}` }),
         };
+        if (contentType) {
+            headers['Content-Type'] = contentType;
+        }
+        return headers;
     }
 
     async create(data: CreateInBodyScanInput): Promise<InBodyScan> {
+        let body: string | FormData;
+        let headers: HeadersInit;
+
+        if (data.file) {
+            const formData = new FormData();
+            Object.entries(data).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    if (value instanceof File) {
+                        formData.append(key, value);
+                    } else {
+                        formData.append(key, String(value));
+                    }
+                }
+            });
+            body = formData;
+            headers = this.getAuthHeaders(); // No Content-Type for FormData
+        } else {
+            body = JSON.stringify(data);
+            headers = this.getAuthHeaders('application/json');
+        }
+
         const response = await fetch(`${API_URL}/inbody-scans`, {
             method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify(data),
+            headers,
+            body,
         });
 
         if (!response.ok) {
@@ -103,7 +130,7 @@ class InBodyService {
         if (endDate) params.append('endDate', endDate);
 
         const response = await fetch(`${API_URL}/inbody-scans?${params}`, {
-            headers: this.getAuthHeaders(),
+            headers: this.getAuthHeaders('application/json'),
         });
 
         if (!response.ok) {
@@ -115,7 +142,7 @@ class InBodyService {
 
     async getByClient(clientId: string): Promise<InBodyScan[]> {
         const response = await fetch(`${API_URL}/inbody-scans/client/${clientId}`, {
-            headers: this.getAuthHeaders(),
+            headers: this.getAuthHeaders('application/json'),
         });
 
         if (!response.ok) {
@@ -127,7 +154,7 @@ class InBodyService {
 
     async getLatest(clientId: string): Promise<InBodyScan | null> {
         const response = await fetch(`${API_URL}/inbody-scans/client/${clientId}/latest`, {
-            headers: this.getAuthHeaders(),
+            headers: this.getAuthHeaders('application/json'),
         });
 
         if (!response.ok) {
@@ -139,7 +166,7 @@ class InBodyService {
 
     async getProgress(clientId: string): Promise<ProgressData> {
         const response = await fetch(`${API_URL}/inbody-scans/client/${clientId}/progress`, {
-            headers: this.getAuthHeaders(),
+            headers: this.getAuthHeaders('application/json'),
         });
 
         if (!response.ok) {
@@ -150,10 +177,31 @@ class InBodyService {
     }
 
     async update(id: string, data: Partial<CreateInBodyScanInput>): Promise<InBodyScan> {
+        let body: string | FormData;
+        let headers: HeadersInit;
+
+        if (data.file) {
+            const formData = new FormData();
+            Object.entries(data).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    if (value instanceof File) {
+                        formData.append(key, value);
+                    } else {
+                        formData.append(key, String(value));
+                    }
+                }
+            });
+            body = formData;
+            headers = this.getAuthHeaders();
+        } else {
+            body = JSON.stringify(data);
+            headers = this.getAuthHeaders('application/json');
+        }
+
         const response = await fetch(`${API_URL}/inbody-scans/${id}`, {
             method: 'PATCH',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify(data),
+            headers,
+            body,
         });
 
         if (!response.ok) {

@@ -539,7 +539,9 @@ const AdminWaitingList: React.FC = () => {
                 onClose={() => setIsAddModalOpen(false)}
                 title="Add to Waiting List"
             >
-                {/* ... existing add modal content ... */}
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                    Manually adding entries is coming soon.
+                </div>
             </Modal>
 
             {/* Book Session Modal */}

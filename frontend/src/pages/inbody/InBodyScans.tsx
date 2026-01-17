@@ -9,6 +9,7 @@ import { inbodyService, type InBodyScan, type ProgressData } from '../../service
 import { clientsService, type Client } from '../../services/clients.service';
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
+import InBodyTrendsChart from './InBodyTrendsChart';
 
 const InBodyScans: React.FC = () => {
     const navigate = useNavigate();
@@ -244,6 +245,11 @@ const InBodyScans: React.FC = () => {
 
                         <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
                             Showing changes from {new Date(progressData.first.date).toLocaleDateString()} to {new Date(progressData.latest.date).toLocaleDateString()} ({progressData.totalScans} total scans)
+                        </div>
+
+                        {/* Visual Charts */}
+                        <div style={{ padding: '1rem', backgroundColor: 'var(--color-bg-primary)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+                            <InBodyTrendsChart data={scans} />
                         </div>
                     </div>
                 )}

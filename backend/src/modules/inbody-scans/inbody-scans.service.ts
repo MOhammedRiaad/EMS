@@ -11,9 +11,15 @@ export class InBodyScansService {
         private readonly inBodyScanRepository: Repository<InBodyScan>,
     ) { }
 
-    async create(dto: CreateInBodyScanDto, createdBy: string, tenantId: string): Promise<InBodyScan> {
+    async create(
+        dto: CreateInBodyScanDto,
+        createdBy: string,
+        tenantId: string,
+        file?: { url: string; name: string }
+    ): Promise<InBodyScan> {
         const scan = this.inBodyScanRepository.create({
             ...dto,
+            ...file ? { fileUrl: file.url, fileName: file.name } : {},
             createdBy,
             tenantId,
         });
@@ -101,10 +107,19 @@ export class InBodyScansService {
         };
     }
 
-    async update(id: string, dto: UpdateInBodyScanDto, tenantId: string): Promise<InBodyScan> {
+    async update(
+        id: string,
+        dto: UpdateInBodyScanDto,
+        tenantId: string,
+        file?: { url: string; name: string }
+    ): Promise<InBodyScan> {
         const scan = await this.findOne(id, tenantId);
 
         Object.assign(scan, dto);
+        if (file) {
+            scan.fileUrl = file.url;
+            scan.fileName = file.name;
+        }
 
         return this.inBodyScanRepository.save(scan);
     }

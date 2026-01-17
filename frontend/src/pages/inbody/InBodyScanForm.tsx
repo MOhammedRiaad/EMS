@@ -382,17 +382,39 @@ const InBodyScanForm: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Notes */}
+                    {/* Notes & File */}
                     <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-lg)' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                            Notes (Optional)
-                        </label>
-                        <textarea
-                            value={formData.notes}
-                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                            style={{ ...inputStyle, height: '100px', resize: 'vertical' }}
-                            placeholder="Any observations or notes..."
-                        />
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                                Notes (Optional)
+                            </label>
+                            <textarea
+                                value={formData.notes || ''}
+                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                style={{ ...inputStyle, height: '100px', resize: 'vertical' }}
+                                placeholder="Any observations or notes..."
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                                Scan File (PDF/Image)
+                            </label>
+                            <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                onChange={e => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        setFormData({ ...formData, file });
+                                    }
+                                }}
+                                style={inputStyle}
+                            />
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                                Upload the original InBody scan result sheet
+                            </div>
+                        </div>
                     </div>
 
                     {/* Action Buttons */}

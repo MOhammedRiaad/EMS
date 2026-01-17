@@ -26,6 +26,7 @@ import ClientHome from './pages/client/ClientHome';
 import ClientSchedule from './pages/client/ClientSchedule';
 import ClientProfile from './pages/client/ClientProfile';
 import ClientBooking from './pages/client/ClientBooking';
+import ClientProgress from './pages/client/ClientProgress';
 import RoleGuard from './components/auth/RoleGuard';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
               <Route path="home" element={<ClientHome />} />
               <Route path="schedule" element={<ClientSchedule />} />
               <Route path="book" element={<ClientBooking />} />
+              <Route path="progress" element={<ClientProgress />} />
               <Route path="profile" element={<ClientProfile />} />
             </Route>
           </Route>

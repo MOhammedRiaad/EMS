@@ -1,22 +1,40 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TenantGuard } from '../../common/guards';
 import { TenantId } from '../../common/decorators';
 import { InBodyScansService } from './inbody-scans.service';
 import { CreateInBodyScanDto, UpdateInBodyScanDto, InBodyScanQueryDto } from './dto';
+import { StorageService } from '../../modules/storage/storage.service';
 
 @ApiTags('inbody-scans')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller('inbody-scans')
 export class InBodyScansController {
-    constructor(private readonly inBodyScansService: InBodyScansService) { }
+    constructor(
+        private readonly inBodyScansService: InBodyScansService,
+        private readonly storageService: StorageService
+    ) { }
 
     @Post()
     @ApiOperation({ summary: 'Create new InBody scan' })
-    create(@Body() dto: CreateInBodyScanDto, @Request() req: any, @TenantId() tenantId: string) {
-        return this.inBodyScansService.create(dto, req.user.id, tenantId);
+    @ApiConsumes('multipart/form-data')
+    @UseInterceptors(FileInterceptor('file'))
+    async create(
+        @Body() dto: CreateInBodyScanDto,
+        @Request() req: any,
+        @TenantId() tenantId: string,
+        @UploadedFile() file?: Express.Multer.File
+    ) {
+        let fileData;
+        if (file) {
+            const path = `inbody/${tenantId}/${dto.clientId}`;
+            const key = await this.storageService.uploadFile(file, path);
+            fileData = { url: key, name: file.originalname };
+        }
+        return this.inBodyScansService.create(dto, req.user.id, tenantId, fileData);
     }
 
     @Get()
@@ -51,8 +69,23 @@ export class InBodyScansController {
 
     @Patch(':id')
     @ApiOperation({ summary: 'Update InBody scan' })
-    update(@Param('id') id: string, @Body() dto: UpdateInBodyScanDto, @TenantId() tenantId: string) {
-        return this.inBodyScansService.update(id, dto, tenantId);
+    @ApiConsumes('multipart/form-data')
+    @UseInterceptors(FileInterceptor('file'))
+    async update(
+        @Param('id') id: string,
+        @Body() dto: UpdateInBodyScanDto,
+        @TenantId() tenantId: string,
+        @UploadedFile() file?: Express.Multer.File
+    ) {
+        let fileData;
+        if (file) {
+            // Need clientId for path, fetch existing scan
+            const existing = await this.inBodyScansService.findOne(id, tenantId);
+            const path = `inbody/${tenantId}/${existing.clientId}`;
+            const key = await this.storageService.uploadFile(file, path);
+            fileData = { url: key, name: file.originalname };
+        }
+        return this.inBodyScansService.update(id, dto, tenantId, fileData);
     }
 
     @Delete(':id')
