@@ -107,4 +107,38 @@ export class WaitingListService {
         entry.priority = newPriority;
         return this.waitingListRepository.save(entry);
     }
+
+    async notifyClient(id: string, tenantId: string, mailerService: any): Promise<WaitingListEntry> {
+        const entry = await this.findOne(id, tenantId);
+
+        if (!entry.client?.email) {
+            throw new Error('Client email not found');
+        }
+
+        const subject = 'A Spot is Available - EMS Studio';
+        const text = `Hi ${entry.client.firstName}, good news! A spot has opened up at ${entry.studio?.name || 'EMS Studio'}. Please contact us to book your session.`;
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Great News! A Spot is Available</h2>
+                <p>Hi ${entry.client.firstName},</p>
+                <p>A training spot has opened up at <strong>${entry.studio?.name || 'EMS Studio'}</strong> that matches your preferences!</p>
+                ${entry.preferredDate ? `<p><strong>Your preferred date:</strong> ${new Date(entry.preferredDate).toLocaleDateString()}</p>` : ''}
+                ${entry.preferredTimeSlot ? `<p><strong>Time preference:</strong> ${entry.preferredTimeSlot}</p>` : ''}
+                <p>Please contact us or log in to your client portal to book your session before the spot fills up.</p>
+                <p style="color: #666; margin-top: 30px;">Best regards,<br>${entry.studio?.name || 'EMS Studio'}</p>
+            </div>
+        `;
+
+        await mailerService.sendMail(entry.client.email, subject, text, html);
+
+        entry.status = WaitingListStatus.NOTIFIED;
+        entry.notifiedAt = new Date();
+        return this.waitingListRepository.save(entry);
+    }
+
+    async markAsBooked(id: string, tenantId: string): Promise<WaitingListEntry> {
+        const entry = await this.findOne(id, tenantId);
+        entry.status = WaitingListStatus.BOOKED;
+        return this.waitingListRepository.save(entry);
+    }
 }

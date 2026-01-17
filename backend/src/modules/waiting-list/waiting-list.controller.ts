@@ -5,13 +5,17 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { TenantGuard } from '../../common/guards';
 import { TenantId } from '../../common/decorators';
+import { MailerService } from '../mailer/mailer.service';
 
 @ApiTags('waiting-list')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller('waiting-list')
 export class WaitingListController {
-    constructor(private readonly waitingListService: WaitingListService) { }
+    constructor(
+        private readonly waitingListService: WaitingListService,
+        private readonly mailerService: MailerService,
+    ) { }
 
     @Post()
     @ApiOperation({ summary: 'Add entry to waiting list' })
@@ -80,5 +84,17 @@ export class WaitingListController {
     @ApiOperation({ summary: 'Update priority of waiting list entry' })
     updatePriority(@Param('id') id: string, @Body('priority') priority: number, @TenantId() tenantId: string) {
         return this.waitingListService.updatePriority(id, priority, tenantId);
+    }
+
+    @Post(':id/notify')
+    @ApiOperation({ summary: 'Notify client about available spot' })
+    notifyClient(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.waitingListService.notifyClient(id, tenantId, this.mailerService);
+    }
+
+    @Patch(':id/book')
+    @ApiOperation({ summary: 'Mark entry as booked' })
+    markAsBooked(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.waitingListService.markAsBooked(id, tenantId);
     }
 }

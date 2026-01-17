@@ -26,6 +26,7 @@ import ClientHome from './pages/client/ClientHome';
 import ClientSchedule from './pages/client/ClientSchedule';
 import ClientProfile from './pages/client/ClientProfile';
 import ClientBooking from './pages/client/ClientBooking';
+import RoleGuard from './components/auth/RoleGuard';
 
 function App() {
   return (
@@ -38,35 +39,39 @@ function App() {
           <Route path="/auth/setup" element={<SetupPassword />} />
 
           {/* Client Portal Routes */}
-          <Route path="/client" element={<ClientLayout />}>
-            <Route index element={<Navigate to="home" replace />} />
-            <Route path="home" element={<ClientHome />} />
-            <Route path="schedule" element={<ClientSchedule />} />
-            <Route path="book" element={<ClientBooking />} />
-            <Route path="profile" element={<ClientProfile />} />
+          <Route element={<RoleGuard allowedRoles={['client']} />}>
+            <Route path="/client" element={<ClientLayout />}>
+              <Route index element={<Navigate to="home" replace />} />
+              <Route path="home" element={<ClientHome />} />
+              <Route path="schedule" element={<ClientSchedule />} />
+              <Route path="book" element={<ClientBooking />} />
+              <Route path="profile" element={<ClientProfile />} />
+            </Route>
           </Route>
 
           {/* Admin / Studio Routes */}
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="sessions" element={<Sessions />} />
+          <Route element={<RoleGuard allowedRoles={['admin', 'tenant_owner', 'coach']} />}>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="sessions" element={<Sessions />} />
 
-            <Route path="clients" element={<Clients />} />
-            <Route path="coaches" element={<Coaches />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="coaches" element={<Coaches />} />
 
-            <Route path="studios" element={<Studios />} />
-            <Route path="rooms" element={<Rooms />} />
-            <Route path="devices" element={<Devices />} />
+              <Route path="studios" element={<Studios />} />
+              <Route path="rooms" element={<Rooms />} />
+              <Route path="devices" element={<Devices />} />
 
-            <Route path="inbody" element={<InBodyScans />} />
-            <Route path="inbody/new" element={<InBodyScanForm />} />
-            <Route path="inbody/edit/:scanId" element={<InBodyScanForm />} />
+              <Route path="inbody" element={<InBodyScans />} />
+              <Route path="inbody/new" element={<InBodyScanForm />} />
+              <Route path="inbody/edit/:scanId" element={<InBodyScanForm />} />
 
-            <Route path="admin/users" element={<UserManagement />} />
-            <Route path="admin/coach-performance" element={<CoachPerformance />} />
-            <Route path="admin/waiting-list" element={<AdminWaitingList />} />
-            <Route path="admin/packages" element={<AdminPackages />} />
-            <Route path="admin/cash-flow" element={<AdminCashFlow />} />
+              <Route path="admin/users" element={<UserManagement />} />
+              <Route path="admin/coach-performance" element={<CoachPerformance />} />
+              <Route path="admin/waiting-list" element={<AdminWaitingList />} />
+              <Route path="admin/packages" element={<AdminPackages />} />
+              <Route path="admin/cash-flow" element={<AdminCashFlow />} />
+            </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

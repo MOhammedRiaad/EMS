@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SessionsService } from '../sessions/sessions.service';
 import { PackagesService } from '../packages/packages.service';
 import { WaitingListService } from '../waiting-list/waiting-list.service';
+import { ClientsService } from '../clients/clients.service';
 import { SessionStatus } from '../sessions/entities/session.entity';
 import { ClientPackageStatus } from '../packages/entities/client-package.entity';
 
@@ -11,6 +12,7 @@ export class ClientPortalService {
         private readonly sessionsService: SessionsService,
         private readonly packagesService: PackagesService,
         private readonly waitingListService: WaitingListService,
+        private readonly clientsService: ClientsService,
     ) { }
 
     async getDashboard(clientId: string, tenantId: string) {
@@ -25,6 +27,13 @@ export class ClientPortalService {
         // Manually sort by startTime since filter might return unsorted or sort by default DB order
         const sortedSessions = sessions.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
         const nextSession = sortedSessions[0] || null;
+
+        // Count all scheduled sessions (including past ones that haven't been completed)
+        const allScheduledSessions = await this.sessionsService.findAll(tenantId, {
+            clientId,
+            status: 'scheduled',
+        });
+        const scheduledCount = allScheduledSessions.length;
 
         // 2. Get active package (priority to the one with sessions remaining and not expired)
         const packages = await this.packagesService.getClientPackages(clientId, tenantId);
@@ -45,9 +54,19 @@ export class ClientPortalService {
 
         const activePackage = activePackages[0] || null;
 
+        // Calculate available sessions for client
+        const scheduledSessionsCount = scheduledCount;
+        const availableSessions = activePackage
+            ? activePackage.sessionsRemaining - scheduledSessionsCount
+            : 0;
+
         return {
             nextSession,
-            activePackage,
+            activePackage: activePackage ? {
+                ...activePackage,
+                scheduledSessions: scheduledSessionsCount,
+                availableSessions: availableSessions,
+            } : null,
         };
     }
 
@@ -137,5 +156,78 @@ export class ClientPortalService {
             notes: dto.notes,
             requiresApproval: true,
         }, tenantId);
+    }
+
+    async getProfile(clientId: string, tenantId: string) {
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        if (!client) {
+            throw new Error('Client not found');
+        }
+
+        return {
+            id: client.id,
+            firstName: client.firstName,
+            lastName: client.lastName,
+            email: client.email,
+            phone: client.phone,
+            avatarUrl: client.avatarUrl,
+            memberSince: client.createdAt
+        };
+    }
+
+    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        if (!client) {
+            throw new Error('Client not found');
+        }
+
+        // Update allowed fields
+        const updateData: any = {};
+        if (dto.firstName !== undefined) updateData.firstName = dto.firstName;
+        if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
+        if (dto.phone !== undefined) updateData.phone = dto.phone;
+        if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+
+        const updated = await this.clientsService.update(clientId, updateData, tenantId);
+
+        return {
+            id: updated.id,
+            firstName: updated.firstName,
+            lastName: updated.lastName,
+            email: updated.email,
+            phone: updated.phone,
+            avatarUrl: updated.avatarUrl
+        };
+    }
+
+    async getMyWaitingList(clientId: string, tenantId: string) {
+        const entries = await this.waitingListService.findByClient(clientId, tenantId);
+
+        // Return formatted entries for client view
+        return entries.map(entry => ({
+            id: entry.id,
+            preferredDate: entry.preferredDate,
+            preferredTimeSlot: entry.preferredTimeSlot,
+            status: entry.status,
+            studio: entry.studio ? { id: entry.studio.id, name: entry.studio.name } : null,
+            createdAt: entry.createdAt,
+            notifiedAt: entry.notifiedAt,
+        }));
+    }
+
+    async cancelWaitingListEntry(clientId: string, tenantId: string, entryId: string) {
+        // First verify the entry belongs to this client
+        const entry = await this.waitingListService.findOne(entryId, tenantId);
+
+        if (entry.clientId !== clientId) {
+            throw new Error('You can only cancel your own waiting list entries');
+        }
+
+        // Use the remove method to delete the entry
+        await this.waitingListService.remove(entryId, tenantId);
+
+        return { message: 'Waiting list entry cancelled successfully' };
     }
 }

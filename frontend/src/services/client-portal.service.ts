@@ -5,6 +5,16 @@ export interface ClientDashboardData {
     activePackage: any;
 }
 
+export interface ClientProfile {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string | null;
+    avatarUrl: string | null;
+    memberSince: string;
+}
+
 export const clientPortalService = {
     async getDashboard(): Promise<ClientDashboardData> {
         const token = localStorage.getItem('token');
@@ -97,5 +107,46 @@ export const clientPortalService = {
             throw new Error(err.message || 'Failed to submit review');
         }
         return response.json();
+    },
+
+    async getProfile(): Promise<any> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch profile');
+        return response.json();
+    },
+
+    async updateProfile(data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }): Promise<any> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/profile`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to update profile');
+        }
+        return response.json();
+    },
+
+    async getMyWaitingList(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/waiting-list`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch waiting list');
+        return response.json();
+    },
+
+    async cancelWaitingListEntry(id: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/waiting-list/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to cancel waiting list entry');
     }
 };

@@ -1,29 +1,110 @@
-import { useState, useEffect } from 'react';
-import { clientPortalService } from '../../services/client-portal.service';
-import { Package, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { clientPortalService, type ClientProfile as ClientProfileType } from '../../services/client-portal.service';
+import { storageService } from '../../services/storage.service';
+import { getImageUrl } from '../../utils/imageUtils';
+import { Package, Camera } from 'lucide-react';
 
 const ClientProfile = () => {
-    // We get "activePackage" from dashboard, but for full profile we might need a new endpoint
-    // or just reuse dashboard info + maybe a "history" endpoint later.
-    // For now, let's reuse dashboard data to show active package detail.
+    const [profile, setProfile] = useState<ClientProfileType | null>(null);
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const loadData = async () => {
+        try {
+            const [dashboardData, profileData] = await Promise.all([
+                clientPortalService.getDashboard(),
+                clientPortalService.getProfile()
+            ]);
+            setData(dashboardData);
+            setProfile(profileData);
+        } catch (error) {
+            console.error('Failed to load data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        clientPortalService.getDashboard()
-            .then(setData)
-            .catch(console.error)
-            .finally(() => setLoading(false));
+        loadData();
     }, []);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const avatarUrl = await storageService.upload(file);
+            await clientPortalService.updateProfile({ avatarUrl });
+            await loadData(); // Reload profile
+            alert('Profile photo updated successfully!');
+        } catch (error: any) {
+            alert(error.message || 'Failed to upload image');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     if (loading) return <div className="p-6 text-center text-gray-500">Loading profile...</div>;
 
     const { activePackage } = data || {};
+    const avatarUrl = getImageUrl(profile?.avatarUrl);
+    const initials = `${profile?.firstName?.[0] || ''}${profile?.lastName?.[0] || ''}`;
 
     return (
-        <div className="p-4 space-y-6 pb-20">
+        <div className="p-4 space-y-6 pb-20 max-w-2xl mx-auto">
             <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
+
+            {/* Profile Photo Section */}
+            <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center space-x-4">
+                    <div className="relative">
+                        <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt={`${profile?.firstName} ${profile?.lastName}`} className="w-full h-full object-cover" />
+                            ) : initials}
+                        </div>
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="absolute bottom-0 right-0 bg-white border-2 border-gray-200 rounded-full p-2 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            title="Change photo"
+                        >
+                            {uploading ? (
+                                <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                            ) : (
+                                <Camera size={16} className="text-gray-600" />
+                            )}
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <h2 className="text-xl font-bold text-gray-800">{profile?.firstName} {profile?.lastName}</h2>
+                        <p className="text-gray-500">{profile?.email}</p>
+                        {profile?.phone && <p className="text-gray-500 text-sm">{profile.phone}</p>}
+                    </div>
+                </div>
+            </section>
 
             {/* Active Plan */}
             <section>
@@ -65,17 +146,17 @@ const ClientProfile = () => {
                 )}
             </section>
 
-            {/* Account Info (Static for now) */}
+            {/* Account Info */}
             <section>
                 <h2 className="font-semibold text-gray-700 mb-2">Account Details</h2>
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50">
                     <div className="p-4 flex justify-between items-center">
                         <span className="text-gray-500">Email</span>
-                        <span className="font-medium text-gray-900">{/* User email from context? */} user@example.com</span>
+                        <span className="font-medium text-gray-900">{profile?.email}</span>
                     </div>
                     <div className="p-4 flex justify-between items-center">
                         <span className="text-gray-500">Member Since</span>
-                        <span className="font-medium text-gray-900">Jan 2024</span>
+                        <span className="font-medium text-gray-900">{profile?.memberSince ? new Date(profile.memberSince).toLocaleDateString() : 'N/A'}</span>
                     </div>
                 </div>
             </section>

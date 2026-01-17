@@ -12,8 +12,6 @@ import { roomsService, type Room } from '../../services/rooms.service';
 import { devicesService, type Device } from '../../services/devices.service';
 import { User, Building2, DoorOpen, AlertCircle, Cpu } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
-import ReviewModal from '../../components/sessions/ReviewModal';
-import { reviewsService } from '../../services/reviews.service';
 
 const Sessions: React.FC = () => {
     const { canEdit, canDelete } = usePermissions();
@@ -34,9 +32,9 @@ const Sessions: React.FC = () => {
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [deductSessionChoice, setDeductSessionChoice] = useState<boolean | null>(null);
     const [showDeductChoice, setShowDeductChoice] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const initialFormState = {
         studioId: '',
@@ -56,6 +54,7 @@ const Sessions: React.FC = () => {
     const [formData, setFormData] = useState(initialFormState);
 
     const fetchData = async () => {
+        console.log('fetchData called, fetching sessions...');
         try {
             const [sessionsData, clientsData, coachesData, studiosData] = await Promise.all([
                 sessionsService.getAll(),
@@ -63,7 +62,20 @@ const Sessions: React.FC = () => {
                 coachesService.getAll(),
                 studiosService.getAll()
             ]);
-            setSessions(sessionsData);
+            console.log('Received sessions data:', sessionsData.length, 'sessions');
+            // Log the session statuses to verify backend returns updated data
+            console.log('Session statuses:', sessionsData.map(s => ({ id: s.id.substring(0, 8), status: s.status })));
+
+            // Clear sessions first to force unmount, then set new data
+            setSessions([]);
+
+            // Use setTimeout to ensure the clear happens in a separate render cycle
+            setTimeout(() => {
+                setSessions([...sessionsData]);
+                setRefreshKey(prev => prev + 1);
+                console.log('State updated with new sessions after clear');
+            }, 0);
+
             setClients(clientsData);
             setCoaches(coachesData);
             setStudios(studiosData);
@@ -93,6 +105,11 @@ const Sessions: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    // Debug: Log when sessions state changes
+    useEffect(() => {
+        console.log('Sessions state changed, count:', sessions.length);
+    }, [sessions]);
 
     const resetForm = () => {
         setFormData(initialFormState);
@@ -248,7 +265,10 @@ const Sessions: React.FC = () => {
     const handleStatusConfirm = async () => {
         if (!selectedSession || !statusAction) return;
         setSaving(true);
+        setError(null);
         try {
+            console.log('Updating session status...', selectedSession.id, statusAction);
+
             // Determine deductSession value
             let deductSession: boolean | undefined;
             if (statusAction === 'cancelled') {
@@ -263,32 +283,27 @@ const Sessions: React.FC = () => {
                 statusAction === 'cancelled' ? cancelReason : undefined,
                 deductSession
             );
+
+            console.log('Session status updated, fetching fresh data...');
+
+            // Refresh data first
+            await fetchData();
+
+            console.log('Data fetched, closing modal...');
+
+            // Then close modal and reset state
             setIsStatusModalOpen(false);
-
-            // If marking as completed, open review modal
-            if (statusAction === 'completed') {
-                setIsReviewModalOpen(true);
-            } else {
-                setSelectedSession(null);
-            }
-
+            setSelectedSession(null);
             setStatusAction(null);
             setCancelReason('');
             setDeductSessionChoice(null);
             setShowDeductChoice(false);
-            fetchData();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update status', err);
+            setError(err.message || 'Failed to update session status');
         } finally {
             setSaving(false);
         }
-    };
-
-    const handleSubmitReview = async (rating: number, comments: string) => {
-        if (!selectedSession) return;
-        await reviewsService.submitReview(selectedSession.id, rating, comments);
-        setSelectedSession(null);
-        fetchData(); // Refresh to update UI if needed
     };
 
     const columns: Column<Session>[] = [
@@ -604,7 +619,12 @@ const Sessions: React.FC = () => {
     return (
         <div>
             <PageHeader title="Sessions" description="Schedule and manage training sessions" actionLabel="New Session" onAction={() => setIsCreateModalOpen(true)} />
-            <DataTable columns={columns} data={sessions} isLoading={loading} />
+            <DataTable
+                key={`sessions-table-${refreshKey}`}
+                columns={columns}
+                data={sessions}
+                isLoading={loading}
+            />
             <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Schedule Session">{renderForm(handleCreate, false)}</Modal>
             <Modal isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); resetForm(); }} title="Reschedule Session">{renderForm(handleUpdate, true)}</Modal>
             <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => { setIsDeleteDialogOpen(false); setSelectedSession(null); }} onConfirm={handleDeleteConfirm} title="Cancel Session" message="Are you sure you want to cancel this session? This action cannot be undone." confirmLabel="Cancel Session" isDestructive loading={saving} />
@@ -656,16 +676,6 @@ const Sessions: React.FC = () => {
                 </div>
             </Modal>
 
-            {/* Review Modal */}
-            <ReviewModal
-                isOpen={isReviewModalOpen}
-                onClose={() => { setIsReviewModalOpen(false); setSelectedSession(null); }}
-                onSubmit={handleSubmitReview}
-                sessionInfo={selectedSession ? {
-                    coachName: `${selectedSession.coach?.user?.firstName || 'Unknown'} ${selectedSession.coach?.user?.lastName || 'Coach'}`,
-                    date: new Date(selectedSession.startTime).toLocaleDateString()
-                } : undefined}
-            />
         </div>
     );
 };

@@ -9,6 +9,7 @@ import { studiosService, type Studio } from '../../services/studios.service';
 import { Mail, Building2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { getImageUrl } from '../../utils/imageUtils';
 
 interface UserOption { id: string; email: string; firstName: string | null; lastName: string | null; role: string; }
 
@@ -139,14 +140,20 @@ const Coaches: React.FC = () => {
     const columns: Column<CoachDisplay>[] = [
         {
             key: 'name', header: 'Name',
-            render: (coach) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
-                        {(coach.firstName?.[0] || '') + (coach.lastName?.[0] || '')}
+            render: (coach) => {
+                const avatarUrl = getImageUrl(coach.avatarUrl);
+                const initials = `${coach.firstName?.[0] || ''}${coach.lastName?.[0] || ''}`;
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '0.75rem', overflow: 'hidden' }}>
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt={`${coach.firstName} ${coach.lastName}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : initials}
+                        </div>
+                        <div style={{ fontWeight: 500 }}>{coach.firstName} {coach.lastName}</div>
                     </div>
-                    <div style={{ fontWeight: 500 }}>{coach.firstName} {coach.lastName}</div>
-                </div>
-            )
+                );
+            }
         },
         { key: 'email', header: 'Email', render: (coach) => <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-secondary)' }}><Mail size={14} />{coach.email || '-'}</div> },
         { key: 'studio', header: 'Studio', render: (coach) => <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-secondary)' }}><Building2 size={14} />{coach.studioName || '-'}</div> },

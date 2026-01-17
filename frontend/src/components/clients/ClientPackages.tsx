@@ -306,12 +306,19 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
             >
                 <form onSubmit={handleAssign} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Package</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Package</label>
                         <select
                             required
                             value={formData.packageId}
                             onChange={e => setFormData({ ...formData, packageId: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         >
                             {availablePackages.map(pkg => (
                                 <option key={pkg.id} value={pkg.id}>
@@ -322,11 +329,18 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Payment Method</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Payment Method</label>
                         <select
                             value={formData.paymentMethod}
                             onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         >
                             <option value="cash">Cash</option>
                             <option value="card">Card</option>
@@ -335,13 +349,20 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Notes</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
                         <input
                             type="text"
                             value={formData.paymentNotes}
                             onChange={e => setFormData({ ...formData, paymentNotes: e.target.value })}
                             placeholder="Optional payment notes"
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         />
                     </div>
 
@@ -372,11 +393,18 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
             >
                 <form onSubmit={handleRenew} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Package</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Package</label>
                         <select
                             value={formData.packageId}
                             onChange={e => setFormData({ ...formData, packageId: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         >
                             {availablePackages.map(pkg => (
                                 <option key={pkg.id} value={pkg.id}>
@@ -388,11 +416,18 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Payment Method</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Payment Method</label>
                         <select
                             value={formData.paymentMethod}
                             onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         >
                             <option value="cash">Cash</option>
                             <option value="card">Card</option>

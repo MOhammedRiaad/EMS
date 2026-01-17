@@ -13,6 +13,7 @@ export interface Coach {
         email: string;
         firstName: string | null;
         lastName: string | null;
+        avatarUrl?: string | null;
     };
     studio?: {
         id: string;
@@ -31,6 +32,7 @@ export interface CoachDisplay {
     studioId: string;
     studioName: string;
     active: boolean;
+    avatarUrl?: string | null;
     availabilityRules?: any[];
 }
 
@@ -46,6 +48,7 @@ export function transformCoachForDisplay(coach: Coach): CoachDisplay {
         studioId: coach.studioId || '',
         studioName: coach.studio?.name || '',
         active: coach.active,
+        avatarUrl: coach.user?.avatarUrl || null,
     };
 }
 

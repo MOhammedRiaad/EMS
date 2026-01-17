@@ -149,5 +149,23 @@ export const waitingListService = {
         });
         if (!response.ok) throw new Error('Failed to update priority');
         return response.json();
+    },
+
+    notify: async (id: string): Promise<WaitingListEntry> => {
+        const response = await fetch(`${API_URL}/waiting-list/${id}/notify`, {
+            method: 'POST',
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to notify client');
+        return response.json();
+    },
+
+    markAsBooked: async (id: string): Promise<WaitingListEntry> => {
+        const response = await fetch(`${API_URL}/waiting-list/${id}/book`, {
+            method: 'PATCH',
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to mark as booked');
+        return response.json();
     }
 };

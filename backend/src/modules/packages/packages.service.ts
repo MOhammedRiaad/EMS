@@ -94,6 +94,16 @@ export class PackagesService {
         });
     }
 
+    async getActivePackageForClient(clientId: string, tenantId: string): Promise<ClientPackage | null> {
+        return this.clientPackageRepo.findOne({
+            where: {
+                clientId,
+                tenantId,
+                status: ClientPackageStatus.ACTIVE
+            }
+        });
+    }
+
     async getExpiringPackages(tenantId: string, daysAhead = 7) {
         const futureDate = new Date();
         futureDate.setDate(futureDate.getDate() + daysAhead);

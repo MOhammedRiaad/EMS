@@ -4,7 +4,10 @@ import Modal from '../../components/common/Modal';
 import { waitingListService, type WaitingListEntry, type CreateWaitingListEntryDto } from '../../services/waiting-list.service';
 import { clientsService, type Client } from '../../services/clients.service';
 import { studiosService, type Studio } from '../../services/studios.service';
-import { Check, X, ArrowUp, ArrowDown, Clock, User, Calendar } from 'lucide-react';
+import { sessionsService } from '../../services/sessions.service';
+import { coachesService, type Coach } from '../../services/coaches.service';
+import { roomsService, type Room } from '../../services/rooms.service';
+import { Check, X, ArrowUp, ArrowDown, Clock, User, Calendar, CalendarPlus } from 'lucide-react';
 
 const AdminWaitingList: React.FC = () => {
     // const { user } = useAuth(); // Unused
@@ -25,14 +28,32 @@ const AdminWaitingList: React.FC = () => {
         requiresApproval: true
     });
 
+    // Book Session Modal State
+    const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+    const [selectedEntry, setSelectedEntry] = useState<WaitingListEntry | null>(null);
+    const [coaches, setCoaches] = useState<any[]>([]);
+    const [rooms, setRooms] = useState<any[]>([]);
+    const [bookingData, setBookingData] = useState({
+        startTime: '',
+        endTime: '',
+        coachId: '',
+        roomId: '',
+        programType: 'Personal Training'
+    });
+    const [bookingLoading, setBookingLoading] = useState(false);
+
     const fetchData = async () => {
         try {
-            const [clientsData, studiosData] = await Promise.all([
+            const [clientsData, studiosData, coachesData, roomsData] = await Promise.all([
                 clientsService.getAll(),
-                studiosService.getAll()
+                studiosService.getAll(),
+                coachesService.getAll(),
+                roomsService.getAll()
             ]);
             setClients(clientsData);
             setStudios(studiosData);
+            setCoaches(coachesData);
+            setRooms(roomsData);
 
             // Set default studio if available
             if (studiosData.length > 0) {
@@ -112,6 +133,76 @@ const AdminWaitingList: React.FC = () => {
         }
     };
 
+    const handleNotify = async (id: string) => {
+        try {
+            await waitingListService.notify(id);
+            fetchEntries();
+            alert('Client notified successfully!');
+        } catch (error) {
+            console.error('Error notifying client:', error);
+            alert('Failed to notify client');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Are you sure you want to permanently delete this entry?')) return;
+        try {
+            await waitingListService.delete(id);
+            fetchEntries();
+        } catch (error) {
+            console.error('Error deleting entry:', error);
+        }
+    };
+
+    const openBookModal = (entry: WaitingListEntry) => {
+        setSelectedEntry(entry);
+        // Pre-fill with preferred date if available
+        const preferredDate = entry.preferredDate
+            ? new Date(entry.preferredDate).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+
+        setBookingData({
+            startTime: `${preferredDate}T09:00`,
+            endTime: `${preferredDate}T10:00`,
+            coachId: coaches[0]?.id || '',
+            roomId: rooms[0]?.id || '',
+            programType: 'Personal Training'
+        });
+        setIsBookModalOpen(true);
+    };
+
+    const handleBookSession = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedEntry) return;
+
+        setBookingLoading(true);
+        try {
+            // Create the session
+            await sessionsService.create({
+                clientId: selectedEntry.clientId,
+                studioId: selectedEntry.studioId,
+                coachId: bookingData.coachId,
+                roomId: bookingData.roomId,
+                startTime: new Date(bookingData.startTime).toISOString(),
+                endTime: new Date(bookingData.endTime).toISOString(),
+                programType: bookingData.programType
+            });
+
+            // Mark waiting list entry as booked
+            await waitingListService.markAsBooked(selectedEntry.id);
+
+            setIsBookModalOpen(false);
+            setSelectedEntry(null);
+            fetchEntries();
+            alert('Session booked successfully!');
+        } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+            console.error('Error booking session:', error);
+            alert(error.message || 'Failed to book session');
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
     const filteredEntries = entries.filter(entry => {
         if (activeTab === 'pending') return entry.status === 'pending';
         if (activeTab === 'queue') return entry.status === 'approved' || entry.status === 'notified';
@@ -149,12 +240,19 @@ const AdminWaitingList: React.FC = () => {
             >
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Client</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Client</label>
                         <select
                             required
                             value={formData.clientId}
                             onChange={e => setFormData({ ...formData, clientId: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         >
                             <option value="">Select client...</option>
                             {clients.map(client => (
@@ -164,12 +262,19 @@ const AdminWaitingList: React.FC = () => {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Studio</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Studio</label>
                         <select
                             required
                             value={formData.studioId}
                             onChange={e => setFormData({ ...formData, studioId: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         >
                             <option value="">Select studio...</option>
                             {studios.map(studio => (
@@ -180,20 +285,34 @@ const AdminWaitingList: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Preferred Date</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Preferred Date</label>
                             <input
                                 type="date"
                                 value={formData.preferredDate}
                                 onChange={e => setFormData({ ...formData, preferredDate: e.target.value })}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    borderRadius: 'var(--border-radius-md)',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--color-bg-primary)',
+                                    color: 'var(--color-text-primary)'
+                                }}
                             />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Time Preference</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Time Preference</label>
                             <select
                                 value={formData.preferredTimeSlot}
                                 onChange={e => setFormData({ ...formData, preferredTimeSlot: e.target.value })}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    borderRadius: 'var(--border-radius-md)',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--color-bg-primary)',
+                                    color: 'var(--color-text-primary)'
+                                }}
                             >
                                 <option value="">Any time</option>
                                 <option value="morning">Morning</option>
@@ -204,14 +323,23 @@ const AdminWaitingList: React.FC = () => {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Notes</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Notes</label>
                         <textarea
                             value={formData.notes}
                             onChange={e => setFormData({ ...formData, notes: e.target.value })}
                             placeholder="Specific requirements..."
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', minHeight: '80px' }}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                minHeight: '80px',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
                         />
                     </div>
+
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                         <button
@@ -342,6 +470,40 @@ const AdminWaitingList: React.FC = () => {
 
                                 {(entry.status === 'approved' || entry.status === 'notified') && (
                                     <>
+                                        {entry.status === 'approved' && (
+                                            <button
+                                                onClick={() => handleNotify(entry.id)}
+                                                style={{
+                                                    padding: '0.5rem 0.75rem',
+                                                    backgroundColor: 'var(--color-primary)',
+                                                    color: 'white',
+                                                    borderRadius: 'var(--border-radius-sm)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.25rem',
+                                                    fontSize: '0.75rem'
+                                                }}
+                                                title="Notify Client"
+                                            >
+                                                📧 Notify
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => openBookModal(entry)}
+                                            style={{
+                                                padding: '0.5rem 0.75rem',
+                                                backgroundColor: 'var(--color-success)',
+                                                color: 'white',
+                                                borderRadius: 'var(--border-radius-sm)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem',
+                                                fontSize: '0.75rem'
+                                            }}
+                                            title="Book Session"
+                                        >
+                                            <Check size={14} /> Book
+                                        </button>
                                         <button
                                             onClick={() => handlePriorityChange(entry.id, entry.priority, 'up')}
                                             style={{ padding: '0.5rem', color: 'var(--color-text-secondary)' }}
@@ -357,9 +519,9 @@ const AdminWaitingList: React.FC = () => {
                                             <ArrowDown size={16} />
                                         </button>
                                         <button
-                                            onClick={() => handleReject(entry.id)}
+                                            onClick={() => handleDelete(entry.id)}
                                             style={{ padding: '0.5rem', color: 'var(--color-danger)' }}
-                                            title="Remove from Queue"
+                                            title="Delete Entry"
                                         >
                                             <X size={16} />
                                         </button>
@@ -370,7 +532,128 @@ const AdminWaitingList: React.FC = () => {
                     ))}
                 </div>
             )}
-        </div>
+
+
+            <Modal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                title="Add to Waiting List"
+            >
+                {/* ... existing add modal content ... */}
+            </Modal>
+
+            {/* Book Session Modal */}
+            <Modal
+                isOpen={isBookModalOpen}
+                onClose={() => setIsBookModalOpen(false)}
+                title="Book Session"
+            >
+                <form onSubmit={handleBookSession} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Date</label>
+                            <input
+                                type="date"
+                                required
+                                value={bookingData.startTime.split('T')[0]}
+                                onChange={e => {
+                                    const date = e.target.value;
+                                    const time = bookingData.startTime.split('T')[1] || '09:00';
+                                    const endTime = bookingData.endTime.split('T')[1] || '10:00';
+                                    setBookingData({
+                                        ...bookingData,
+                                        startTime: `${date}T${time}`,
+                                        endTime: `${date}T${endTime}`
+                                    });
+                                }}
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Time</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <input
+                                    type="time"
+                                    required
+                                    value={bookingData.startTime.split('T')[1] || ''}
+                                    onChange={e => {
+                                        const date = bookingData.startTime.split('T')[0];
+                                        const startTime = e.target.value;
+                                        setBookingData({
+                                            ...bookingData,
+                                            startTime: `${date}T${startTime}`,
+                                            endTime: `${date}T${startTime}` // Simple default
+                                        });
+                                    }}
+                                    style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
+                                />
+                                <span>-</span>
+                                <input
+                                    type="time"
+                                    required
+                                    value={bookingData.endTime.split('T')[1] || ''}
+                                    onChange={e => {
+                                        const date = bookingData.endTime.split('T')[0];
+                                        setBookingData({
+                                            ...bookingData,
+                                            endTime: `${date}T${e.target.value}`
+                                        });
+                                    }}
+                                    style={{ flex: 1, padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Coach</label>
+                        <select
+                            required
+                            value={bookingData.coachId}
+                            onChange={e => setBookingData({ ...bookingData, coachId: e.target.value })}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
+                        >
+                            <option value="">Select Coach...</option>
+                            {coaches.map((coach: any) => (
+                                <option key={coach.id} value={coach.id}>{coach.user?.firstName} {coach.user?.lastName}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Room / Device</label>
+                        <select
+                            required
+                            value={bookingData.roomId}
+                            onChange={e => setBookingData({ ...bookingData, roomId: e.target.value })}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
+                        >
+                            <option value="">Select Room...</option>
+                            {rooms.map((room: any) => (
+                                <option key={room.id} value={room.id}>{room.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                        <button
+                            type="button"
+                            onClick={() => setIsBookModalOpen(false)}
+                            style={{ padding: '0.5rem 1rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'transparent', color: 'var(--color-text-primary)' }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={bookingLoading}
+                            style={{ padding: '0.5rem 1rem', borderRadius: 'var(--border-radius-md)', border: 'none', backgroundColor: 'var(--color-primary)', color: 'white', opacity: bookingLoading ? 0.7 : 1 }}
+                        >
+                            {bookingLoading ? 'Booking...' : 'Confirm Book'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+        </div >
     );
 };
 

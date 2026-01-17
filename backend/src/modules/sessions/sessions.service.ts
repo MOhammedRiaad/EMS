@@ -97,6 +97,11 @@ export class SessionsService {
         // Validate coach availability
         await this.validateCoachAvailability(dto.coachId, startTime, endTime, tenantId);
 
+        // Validate client has remaining sessions in their package
+        if (dto.clientId) {
+            await this.validateClientHasRemainingSessions(dto.clientId, tenantId);
+        }
+
         // Check for conflicts
         const conflicts = await this.checkConflicts(dto, tenantId);
         if (conflicts.hasConflicts) {
@@ -524,8 +529,41 @@ export class SessionsService {
         }
     }
 
+    private async validateClientHasRemainingSessions(clientId: string, tenantId: string): Promise<void> {
+        const activePackage = await this.packagesService.getActivePackageForClient(clientId, tenantId);
+
+        if (!activePackage) {
+            throw new BadRequestException('Client does not have an active package. Please assign a package before scheduling sessions.');
+        }
+
+        // Count already scheduled sessions for this client that haven't been completed yet
+        const scheduledSessionsCount = await this.sessionRepository.count({
+            where: {
+                clientId,
+                tenantId,
+                status: 'scheduled' as any
+            }
+        });
+
+        // Calculate available sessions: remaining - already scheduled
+        const availableSessions = activePackage.sessionsRemaining - scheduledSessionsCount;
+
+        this.logger.log(`Client ${clientId}: Package has ${activePackage.sessionsRemaining} remaining, ${scheduledSessionsCount} already scheduled, ${availableSessions} available for new bookings`);
+
+        if (availableSessions <= 0) {
+            throw new BadRequestException(
+                `Client has no available sessions for booking. ` +
+                `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+                `Already scheduled: ${scheduledSessionsCount}. ` +
+                `Please complete existing sessions or renew the package.`
+            );
+        }
+    }
+
     async updateStatus(id: string, tenantId: string, status: Session['status'], deductSession?: boolean): Promise<Session> {
+        this.logger.log(`updateStatus called: id=${id}, status=${status}`);
         const session = await this.findOne(id, tenantId);
+        this.logger.log(`Found session: id=${session.id}, current status=${session.status}`);
         const previousStatus = session.status;
         session.status = status;
 
@@ -554,8 +592,9 @@ export class SessionsService {
 
         if (shouldDeductSession && session.clientId) {
             try {
-                const clientPackages = await this.packagesService.getClientPackages(session.clientId, tenantId);
-                const activePackage = clientPackages.find(cp => cp.status === 'active');
+                // Optimized: Query directly for active package using PackagesService
+                const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
+
                 if (activePackage) {
                     await this.packagesService.useSession(activePackage.id, tenantId);
                     this.logger.log(`Decremented session for client ${session.clientId}, package ${activePackage.id}`);

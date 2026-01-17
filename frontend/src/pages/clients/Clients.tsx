@@ -9,6 +9,7 @@ import { Mail, Phone, Upload, User, Package, Send } from 'lucide-react';
 import { storageService } from '../../services/storage.service';
 import { usePermissions } from '../../hooks/usePermissions';
 import ClientPackages from '../../components/clients/ClientPackages';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const Clients: React.FC = () => {
     const { canEdit, canDelete } = usePermissions();
@@ -140,23 +141,25 @@ const Clients: React.FC = () => {
         {
             key: 'name',
             header: 'Name',
-            render: (client) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                        width: '32px', height: '32px', borderRadius: '50%',
-                        backgroundColor: 'var(--color-primary)', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', color: 'white',
-                        fontWeight: 600, fontSize: '0.75rem', overflow: 'hidden'
-                    }}>
-                        {client.avatarUrl ? (
-                            <img src={client.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            (client.firstName[0] || '') + (client.lastName[0] || '')
-                        )}
+            render: (client) => {
+                const avatarUrl = getImageUrl(client.avatarUrl);
+                const initials = `${client.firstName?.[0] || ''}${client.lastName?.[0] || ''}`;
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{
+                            width: '32px', height: '32px', borderRadius: '50%',
+                            backgroundColor: 'var(--color-primary)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', color: 'white',
+                            fontWeight: 600, fontSize: '0.75rem', overflow: 'hidden'
+                        }}>
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt={`${client.firstName} ${client.lastName}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : initials}
+                        </div>
+                        <div style={{ fontWeight: 500 }}>{client.firstName} {client.lastName}</div>
                     </div>
-                    <div style={{ fontWeight: 500 }}>{client.firstName} {client.lastName}</div>
-                </div>
-            )
+                )
+            }
         },
         {
             key: 'email',

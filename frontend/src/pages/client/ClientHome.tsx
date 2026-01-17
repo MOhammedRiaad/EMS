@@ -1,20 +1,37 @@
 import { useState, useEffect } from 'react';
 import { clientPortalService, type ClientDashboardData } from '../../services/client-portal.service';
-import { Calendar, Package, Clock, ArrowRight, TrendingUp, Zap, ChevronRight } from 'lucide-react';
+import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+
+interface WaitingListEntry {
+    id: string;
+    preferredDate: string | null;
+    preferredTimeSlot: string | null;
+    status: 'pending' | 'approved' | 'notified' | 'booked' | 'cancelled';
+    studio: { id: string; name: string } | null;
+    createdAt: string;
+    notifiedAt: string | null;
+}
 
 const ClientHome = () => {
     const { user } = useAuth();
     const [data, setData] = useState<ClientDashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [waitingList, setWaitingList] = useState<WaitingListEntry[]>([]);
 
     useEffect(() => {
         const loadDashboard = async () => {
             try {
-                const result = await clientPortalService.getDashboard();
-                setData(result);
+                const [dashboardResult, waitingListResult] = await Promise.all([
+                    clientPortalService.getDashboard(),
+                    clientPortalService.getMyWaitingList()
+                ]);
+                setData(dashboardResult);
+                setWaitingList(waitingListResult.filter((e: WaitingListEntry) =>
+                    e.status !== 'cancelled' && e.status !== 'booked'
+                ));
             } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 setError(err.message || 'Failed to load dashboard');
             } finally {
@@ -23,6 +40,16 @@ const ClientHome = () => {
         };
         loadDashboard();
     }, []);
+
+    const handleCancelWaitingList = async (id: string) => {
+        if (!confirm('Cancel this waiting list request?')) return;
+        try {
+            await clientPortalService.cancelWaitingListEntry(id);
+            setWaitingList(prev => prev.filter(e => e.id !== id));
+        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+            alert(err.message || 'Failed to cancel');
+        }
+    };
 
     if (loading) return (
         <div className="flex items-center justify-center h-[50vh]">
@@ -138,10 +165,20 @@ const ClientHome = () => {
                         <>
                             <div className="space-y-2 mb-2">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500">Usage</span>
-                                    <span className="font-bold text-gray-900">{activePackage.sessionsRemaining} left</span>
+                                    <span className="text-gray-500">Package Sessions</span>
+                                    <span className="font-bold text-gray-900">{activePackage.sessionsRemaining} remaining</span>
                                 </div>
-                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-500">Scheduled</span>
+                                    <span className="font-semibold text-blue-600">{activePackage.scheduledSessions || 0} sessions</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-500">Available to Book</span>
+                                    <span className={`font-bold ${(activePackage.availableSessions || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {activePackage.availableSessions || 0} sessions
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
                                     <div
                                         className="bg-purple-500 h-2 rounded-full transition-all duration-1000"
                                         style={{ width: `${Math.min(100, (activePackage.sessionsRemaining / (activePackage.sessionsUsed + activePackage.sessionsRemaining)) * 100)}%` }}
@@ -156,6 +193,46 @@ const ClientHome = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Waiting List Entries */}
+                {waitingList.length > 0 && (
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-2 mb-3">
+                            <List size={18} className="text-orange-500" />
+                            <span className="font-semibold text-gray-800">Waiting List</span>
+                        </div>
+                        <div className="space-y-2">
+                            {waitingList.map(entry => (
+                                <div key={entry.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                    <div>
+                                        <div className="text-sm font-medium text-gray-800">
+                                            {entry.preferredDate
+                                                ? new Date(entry.preferredDate).toLocaleDateString()
+                                                : 'Any Date'}
+                                            {entry.preferredTimeSlot && ` · ${entry.preferredTimeSlot}`}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                            {entry.studio?.name || 'Studio'} ·{' '}
+                                            <span className={`font-medium ${entry.status === 'notified' ? 'text-green-600' :
+                                                entry.status === 'approved' ? 'text-blue-600' : 'text-orange-600'
+                                                }`}>
+                                                {entry.status === 'notified' ? '📧 Notified!' :
+                                                    entry.status === 'approved' ? '✓ Approved' : '⏳ Pending'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCancelWaitingList(entry.id)}
+                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Cancel Request"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Quick Quick Actions */}
                 <div className="grid grid-cols-2 gap-3">

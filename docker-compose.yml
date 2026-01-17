@@ -8,6 +8,7 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=http://localhost:3000/api
+      - VITE_MINIO_URL=http://localhost:9000
     volumes:
       - ./frontend:/app
       - /app/node_modules

@@ -4,9 +4,10 @@ import { ClientPortalService } from './client-portal.service';
 import { SessionsModule } from '../sessions/sessions.module';
 import { PackagesModule } from '../packages/packages.module';
 import { WaitingListModule } from '../waiting-list/waiting-list.module';
+import { ClientsModule } from '../clients/clients.module';
 
 @Module({
-    imports: [SessionsModule, PackagesModule, WaitingListModule],
+    imports: [SessionsModule, PackagesModule, WaitingListModule, ClientsModule],
     controllers: [ClientPortalController],
     providers: [ClientPortalService],
 })

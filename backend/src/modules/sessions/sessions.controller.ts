@@ -15,8 +15,7 @@ export class SessionsController {
     constructor(private readonly sessionsService: SessionsService) { }
 
     @Get()
-    @UseInterceptors(CacheInterceptor)
-    @CacheTTL(30000) // 30 seconds
+    // Cache disabled to prevent stale data after status updates
     @ApiOperation({ summary: 'List sessions with filters' })
     findAll(@Query() query: SessionQueryDto, @TenantId() tenantId: string) {
         return this.sessionsService.findAll(tenantId, query);

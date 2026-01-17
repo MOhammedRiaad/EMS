@@ -85,6 +85,9 @@ export class Session extends TenantScopedEntityWithUpdate {
     @JoinColumn({ name: 'client_id' })
     client: Client;
 
+    @Column({ name: 'reminder_sent_at', type: 'timestamptz', nullable: true })
+    reminderSentAt: Date | null;
+
     @OneToOne(() => ClientSessionReview, review => review.session)
     review: ClientSessionReview;
 }

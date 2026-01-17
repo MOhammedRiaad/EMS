@@ -22,6 +22,8 @@ import { ClientPortalModule } from './modules/client-portal/client-portal.module
 
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ReminderModule } from './modules/reminders/reminder.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { redisStore } from 'cache-manager-redis-yet';
     PackagesModule,
     NotificationsModule,
     ClientPortalModule,
+    ScheduleModule.forRoot(),
+    ReminderModule,
   ],
   controllers: [HealthController],
 })

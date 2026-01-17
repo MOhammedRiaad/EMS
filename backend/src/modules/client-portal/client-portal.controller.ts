@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Query, Param, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Query, Param, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { TenantGuard } from '../../common/guards';
@@ -84,5 +84,37 @@ export class ClientPortalController {
         const { clientId, tenantId } = req.user;
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.joinWaitingList(clientId, tenantId, dto);
+    }
+
+    @Get('profile')
+    @ApiOperation({ summary: 'Get client profile' })
+    async getProfile(@Request() req: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getProfile(clientId, tenantId);
+    }
+
+    @Patch('profile')
+    @ApiOperation({ summary: 'Update client profile' })
+    async updateProfile(@Request() req: any, @Body() dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.updateProfile(clientId, tenantId, dto);
+    }
+
+    @Get('waiting-list')
+    @ApiOperation({ summary: 'Get my waiting list entries' })
+    async getMyWaitingList(@Request() req: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getMyWaitingList(clientId, tenantId);
+    }
+
+    @Delete('waiting-list/:id')
+    @ApiOperation({ summary: 'Cancel a waiting list entry' })
+    async cancelWaitingListEntry(@Request() req: any, @Param('id') id: string) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.cancelWaitingListEntry(clientId, tenantId, id);
     }
 }
