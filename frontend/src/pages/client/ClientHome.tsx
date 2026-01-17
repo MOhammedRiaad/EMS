@@ -163,7 +163,7 @@ const ClientHome = () => {
                         <Calendar size={24} className="text-blue-500 mb-2" />
                         <span className="text-sm font-semibold text-gray-700">Schedule</span>
                     </Link>
-                    <Link to="/client/profile" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center hover:bg-gray-50 transition-colors">
+                    <Link to="/client/schedule" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center hover:bg-gray-50 transition-colors">
                         <TrendingUp size={24} className="text-green-500 mb-2" />
                         <span className="text-sm font-semibold text-gray-700">History</span>
                     </Link>

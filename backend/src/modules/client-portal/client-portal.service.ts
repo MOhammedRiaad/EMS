@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SessionsService } from '../sessions/sessions.service';
 import { PackagesService } from '../packages/packages.service';
+import { WaitingListService } from '../waiting-list/waiting-list.service';
 import { SessionStatus } from '../sessions/entities/session.entity';
 import { ClientPackageStatus } from '../packages/entities/client-package.entity';
 
@@ -9,6 +10,7 @@ export class ClientPortalService {
     constructor(
         private readonly sessionsService: SessionsService,
         private readonly packagesService: PackagesService,
+        private readonly waitingListService: WaitingListService,
     ) { }
 
     async getDashboard(clientId: string, tenantId: string) {
@@ -115,5 +117,25 @@ export class ClientPortalService {
         const defaultId = await this.sessionsService.findFirstActiveStudio(tenantId);
         if (!defaultId) throw new Error('No active studio found');
         return this.sessionsService.getAvailableSlots(tenantId, defaultId, date);
+    }
+
+    async joinWaitingList(clientId: string, tenantId: string, dto: { studioId?: string; preferredDate: string; preferredTimeSlot: string; notes?: string }) {
+        let studioId = dto.studioId;
+        if (!studioId) {
+            studioId = await this.sessionsService.findFirstActiveStudio(tenantId) || undefined;
+        }
+
+        if (!studioId) {
+            throw new Error('Studio ID is required and no active studio found');
+        }
+
+        return this.waitingListService.create({
+            clientId,
+            studioId,
+            preferredDate: dto.preferredDate,
+            preferredTimeSlot: dto.preferredTimeSlot,
+            notes: dto.notes,
+            requiresApproval: true,
+        }, tenantId);
     }
 }

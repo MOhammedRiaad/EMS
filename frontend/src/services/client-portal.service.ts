@@ -34,7 +34,7 @@ export const clientPortalService = {
 
 
 
-    async getAvailableSlots(date: string, studioId?: string): Promise<string[]> {
+    async getAvailableSlots(date: string, studioId?: string): Promise<{ time: string; status: 'available' | 'full' }[]> {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams({ date });
         if (studioId) params.append('studioId', studioId);
@@ -43,6 +43,20 @@ export const clientPortalService = {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Failed to fetch slots');
+        return response.json();
+    },
+
+    async joinWaitingList(data: { studioId?: string; preferredDate: string; preferredTimeSlot: string; notes?: string }): Promise<any> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/waiting-list`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to join waiting list');
+        }
         return response.json();
     },
 

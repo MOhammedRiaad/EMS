@@ -78,4 +78,11 @@ export class ClientPortalController {
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.cancelSession(clientId, tenantId, id, reason);
     }
+    @Post('waiting-list')
+    @ApiOperation({ summary: 'Join waiting list for a specific slot' })
+    async joinWaitingList(@Request() req: any, @Body() dto: { studioId: string; preferredDate: string; preferredTimeSlot: string; notes?: string }) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.joinWaitingList(clientId, tenantId, dto);
+    }
 }

@@ -569,7 +569,7 @@ export class SessionsService {
 
         return this.sessionRepository.save(session);
     }
-    async getAvailableSlots(tenantId: string, studioId: string, dateStr: string): Promise<string[]> {
+    async getAvailableSlots(tenantId: string, studioId: string, dateStr: string): Promise<{ time: string, status: 'available' | 'full' }[]> {
         const date = new Date(dateStr);
         const startOfDay = new Date(date);
         startOfDay.setHours(0, 0, 0, 0);
@@ -595,7 +595,7 @@ export class SessionsService {
 
         // 2. Get Resources
         const rooms = studio.rooms.filter(r => r.active);
-        const coaches = await this.coachRepository.find({ where: { tenantId, active: true } }); // Optimization: Filter by studio association if coaches are studio-specific? Assuming global pool for now or relation needed.
+        const coaches = await this.coachRepository.find({ where: { tenantId, active: true } });
 
         // 3. Get Existing Sessions
         const sessions = await this.sessionRepository.createQueryBuilder('s')
@@ -607,7 +607,7 @@ export class SessionsService {
             .getMany();
 
         // 4. Generate Slots (20 min intervals)
-        const availableSlots: string[] = [];
+        const slots: { time: string, status: 'available' | 'full' }[] = [];
         const slotDurationMin = 20;
 
         // Start from opening time
@@ -632,24 +632,17 @@ export class SessionsService {
                 (new Date(s.startTime) < slotEnd) && (new Date(s.endTime) > slotStart)
             );
 
-            // Simple Capacity Check:
-            // Currently booked rooms count
             const bookedRoomIds = activeSessionsInSlot.map(s => s.roomId).filter(Boolean);
             const availableRooms = rooms.filter(r => !bookedRoomIds.includes(r.id));
 
-            // Simply Capacity Check: Coaches
-            // Currently booked coaches count
             const bookedCoachIds = activeSessionsInSlot.map(s => s.coachId).filter(Boolean);
             const availableCoaches = coaches.filter(c => !bookedCoachIds.includes(c.id));
 
-            // Check specific coach availability rules for this slot (basic check)
             const validCoaches = availableCoaches.filter(coach => {
-                // Reuse logic from validateCoachAvailability if possible, or simplified inline
-                if (!coach.availabilityRules?.length) return true; // Default available
+                if (!coach.availabilityRules?.length) return true;
                 const dayRule = coach.availabilityRules.find(r => r.dayOfWeek?.toLowerCase() === dayOfWeek);
                 if (!dayRule || !dayRule.available) return false;
                 if (dayRule.startTime && dayRule.endTime) {
-                    // Check range
                     const [sH, sM] = dayRule.startTime.split(':').map(Number);
                     const [eH, eM] = dayRule.endTime.split(':').map(Number);
                     const cStart = new Date(date); cStart.setHours(sH, sM, 0, 0);
@@ -659,17 +652,20 @@ export class SessionsService {
                 return true;
             });
 
+            const hoursStr = slotStart.getHours().toString().padStart(2, '0');
+            const minsStr = slotStart.getMinutes().toString().padStart(2, '0');
+            const timeStr = `${hoursStr}:${minsStr}`;
+
             if (availableRooms.length > 0 && validCoaches.length > 0) {
-                // Return start time in HH:mm format
-                const hoursStr = slotStart.getHours().toString().padStart(2, '0');
-                const minsStr = slotStart.getMinutes().toString().padStart(2, '0');
-                availableSlots.push(`${hoursStr}:${minsStr}`);
+                slots.push({ time: timeStr, status: 'available' });
+            } else {
+                slots.push({ time: timeStr, status: 'full' });
             }
 
             currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
         }
 
-        return availableSlots;
+        return slots;
     }
 
     async findFirstActiveStudio(tenantId: string): Promise<string | null> {

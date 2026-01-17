@@ -93,9 +93,9 @@ const ClientSchedule = () => {
         <div className="p-4 space-y-4 pb-20">
             <header className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">My Schedule</h1>
-                <button className="bg-blue-600 text-white p-2 rounded-full shadow-lg" onClick={() => alert('Booking flow coming next!')}>
+                <Link to="/client/book" className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors">
                     <Plus size={24} />
-                </button>
+                </Link>
             </header>
 
             {/* Filter Tabs */}

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 const ClientBooking = () => {
     const navigate = useNavigate();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [slots, setSlots] = useState<string[]>([]);
+    const [slots, setSlots] = useState<{ time: string; status: 'available' | 'full' }[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
     const [booking, setBooking] = useState(false);
@@ -43,29 +43,56 @@ const ClientBooking = () => {
         setSelectedDate(newDate);
     };
 
-    const handleBook = async () => {
-        if (!selectedSlot) return;
+    const getSelectedSlotStatus = () => {
+        return slots.find(s => s.time === selectedSlot)?.status;
+    }
 
+    const handleAction = async () => {
+        if (!selectedSlot) return;
+        const status = getSelectedSlotStatus();
+
+        if (status === 'full') {
+            await handleWaitlist();
+        } else {
+            await handleBook();
+        }
+    };
+
+    const handleWaitlist = async () => {
+        if (!confirm(`This slot is full. Join the waiting list for ${selectedSlot}?`)) return;
+
+        setBooking(true);
+        try {
+            await clientPortalService.joinWaitingList({
+                preferredDate: selectedDate.toISOString().split('T')[0],
+                preferredTimeSlot: selectedSlot!,
+                studioId: undefined, // Backend handles default
+            });
+            alert('Request submitted! You have been added to the waiting list.');
+            setSelectedSlot(null);
+        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+            alert(err.message || 'Failed to join waitlist');
+        } finally {
+            setBooking(false);
+        }
+    };
+
+    const handleBook = async () => {
         if (!confirm(`Confirm booking for ${selectedDate.toDateString()} at ${selectedSlot}?`)) return;
 
         setBooking(true);
         try {
             // Construct start/end time
-            const [hours, mins] = selectedSlot.split(':').map(Number);
+            const [hours, mins] = selectedSlot!.split(':').map(Number);
             const startTime = new Date(selectedDate);
             startTime.setHours(hours, mins, 0, 0);
 
             const endTime = new Date(startTime);
             endTime.setMinutes(endTime.getMinutes() + 20); // 20 min session duration
 
-            // We need studioId. The backend defaults to "first active studio" if missing.
-            // Ideally we get it from dashboard or profile.
-            // But for MVP, let the backend handle the default.
-
             await clientPortalService.bookSession({
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
-                // studioId, coachId optional/auto-assigned
             });
 
             alert('Session booked successfully!');
@@ -127,16 +154,23 @@ const ClientBooking = () => {
                     <div className="grid grid-cols-3 gap-3">
                         {slots.map(slot => (
                             <button
-                                key={slot}
-                                onClick={() => setSelectedSlot(slot)}
+                                key={slot.time}
+                                onClick={() => setSelectedSlot(slot.time)}
                                 className={`
-                                    py-3 px-2 rounded-xl text-sm font-semibold transition-all border
-                                    ${selectedSlot === slot
-                                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200 transform scale-105'
-                                        : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'}
+                                    py-3 px-2 rounded-xl text-sm font-semibold transition-all border relative overflow-hidden
+                                    ${selectedSlot === slot.time
+                                        ? (slot.status === 'full'
+                                            ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-200'
+                                            : 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200 transform scale-105')
+                                        : (slot.status === 'full'
+                                            ? 'bg-gray-50 text-gray-400 border-gray-100 hover:border-orange-200 hover:text-orange-500'
+                                            : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50')}
                                 `}
                             >
-                                {slot}
+                                {slot.time}
+                                {slot.status === 'full' && (
+                                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-400"></span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -148,7 +182,9 @@ const ClientBooking = () => {
                 <div>
                     {selectedSlot ? (
                         <div>
-                            <p className="text-xs text-gray-400 font-medium">SELECTED</p>
+                            <p className="text-xs text-gray-400 font-medium">
+                                {getSelectedSlotStatus() === 'full' ? 'WAITLIST REQUEST' : 'SELECTED'}
+                            </p>
                             <p className="text-lg font-bold text-gray-800">{selectedDate.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}, {selectedSlot}</p>
                         </div>
                     ) : (
@@ -157,13 +193,19 @@ const ClientBooking = () => {
                 </div>
                 <button
                     disabled={!selectedSlot || booking}
-                    onClick={handleBook}
+                    onClick={handleAction}
                     className={`
                         px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-all
-                        ${!selectedSlot || booking ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-300'}
+                        ${!selectedSlot || booking
+                            ? 'bg-gray-300 cursor-not-allowed'
+                            : (getSelectedSlotStatus() === 'full'
+                                ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-300'
+                                : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-300')}
                     `}
                 >
-                    {booking ? 'Booking...' : 'Confirm'}
+                    {booking
+                        ? 'Processing...'
+                        : (getSelectedSlotStatus() === 'full' ? 'Join Waitlist' : 'Confirm')}
                 </button>
             </div>
         </div>
