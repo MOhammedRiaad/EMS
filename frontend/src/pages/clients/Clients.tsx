@@ -5,7 +5,7 @@ import Modal from '../../components/common/Modal';
 import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { clientsService, type Client } from '../../services/clients.service';
-import { Mail, Phone, Upload, User, Package } from 'lucide-react';
+import { Mail, Phone, Upload, User, Package, Send } from 'lucide-react';
 import { storageService } from '../../services/storage.service';
 import { usePermissions } from '../../hooks/usePermissions';
 import ClientPackages from '../../components/clients/ClientPackages';
@@ -106,6 +106,21 @@ const Clients: React.FC = () => {
         }
     };
 
+    const handleInvite = async (client: Client) => {
+        if (!client.email) {
+            alert('Client must have an email address to receive an invitation.');
+            return;
+        }
+        if (!confirm(`Send invitation email to ${client.firstName}?`)) return;
+
+        try {
+            await clientsService.invite(client.id);
+            alert('Invitation sent successfully!');
+        } catch (error: any) {
+            alert(error.message || 'Failed to send invitation');
+        }
+    };
+
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -181,6 +196,20 @@ const Clients: React.FC = () => {
             header: '',
             render: (client: Client) => (
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        onClick={() => handleInvite(client)}
+                        style={{
+                            padding: '0.25rem 0.5rem',
+                            color: 'var(--color-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            cursor: 'pointer'
+                        }}
+                        title="Send Invitation"
+                    >
+                        <Send size={16} />
+                    </button>
                     <button
                         onClick={() => { setSelectedClient(client); setIsPackageModalOpen(true); }}
                         style={{ padding: '0.25rem 0.5rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}

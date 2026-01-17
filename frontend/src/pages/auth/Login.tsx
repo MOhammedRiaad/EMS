@@ -38,6 +38,8 @@ const Login: React.FC = () => {
             // Check if tenant owner needs to complete onboarding
             if (data.user.role === 'tenant_owner' && data.tenant && !data.tenant.isComplete) {
                 navigate('/onboarding');
+            } else if (data.user.role === 'client') {
+                navigate('/client/home');
             } else {
                 navigate('/');
             }

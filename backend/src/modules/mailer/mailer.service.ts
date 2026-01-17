@@ -28,9 +28,24 @@ export class MailerService {
             return info;
         } catch (error) {
             this.logger.error(`Failed to send email to ${to}`, error);
-            // Don't throw to prevent blocking the main flow (e.g. session creation)
-            // or throw if critical. For notifications, usually better to log and continue.
             return null;
         }
+    }
+
+    async sendClientInvitation(email: string, inviteLink: string) {
+        const subject = 'Welcome to EMS Studio Client Portal';
+        const text = `Welcome to EMS Studio! You have been invited to join our client portal. Please click the link below to set up your account: ${inviteLink}`;
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Welcome to EMS Studio!</h2>
+                <p>You have been invited to join our client portal to manage your sessions and payments.</p>
+                <p>Please click the button below to set up your password and access your account:</p>
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Set Up Account</a>
+                </p>
+                <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:<br>${inviteLink}</p>
+            </div>
+        `;
+        return this.sendMail(email, subject, text, html);
     }
 }

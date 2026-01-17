@@ -18,6 +18,7 @@ import { InBodyScansModule } from './modules/inbody-scans/inbody-scans.module';
 import { WaitingListModule } from './modules/waiting-list/waiting-list.module';
 import { PackagesModule } from './modules/packages/packages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ClientPortalModule } from './modules/client-portal/client-portal.module';
 
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -72,6 +73,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     WaitingListModule,
     PackagesModule,
     NotificationsModule,
+    ClientPortalModule,
   ],
   controllers: [HealthController],
 })

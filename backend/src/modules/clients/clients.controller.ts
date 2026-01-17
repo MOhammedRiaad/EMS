@@ -42,4 +42,10 @@ export class ClientsController {
     remove(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.clientsService.remove(id, tenantId);
     }
+
+    @Post(':id/invite')
+    @ApiOperation({ summary: 'Invite client to portal (create user + email)' })
+    invite(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.clientsService.invite(id, tenantId);
+    }
 }

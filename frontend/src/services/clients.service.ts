@@ -62,5 +62,20 @@ export const clientsService = {
         });
 
         if (!response.ok) throw new Error('Failed to delete client');
+    },
+
+    async invite(id: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/${id}/invite`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to send invitation');
+        }
     }
 };

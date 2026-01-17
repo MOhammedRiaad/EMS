@@ -19,6 +19,13 @@ import AdminPackages from './pages/admin/AdminPackages';
 import AdminCashFlow from './pages/admin/AdminCashFlow';
 import { AuthProvider } from './contexts/AuthContext';
 import './styles/variables.css';
+import SetupPassword from './pages/auth/SetupPassword';
+import ClientLayout from './components/layout/ClientLayout';
+import ClientHome from './pages/client/ClientHome';
+
+import ClientSchedule from './pages/client/ClientSchedule';
+import ClientProfile from './pages/client/ClientProfile';
+import ClientBooking from './pages/client/ClientBooking';
 
 function App() {
   return (
@@ -28,7 +35,18 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/onboarding" element={<TenantOnboarding />} />
+          <Route path="/auth/setup" element={<SetupPassword />} />
 
+          {/* Client Portal Routes */}
+          <Route path="/client" element={<ClientLayout />}>
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home" element={<ClientHome />} />
+            <Route path="schedule" element={<ClientSchedule />} />
+            <Route path="book" element={<ClientBooking />} />
+            <Route path="profile" element={<ClientProfile />} />
+          </Route>
+
+          {/* Admin / Studio Routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="sessions" element={<Sessions />} />

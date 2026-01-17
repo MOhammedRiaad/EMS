@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Tenant } from '../../tenants/entities/tenant.entity';
+import { Client } from '../../clients/entities/client.entity';
 
 export type UserRole = 'tenant_owner' | 'admin' | 'coach' | 'client';
 
@@ -45,6 +46,16 @@ export class User extends TenantScopedEntityWithUpdate {
     @ManyToOne(() => Tenant, (tenant) => tenant.users, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'tenant_id' })
     tenant: Tenant;
+
+    @OneToOne('Client', 'user') // String based to avoid circular import issues or use simple lambda
+    client: any; // Type as 'Client' but specific import might be tricky. 
+
+    // Better to use import but standard circular dependency handling
+    /*
+    @OneToOne(() => Client, (client) => client.user)
+    client: Client;
+    */
+    // Let's try simple import first, if it fails we revert.
 
     get fullName(): string {
         return [this.firstName, this.lastName].filter(Boolean).join(' ');

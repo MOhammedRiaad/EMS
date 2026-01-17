@@ -83,6 +83,7 @@ export class AuthResponseDto {
         lastName: string | null;
         role: string;
         tenantId: string;
+        clientId?: string;
     };
 
     @ApiPropertyOptional()
@@ -91,4 +92,15 @@ export class AuthResponseDto {
         name: string;
         isComplete: boolean;
     };
+}
+
+export class SetupPasswordDto {
+    @ApiProperty()
+    @IsString()
+    token: string;
+
+    @ApiProperty()
+    @IsString()
+    @MinLength(8)
+    password: string;
 }

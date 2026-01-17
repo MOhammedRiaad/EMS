@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ReviewsService } from './reviews.service';
@@ -16,7 +16,10 @@ export class ReviewsController {
     @Post()
     @ApiOperation({ summary: 'Submit a review for a completed session' })
     create(@Body() dto: CreateReviewDto, @TenantId() tenantId: string, @Request() req: any) {
-        return this.reviewsService.create(dto, tenantId, req.user.userId);
+        if (!req.user.clientId) {
+            throw new BadRequestException('Only clients can submit reviews');
+        }
+        return this.reviewsService.create(dto, tenantId, req.user.clientId);
     }
 
     @Get('session/:sessionId')

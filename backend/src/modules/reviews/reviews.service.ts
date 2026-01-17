@@ -14,11 +14,11 @@ export class ReviewsService {
         private readonly sessionRepository: Repository<Session>,
     ) { }
 
-    async create(dto: CreateReviewDto, tenantId: string, userId: string): Promise<ClientSessionReview> {
+    async create(dto: CreateReviewDto, tenantId: string, clientId: string): Promise<ClientSessionReview> {
         // Verify session exists and is completed
         const session = await this.sessionRepository.findOne({
             where: { id: dto.sessionId, tenantId },
-            relations: ['client', 'client.user'],
+            relations: ['client'],
         });
 
         if (!session) {
@@ -30,7 +30,7 @@ export class ReviewsService {
         }
 
         // Verify user is the client of this session
-        if (session.client?.userId !== userId) {
+        if (session.clientId !== clientId) {
             throw new BadRequestException('You can only review your own sessions');
         }
 

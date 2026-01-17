@@ -24,7 +24,7 @@ export class ClientSessionReview extends TenantScopedEntity {
     @Column({ name: 'visible_to_admins', type: 'boolean', default: true })
     visibleToAdmins: boolean;
 
-    @OneToOne(() => Session)
+    @OneToOne(() => Session, session => session.review)
     @JoinColumn({ name: 'session_id' })
     session: Session;
 

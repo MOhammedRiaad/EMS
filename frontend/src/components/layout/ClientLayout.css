@@ -1,0 +1,68 @@
+.client-layout-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: var(--color-bg-primary);
+}
+
+.client-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.client-logo {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--color-primary);
+}
+
+.client-logout-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.client-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    padding-bottom: 80px;
+    /* Space for bottom nav */
+}
+
+.client-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    background-color: var(--color-bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 0.75rem 0;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 10;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.client-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 0.75rem;
+    width: 100%;
+}
+
+.client-nav-item.active {
+    color: var(--color-primary);
+}

@@ -1,9 +1,10 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Studio } from '../../studios/entities/studio.entity';
 import { Room } from '../../rooms/entities/room.entity';
 import { Coach } from '../../coaches/entities/coach.entity';
 import { Client } from '../../clients/entities/client.entity';
+import { ClientSessionReview } from '../../reviews/entities/review.entity';
 
 export type SessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
@@ -83,4 +84,7 @@ export class Session extends TenantScopedEntityWithUpdate {
     @ManyToOne(() => Client, { onDelete: 'RESTRICT' })
     @JoinColumn({ name: 'client_id' })
     client: Client;
+
+    @OneToOne(() => ClientSessionReview, review => review.session)
+    review: ClientSessionReview;
 }

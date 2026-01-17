@@ -43,7 +43,8 @@ export class SessionsService {
             .leftJoinAndSelect('s.room', 'room')
             .leftJoinAndSelect('s.coach', 'coach')
             .leftJoinAndSelect('coach.user', 'coachUser')
-            .leftJoinAndSelect('s.client', 'client');
+            .leftJoinAndSelect('s.client', 'client')
+            .leftJoinAndSelect('s.review', 'review');
 
         if (query.studioId) {
             qb.andWhere('s.studio_id = :studioId', { studioId: query.studioId });
@@ -567,5 +568,156 @@ export class SessionsService {
         }
 
         return this.sessionRepository.save(session);
+    }
+    async getAvailableSlots(tenantId: string, studioId: string, dateStr: string): Promise<string[]> {
+        const date = new Date(dateStr);
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // 1. Get Studio info (Opening Hours)
+        const studio = await this.studioRepository.findOne({
+            where: { id: studioId, tenantId },
+            relations: ['rooms']
+        });
+
+        if (!studio) throw new NotFoundException('Studio not found');
+        if (!studio.active) return [];
+
+        // Check if studio is open on this day
+        const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
+        const hours = studio.openingHours?.[dayOfWeek];
+        if (!hours) return []; // Closed
+
+        const [openH, openM] = hours.open.split(':').map(Number);
+        const [closeH, closeM] = hours.close.split(':').map(Number);
+
+        // 2. Get Resources
+        const rooms = studio.rooms.filter(r => r.active);
+        const coaches = await this.coachRepository.find({ where: { tenantId, active: true } }); // Optimization: Filter by studio association if coaches are studio-specific? Assuming global pool for now or relation needed.
+
+        // 3. Get Existing Sessions
+        const sessions = await this.sessionRepository.createQueryBuilder('s')
+            .where('s.tenant_id = :tenantId', { tenantId })
+            .andWhere('s.studio_id = :studioId', { studioId })
+            .andWhere('s.start_time >= :start', { start: startOfDay })
+            .andWhere('s.end_time <= :end', { end: endOfDay })
+            .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
+            .getMany();
+
+        // 4. Generate Slots (20 min intervals)
+        const availableSlots: string[] = [];
+        const slotDurationMin = 20;
+
+        // Start from opening time
+        const currentHook = new Date(date);
+        currentHook.setHours(openH, openM, 0, 0);
+
+        const closeTime = new Date(date);
+        closeTime.setHours(closeH, closeM, 0, 0);
+
+        while (currentHook.getTime() + slotDurationMin * 60000 <= closeTime.getTime()) {
+            const slotStart = new Date(currentHook);
+            const slotEnd = new Date(currentHook.getTime() + slotDurationMin * 60000);
+
+            // Filter out past slots if date is today
+            if (slotStart < new Date()) {
+                currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
+                continue;
+            }
+
+            // Check Rooms
+            const activeSessionsInSlot = sessions.filter(s =>
+                (new Date(s.startTime) < slotEnd) && (new Date(s.endTime) > slotStart)
+            );
+
+            // Simple Capacity Check:
+            // Currently booked rooms count
+            const bookedRoomIds = activeSessionsInSlot.map(s => s.roomId).filter(Boolean);
+            const availableRooms = rooms.filter(r => !bookedRoomIds.includes(r.id));
+
+            // Simply Capacity Check: Coaches
+            // Currently booked coaches count
+            const bookedCoachIds = activeSessionsInSlot.map(s => s.coachId).filter(Boolean);
+            const availableCoaches = coaches.filter(c => !bookedCoachIds.includes(c.id));
+
+            // Check specific coach availability rules for this slot (basic check)
+            const validCoaches = availableCoaches.filter(coach => {
+                // Reuse logic from validateCoachAvailability if possible, or simplified inline
+                if (!coach.availabilityRules?.length) return true; // Default available
+                const dayRule = coach.availabilityRules.find(r => r.dayOfWeek?.toLowerCase() === dayOfWeek);
+                if (!dayRule || !dayRule.available) return false;
+                if (dayRule.startTime && dayRule.endTime) {
+                    // Check range
+                    const [sH, sM] = dayRule.startTime.split(':').map(Number);
+                    const [eH, eM] = dayRule.endTime.split(':').map(Number);
+                    const cStart = new Date(date); cStart.setHours(sH, sM, 0, 0);
+                    const cEnd = new Date(date); cEnd.setHours(eH, eM, 0, 0);
+                    return slotStart >= cStart && slotEnd <= cEnd;
+                }
+                return true;
+            });
+
+            if (availableRooms.length > 0 && validCoaches.length > 0) {
+                // Return start time in HH:mm format
+                const hoursStr = slotStart.getHours().toString().padStart(2, '0');
+                const minsStr = slotStart.getMinutes().toString().padStart(2, '0');
+                availableSlots.push(`${hoursStr}:${minsStr}`);
+            }
+
+            currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
+        }
+
+        return availableSlots;
+    }
+
+    async findFirstActiveStudio(tenantId: string): Promise<string | null> {
+        const studio = await this.studioRepository.findOne({
+            where: { tenantId, active: true },
+            order: { createdAt: 'ASC' }
+        });
+        return studio ? studio.id : null;
+    }
+
+    async autoAssignResources(tenantId: string, studioId: string, start: Date, end: Date): Promise<{ roomId: string, coachId: string }> {
+        // 1. Get overlapping sessions to find occupied resources
+        const overlappingSessions = await this.sessionRepository.createQueryBuilder('s')
+            .where('s.tenant_id = :tenantId', { tenantId })
+            .andWhere('s.studio_id = :studioId', { studioId })
+            .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
+            .andWhere('s.start_time < :end', { end })
+            .andWhere('s.end_time > :start', { start })
+            .getMany();
+
+        const occupiedRoomIds = overlappingSessions.map(s => s.roomId).filter(Boolean);
+        const occupiedCoachIds = overlappingSessions.map(s => s.coachId).filter(Boolean);
+
+        // 2. Find available room
+        const room = await this.roomRepository.findOne({
+            where: { studioId, active: true, tenantId } // Assuming simple query
+        });
+        // Ideally we fetch ALL active rooms and pick one not in occupied list
+        const allRooms = await this.roomRepository.find({ where: { studioId, active: true, tenantId } });
+        const availableRoom = allRooms.find(r => !occupiedRoomIds.includes(r.id));
+
+        if (!availableRoom) {
+            throw new Error('No rooms available for this time slot');
+        }
+
+        // 3. Find available coach
+        const allCoaches = await this.coachRepository.find({ where: { active: true, tenantId } });
+        // Filter by studio if coaches are studio-scoped? Assuming global or linked.
+        // For simplified MVP, just pick any available coach not occupied.
+        const availableCoach = allCoaches.find(c => !occupiedCoachIds.includes(c.id));
+
+        // Coach is optional? If booking REQUIRES coach, we throw.
+        // Schema says coachId is UUID (required in DTO).
+        if (!availableCoach) {
+            // If strictly required
+            throw new Error('No coaches available for this time slot');
+        }
+
+        return { roomId: availableRoom.id, coachId: availableCoach.id };
     }
 }

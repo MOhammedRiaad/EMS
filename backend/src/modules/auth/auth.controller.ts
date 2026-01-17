@@ -2,7 +2,7 @@ import { Controller, Post, Body, Get, UseGuards, Request, Query } from '@nestjs/
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterTenantOwnerDto, CreateUserDto, AuthResponseDto } from './dto';
+import { LoginDto, RegisterTenantOwnerDto, CreateUserDto, AuthResponseDto, SetupPasswordDto } from './dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -13,6 +13,12 @@ export class AuthController {
     @ApiOperation({ summary: 'Login with email and password' })
     async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
         return this.authService.login(dto);
+    }
+
+    @Post('setup')
+    @ApiOperation({ summary: 'Set password using invite token' })
+    async setupPassword(@Body() dto: SetupPasswordDto): Promise<AuthResponseDto> {
+        return this.authService.setupPassword(dto);
     }
 
     @Post('register')
