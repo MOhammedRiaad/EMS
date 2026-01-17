@@ -8,6 +8,7 @@ import { Coach } from '../coaches/entities/coach.entity';
 import { CreateSessionDto, SessionQueryDto, UpdateSessionDto } from './dto';
 import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
+import { PackagesService } from '../packages/packages.service';
 
 export interface ConflictResult {
     hasConflicts: boolean;
@@ -33,6 +34,7 @@ export class SessionsService {
         private readonly coachRepository: Repository<Coach>,
         private mailerService: MailerService,
         private clientsService: ClientsService,
+        private packagesService: PackagesService,
     ) { }
 
     async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
@@ -103,22 +105,33 @@ export class SessionsService {
             });
         }
 
+        // Create the parent/first session
+        const isRecurring = !!dto.recurrencePattern && !!dto.recurrenceEndDate;
         const session = this.sessionRepository.create({
             ...dto,
             tenantId,
+            isRecurringParent: isRecurring,
+            recurrencePattern: dto.recurrencePattern || null,
+            recurrenceEndDate: dto.recurrenceEndDate ? new Date(dto.recurrenceEndDate) : null,
         });
 
         const savedSession = await this.sessionRepository.save(session);
+
+        // Generate recurring sessions if pattern is set
+        if (isRecurring) {
+            await this.generateRecurringSessions(savedSession, dto, tenantId);
+        }
 
         // Send confirmation email
         try {
             const client = await this.clientsService.findOne(dto.clientId, tenantId);
             if (client && client.email) {
+                const recurrenceText = isRecurring ? ` (recurring ${dto.recurrencePattern})` : '';
                 await this.mailerService.sendMail(
                     client.email,
                     'Session Confirmed - EMS Studio',
-                    `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}.`,
-                    `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>.</p><p>See you there!</p>`
+                    `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}${recurrenceText}.`,
+                    `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>${recurrenceText}.</p><p>See you there!</p>`
                 );
             }
         } catch (error) {
@@ -126,6 +139,149 @@ export class SessionsService {
         }
 
         return savedSession;
+    }
+
+    private async generateRecurringSessions(parentSession: Session, dto: CreateSessionDto, tenantId: string): Promise<void> {
+        let recurrenceEndDate = new Date(dto.recurrenceEndDate!);
+        const startTime = new Date(dto.startTime);
+        const endTime = new Date(dto.endTime);
+        const sessionDuration = endTime.getTime() - startTime.getTime();
+        const sessionHour = startTime.getHours();
+        const sessionMinutes = startTime.getMinutes();
+
+        // Check client's active package for limits
+        let maxSessionsFromPackage = Infinity;
+        const clientPackages = await this.packagesService.getClientPackages(dto.clientId, tenantId);
+        const activePackage = clientPackages.find(cp => cp.status === 'active');
+
+        if (activePackage) {
+            // Limit by remaining sessions (subtract 1 for the parent session)
+            maxSessionsFromPackage = Math.max(0, activePackage.sessionsRemaining - 1);
+
+            // Limit by package expiry date
+            if (activePackage.expiryDate) {
+                const packageExpiry = new Date(activePackage.expiryDate);
+                if (packageExpiry < recurrenceEndDate) {
+                    recurrenceEndDate = packageExpiry;
+                    this.logger.log(`Limiting recurrence end date to package expiry: ${recurrenceEndDate.toISOString()}`);
+                }
+            }
+        }
+
+        const sessionsToCreate: Partial<Session>[] = [];
+
+        // Get recurrence days or default to the parent session's day
+        const recurrenceDays = dto.recurrenceDays?.length
+            ? dto.recurrenceDays.map(d => Number(d))
+            : [startTime.getDay()];
+
+        // Calculate week interval based on pattern
+        const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
+        const isMonthly = dto.recurrencePattern === 'monthly';
+
+        // Start from the beginning of the week after the start date
+        let currentWeekStart = new Date(startTime);
+        currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay()); // Go to Sunday
+        currentWeekStart.setHours(0, 0, 0, 0);
+
+        // Move to next week to skip the parent session's week
+        if (!isMonthly) {
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+        }
+
+        while (sessionsToCreate.length < maxSessionsFromPackage) {
+            if (isMonthly) {
+                // For monthly, just add one month to the start date
+                const nextDate = new Date(startTime);
+                nextDate.setMonth(nextDate.getMonth() + sessionsToCreate.length + 1);
+
+                if (nextDate > recurrenceEndDate) break;
+
+                const conflicts = await this.checkConflicts({
+                    ...dto,
+                    startTime: nextDate.toISOString(),
+                    endTime: new Date(nextDate.getTime() + sessionDuration).toISOString(),
+                }, tenantId, parentSession.id);
+
+                if (!conflicts.hasConflicts) {
+                    sessionsToCreate.push(this.createRecurringSessionData(dto, nextDate, sessionDuration, tenantId, parentSession.id));
+                }
+            } else {
+                // For weekly/biweekly, iterate through selected days
+                for (const dayOfWeek of recurrenceDays) {
+                    if (sessionsToCreate.length >= maxSessionsFromPackage) break;
+
+                    const sessionDate = new Date(currentWeekStart);
+                    sessionDate.setDate(sessionDate.getDate() + dayOfWeek);
+                    sessionDate.setHours(sessionHour, sessionMinutes, 0, 0);
+
+                    // Skip if before start time or after end date
+                    if (sessionDate <= startTime) continue;
+                    if (sessionDate > recurrenceEndDate) continue;
+
+                    const conflicts = await this.checkConflicts({
+                        ...dto,
+                        startTime: sessionDate.toISOString(),
+                        endTime: new Date(sessionDate.getTime() + sessionDuration).toISOString(),
+                    }, tenantId, parentSession.id);
+
+                    if (!conflicts.hasConflicts) {
+                        sessionsToCreate.push(this.createRecurringSessionData(dto, sessionDate, sessionDuration, tenantId, parentSession.id));
+                    } else {
+                        this.logger.warn(`Skipping recurring session on ${sessionDate.toISOString()} due to conflict`);
+                    }
+                }
+
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+            }
+
+            // Safety check to prevent infinite loops
+            if (currentWeekStart > recurrenceEndDate && !isMonthly) break;
+            if (isMonthly && sessionsToCreate.length >= 12) break; // Max 12 monthly sessions
+        }
+
+        if (sessionsToCreate.length > 0) {
+            await this.sessionRepository.save(sessionsToCreate);
+            this.logger.log(`Created ${sessionsToCreate.length} recurring sessions for parent ${parentSession.id}`);
+        }
+    }
+
+    private createRecurringSessionData(dto: CreateSessionDto, startTime: Date, durationMs: number, tenantId: string, parentSessionId: string): Partial<Session> {
+        return {
+            studioId: dto.studioId,
+            roomId: dto.roomId,
+            coachId: dto.coachId,
+            clientId: dto.clientId,
+            emsDeviceId: dto.emsDeviceId || null,
+            startTime: startTime,
+            endTime: new Date(startTime.getTime() + durationMs),
+            programType: dto.programType || null,
+            intensityLevel: dto.intensityLevel || null,
+            notes: dto.notes || null,
+            status: 'scheduled',
+            tenantId,
+            parentSessionId,
+            isRecurringParent: false,
+            recurrencePattern: null,
+            recurrenceEndDate: null,
+            recurrenceDays: null,
+        };
+    }
+
+    private getNextOccurrence(date: Date, pattern: 'weekly' | 'biweekly' | 'monthly'): Date {
+        const next = new Date(date);
+        switch (pattern) {
+            case 'weekly':
+                next.setDate(next.getDate() + 7);
+                break;
+            case 'biweekly':
+                next.setDate(next.getDate() + 14);
+                break;
+            case 'monthly':
+                next.setMonth(next.getMonth() + 1);
+                break;
+        }
+        return next;
     }
 
     async update(id: string, dto: UpdateSessionDto, tenantId: string): Promise<Session> {
@@ -367,12 +523,47 @@ export class SessionsService {
         }
     }
 
-    async updateStatus(id: string, tenantId: string, status: Session['status']): Promise<Session> {
+    async updateStatus(id: string, tenantId: string, status: Session['status'], deductSession?: boolean): Promise<Session> {
         const session = await this.findOne(id, tenantId);
+        const previousStatus = session.status;
         session.status = status;
 
         if (status === 'cancelled') {
             session.cancelledAt = new Date();
+        }
+
+        // Determine if we should deduct a session from the client's package
+        let shouldDeductSession = false;
+
+        if (session.clientId && previousStatus !== status) {
+            if (status === 'completed') {
+                // Completed sessions always deduct
+                shouldDeductSession = true;
+            } else if (status === 'no_show') {
+                // No-show always deducts (client didn't show up)
+                shouldDeductSession = true;
+                this.logger.log(`No-show for session ${id}, deducting session from package`);
+            } else if (status === 'cancelled') {
+                // For cancelled: use the deductSession flag passed from frontend
+                // Frontend should ask admin if cancelled < 48h before session time
+                shouldDeductSession = deductSession === true;
+                this.logger.log(`Cancelled session ${id}, deductSession=${deductSession}`);
+            }
+        }
+
+        if (shouldDeductSession && session.clientId) {
+            try {
+                const clientPackages = await this.packagesService.getClientPackages(session.clientId, tenantId);
+                const activePackage = clientPackages.find(cp => cp.status === 'active');
+                if (activePackage) {
+                    await this.packagesService.useSession(activePackage.id, tenantId);
+                    this.logger.log(`Decremented session for client ${session.clientId}, package ${activePackage.id}`);
+                } else {
+                    this.logger.warn(`No active package found for client ${session.clientId}`);
+                }
+            } catch (error) {
+                this.logger.error(`Failed to decrement session count: ${error.message}`);
+            }
         }
 
         return this.sessionRepository.save(session);

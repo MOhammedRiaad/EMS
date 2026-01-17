@@ -48,6 +48,20 @@ export class CreateSessionDto {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @ApiPropertyOptional({ enum: ['weekly', 'biweekly', 'monthly'] })
+    @IsOptional()
+    @IsIn(['weekly', 'biweekly', 'monthly'])
+    recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+
+    @ApiPropertyOptional({ example: '2024-03-15' })
+    @IsOptional()
+    @IsDateString()
+    recurrenceEndDate?: string;
+
+    @ApiPropertyOptional({ example: [1, 4], description: 'Days of week for recurrence (0=Sun, 1=Mon, ..., 6=Sat)' })
+    @IsOptional()
+    recurrenceDays?: number[];
 }
 
 export class SessionQueryDto {
@@ -91,6 +105,11 @@ export class UpdateSessionStatusDto {
     @IsOptional()
     @IsString()
     cancelledReason?: string;
+
+    @ApiPropertyOptional({ description: 'Whether to deduct a session from client package (for cancelled/no_show)' })
+    @IsOptional()
+    @Transform(({ value }) => value === 'true' || value === true)
+    deductSession?: boolean;
 }
 
 export class UpdateSessionDto extends PartialType(CreateSessionDto) { }

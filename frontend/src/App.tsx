@@ -14,6 +14,9 @@ import InBodyScans from './pages/inbody/InBodyScans';
 import InBodyScanForm from './pages/inbody/InBodyScanForm';
 import UserManagement from './pages/admin/UserManagement';
 import CoachPerformance from './pages/admin/CoachPerformance';
+import AdminWaitingList from './pages/admin/AdminWaitingList';
+import AdminPackages from './pages/admin/AdminPackages';
+import AdminCashFlow from './pages/admin/AdminCashFlow';
 import { AuthProvider } from './contexts/AuthContext';
 import './styles/variables.css';
 
@@ -43,6 +46,9 @@ function App() {
 
             <Route path="admin/users" element={<UserManagement />} />
             <Route path="admin/coach-performance" element={<CoachPerformance />} />
+            <Route path="admin/waiting-list" element={<AdminWaitingList />} />
+            <Route path="admin/packages" element={<AdminPackages />} />
+            <Route path="admin/cash-flow" element={<AdminCashFlow />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

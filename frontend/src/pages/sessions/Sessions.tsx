@@ -35,6 +35,8 @@ const Sessions: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [deductSessionChoice, setDeductSessionChoice] = useState<boolean | null>(null);
+    const [showDeductChoice, setShowDeductChoice] = useState(false);
 
     const initialFormState = {
         studioId: '',
@@ -45,7 +47,10 @@ const Sessions: React.FC = () => {
         startTime: '',
         duration: 20,
         notes: '',
-        intensityLevel: 5
+        intensityLevel: 5,
+        recurrencePattern: '' as '' | 'weekly' | 'biweekly' | 'monthly',
+        recurrenceEndDate: '',
+        recurrenceDays: [] as number[]
     };
 
     const [formData, setFormData] = useState(initialFormState);
@@ -110,7 +115,10 @@ const Sessions: React.FC = () => {
                 startTime: start.toISOString(),
                 endTime: end.toISOString(),
                 emsDeviceId: formData.emsDeviceId || undefined,
-                notes: formData.notes || undefined
+                notes: formData.notes || undefined,
+                recurrencePattern: formData.recurrencePattern || undefined,
+                recurrenceEndDate: formData.recurrenceEndDate || undefined,
+                recurrenceDays: formData.recurrenceDays.length > 0 ? formData.recurrenceDays : undefined
             });
 
             setIsCreateModalOpen(false);
@@ -146,7 +154,10 @@ const Sessions: React.FC = () => {
             startTime: formattedStartTime,
             duration: duration,
             notes: session.notes || '',
-            intensityLevel: session.intensityLevel || 5
+            intensityLevel: session.intensityLevel || 5,
+            recurrencePattern: '' as const,
+            recurrenceEndDate: '',
+            recurrenceDays: []
         });
         setIsEditModalOpen(true);
     };
@@ -210,6 +221,27 @@ const Sessions: React.FC = () => {
     const handleStatusClick = (session: Session, action: 'completed' | 'no_show' | 'cancelled') => {
         setSelectedSession(session);
         setStatusAction(action);
+
+        if (action === 'cancelled') {
+            // Check if cancellation is within 48 hours of session start
+            const sessionStart = new Date(session.startTime);
+            const now = new Date();
+            const hoursUntilSession = (sessionStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+            if (hoursUntilSession < 48) {
+                // Within 48 hours - ask admin if they want to deduct session
+                setShowDeductChoice(true);
+                setDeductSessionChoice(true); // Default to deduct for late cancellations
+            } else {
+                // More than 48 hours - don't deduct by default
+                setShowDeductChoice(false);
+                setDeductSessionChoice(false);
+            }
+        } else {
+            setShowDeductChoice(false);
+            setDeductSessionChoice(null);
+        }
+
         setIsStatusModalOpen(true);
     };
 
@@ -217,23 +249,33 @@ const Sessions: React.FC = () => {
         if (!selectedSession || !statusAction) return;
         setSaving(true);
         try {
+            // Determine deductSession value
+            let deductSession: boolean | undefined;
+            if (statusAction === 'cancelled') {
+                deductSession = deductSessionChoice ?? false;
+            }
+            // no_show always deducts (handled by backend)
+            // completed always deducts (handled by backend)
+
             await sessionsService.updateStatus(
                 selectedSession.id,
                 statusAction,
-                statusAction === 'cancelled' ? cancelReason : undefined
+                statusAction === 'cancelled' ? cancelReason : undefined,
+                deductSession
             );
             setIsStatusModalOpen(false);
 
             // If marking as completed, open review modal
             if (statusAction === 'completed') {
                 setIsReviewModalOpen(true);
-                // Don't clear selectedSession yet - we need it for review
             } else {
                 setSelectedSession(null);
             }
 
             setStatusAction(null);
             setCancelReason('');
+            setDeductSessionChoice(null);
+            setShowDeductChoice(false);
             fetchData();
         } catch (err) {
             console.error('Failed to update status', err);
@@ -464,7 +506,92 @@ const Sessions: React.FC = () => {
                 </div>
             </div>
 
-            {/* Buttons */}
+            {/* Recurring Sessions - only in create mode */}
+            {!isEdit && (
+                <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={!!formData.recurrencePattern}
+                            onChange={e => setFormData({
+                                ...formData,
+                                recurrencePattern: e.target.checked ? 'weekly' : '' as const,
+                                recurrenceEndDate: e.target.checked ? formData.recurrenceEndDate : ''
+                            })}
+                        />
+                        <span style={{ fontWeight: 500 }}>Make this a recurring session</span>
+                    </label>
+
+                    {formData.recurrencePattern && (
+                        <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Repeat</label>
+                                    <select
+                                        value={formData.recurrencePattern}
+                                        onChange={e => setFormData({ ...formData, recurrencePattern: e.target.value as 'weekly' | 'biweekly' | 'monthly' })}
+                                        style={inputStyle}
+                                    >
+                                        <option value="weekly">Weekly</option>
+                                        <option value="biweekly">Every 2 Weeks</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Until Date</label>
+                                    <input
+                                        type="date"
+                                        value={formData.recurrenceEndDate}
+                                        onChange={e => setFormData({ ...formData, recurrenceEndDate: e.target.value })}
+                                        style={inputStyle}
+                                        min={formData.startTime.split('T')[0] || new Date().toISOString().split('T')[0]}
+                                        required={!!formData.recurrencePattern}
+                                    />
+                                </div>
+                            </div>
+                            {formData.recurrencePattern !== 'monthly' && (
+                                <div style={{ marginTop: '0.75rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                        Days of Week (select multiple for 2+ sessions/week)
+                                    </label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+                                            const isSelected = formData.recurrenceDays.includes(index);
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newDays = isSelected
+                                                            ? formData.recurrenceDays.filter(d => d !== index)
+                                                            : [...formData.recurrenceDays, index].sort((a, b) => a - b);
+                                                        setFormData({ ...formData, recurrenceDays: newDays });
+                                                    }}
+                                                    style={{
+                                                        padding: '0.25rem 0.5rem',
+                                                        borderRadius: '4px',
+                                                        border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--border-color)'}`,
+                                                        backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
+                                                        color: isSelected ? 'white' : 'var(--color-text-primary)',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: isSelected ? 600 : 400
+                                                    }}
+                                                >
+                                                    {day}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem', marginBottom: 0 }}>
+                                        Leave empty to use the same day as the first session
+                                    </p>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                 <button type="button" onClick={() => { isEdit ? setIsEditModalOpen(false) : setIsCreateModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
                 <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>
@@ -495,6 +622,29 @@ const Sessions: React.FC = () => {
                                 style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', outline: 'none', resize: 'vertical', minHeight: '80px' }}
                                 placeholder="Reason for cancellation..."
                             />
+                            {showDeductChoice && (
+                                <div style={{
+                                    marginTop: '1rem',
+                                    padding: '0.75rem',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                    border: '1px solid var(--color-warning)',
+                                    borderRadius: 'var(--border-radius-md)'
+                                }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={deductSessionChoice ?? false}
+                                            onChange={(e) => setDeductSessionChoice(e.target.checked)}
+                                        />
+                                        <span style={{ fontSize: '0.875rem' }}>
+                                            <strong>Deduct session from package</strong><br />
+                                            <span style={{ color: 'var(--color-text-secondary)' }}>
+                                                (Cancellation is within 48 hours of session time)
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
+                            )}
                         </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>

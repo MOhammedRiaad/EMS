@@ -15,6 +15,9 @@ import { HealthController } from './common/health.controller';
 import { StorageModule } from './modules/storage/storage.module';
 import { MailerModule } from './modules/mailer/mailer.module';
 import { InBodyScansModule } from './modules/inbody-scans/inbody-scans.module';
+import { WaitingListModule } from './modules/waiting-list/waiting-list.module';
+import { PackagesModule } from './modules/packages/packages.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -66,6 +69,9 @@ import { redisStore } from 'cache-manager-redis-yet';
     StorageModule,
     MailerModule,
     InBodyScansModule,
+    WaitingListModule,
+    PackagesModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })

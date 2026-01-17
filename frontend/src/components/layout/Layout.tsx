@@ -11,7 +11,10 @@ import {
     DoorOpen,
     UserCog,
     TrendingUp,
-    Activity
+    Activity,
+    ListPlus,
+    Package,
+    Wallet
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Layout.css';
@@ -123,6 +126,18 @@ const Layout: React.FC = () => {
                             <NavLink to="/admin/coach-performance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                                 <TrendingUp className="nav-icon" />
                                 <span>Coach Performance</span>
+                            </NavLink>
+                            <NavLink to="/admin/waiting-list" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                                <ListPlus className="nav-icon" />
+                                <span>Waiting List</span>
+                            </NavLink>
+                            <NavLink to="/admin/packages" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                                <Package className="nav-icon" />
+                                <span>Packages</span>
+                            </NavLink>
+                            <NavLink to="/admin/cash-flow" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                                <Wallet className="nav-icon" />
+                                <span>Cash Flow</span>
                             </NavLink>
                         </>
                     )}

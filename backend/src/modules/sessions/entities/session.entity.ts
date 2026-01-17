@@ -52,6 +52,22 @@ export class Session extends TenantScopedEntityWithUpdate {
     @Column({ name: 'cancelled_reason', type: 'text', nullable: true })
     cancelledReason: string | null;
 
+    // Recurrence fields
+    @Column({ name: 'recurrence_pattern', type: 'varchar', length: 20, nullable: true })
+    recurrencePattern: 'weekly' | 'biweekly' | 'monthly' | null;
+
+    @Column({ name: 'recurrence_end_date', type: 'date', nullable: true })
+    recurrenceEndDate: Date | null;
+
+    @Column({ name: 'recurrence_days', type: 'simple-array', nullable: true })
+    recurrenceDays: number[] | null; // Array of weekday numbers: 0=Sunday, 1=Monday, etc.
+
+    @Column({ name: 'parent_session_id', type: 'uuid', nullable: true })
+    parentSessionId: string | null;
+
+    @Column({ name: 'is_recurring_parent', type: 'boolean', default: false })
+    isRecurringParent: boolean;
+
     @ManyToOne(() => Studio, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'studio_id' })
     studio: Studio;

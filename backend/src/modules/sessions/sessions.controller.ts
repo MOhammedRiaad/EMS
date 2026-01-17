@@ -53,6 +53,6 @@ export class SessionsController {
         @Body() dto: UpdateSessionStatusDto,
         @TenantId() tenantId: string,
     ) {
-        return this.sessionsService.updateStatus(id, tenantId, dto.status);
+        return this.sessionsService.updateStatus(id, tenantId, dto.status, dto.deductSession);
     }
 }

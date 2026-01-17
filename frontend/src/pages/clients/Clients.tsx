@@ -5,9 +5,10 @@ import Modal from '../../components/common/Modal';
 import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { clientsService, type Client } from '../../services/clients.service';
-import { Mail, Phone, Upload, User } from 'lucide-react';
+import { Mail, Phone, Upload, User, Package } from 'lucide-react';
 import { storageService } from '../../services/storage.service';
 import { usePermissions } from '../../hooks/usePermissions';
+import ClientPackages from '../../components/clients/ClientPackages';
 
 const Clients: React.FC = () => {
     const { canEdit, canDelete } = usePermissions();
@@ -18,6 +19,7 @@ const Clients: React.FC = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -178,12 +180,21 @@ const Clients: React.FC = () => {
             key: 'actions' as keyof Client,
             header: '',
             render: (client: Client) => (
-                <ActionButtons
-                    showEdit={canEdit}
-                    showDelete={canDelete}
-                    onEdit={() => handleEdit(client)}
-                    onDelete={() => handleDeleteClick(client)}
-                />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        onClick={() => { setSelectedClient(client); setIsPackageModalOpen(true); }}
+                        style={{ padding: '0.25rem 0.5rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                        title="View Packages"
+                    >
+                        <Package size={16} />
+                    </button>
+                    <ActionButtons
+                        showEdit={canEdit}
+                        showDelete={canDelete}
+                        onEdit={() => handleEdit(client)}
+                        onDelete={() => handleDeleteClick(client)}
+                    />
+                </div>
             )
         }] : [])
     ];
@@ -269,6 +280,19 @@ const Clients: React.FC = () => {
                 isDestructive
                 loading={saving}
             />
+
+            <Modal
+                isOpen={isPackageModalOpen}
+                onClose={() => { setIsPackageModalOpen(false); setSelectedClient(null); }}
+                title={`${selectedClient?.firstName} ${selectedClient?.lastName} - Packages`}
+            >
+                {selectedClient && (
+                    <ClientPackages
+                        clientId={selectedClient.id}
+                        clientName={`${selectedClient.firstName} ${selectedClient.lastName}`}
+                    />
+                )}
+            </Modal>
         </div>
     );
 };

@@ -3,6 +3,7 @@ import { dashboardService, type DashboardStats } from '../../services/dashboard.
 import { sessionsService, type Session } from '../../services/sessions.service';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, UserCheck, DollarSign, Clock, MapPin, Monitor } from 'lucide-react';
 import Modal from '../../components/common/Modal';
+import NotificationsWidget from '../../components/dashboard/NotificationsWidget';
 
 const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -117,96 +118,101 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Calendar */}
-            <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Weekly Schedule</h2>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-                            {currentWeekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {weekDates[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            <button onClick={handlePrevWeek} style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}><ChevronLeft size={20} /></button>
-                            <button onClick={handleNextWeek} style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}><ChevronRight size={20} /></button>
+            {/* Two Column Layout: Calendar and Notifications */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem' }}>
+                <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Weekly Schedule</h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                                {currentWeekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {weekDates[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button onClick={handlePrevWeek} style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}><ChevronLeft size={20} /></button>
+                                <button onClick={handleNextWeek} style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}><ChevronRight size={20} /></button>
+                            </div>
                         </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', overflowX: 'auto' }}>
+                        {weekDates.map((date) => (
+                            <div key={date.toISOString()} style={{ minWidth: '140px', borderRight: '1px solid var(--border-color)', minHeight: '400px' }}>
+                                <div style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{date.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{date.getDate()}</div>
+                                </div>
+                                <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {getSessionsForDate(date).map(session => (
+                                        <div
+                                            key={session.id}
+                                            onClick={() => handleSessionClick(session)}
+                                            style={{
+                                                padding: '0.5rem',
+                                                borderRadius: '6px',
+                                                backgroundColor: 'var(--color-bg-primary)',
+                                                border: '1px solid var(--border-color)',
+                                                borderLeft: `3px solid ${getSessionColor(session.status)}`,
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                            }}
+                                        >
+                                            <div style={{ fontWeight: 600, marginBottom: '2px' }}>{formatTime(session.startTime)}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                                <Users size={12} color="var(--color-text-secondary)" />
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {session.client?.firstName} {session.client?.lastName}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
+                                                <MapPin size={12} />
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.room?.name}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', overflowX: 'auto' }}>
-                    {weekDates.map((date) => (
-                        <div key={date.toISOString()} style={{ minWidth: '140px', borderRight: '1px solid var(--border-color)', minHeight: '400px' }}>
-                            <div style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)' }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{date.toLocaleDateString(undefined, { weekday: 'short' })}</div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{date.getDate()}</div>
+                {/* Session Detail Modal */}
+                <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Session Details">
+                    {selectedSession && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.25rem 0.5rem', borderRadius: '999px', backgroundColor: getSessionColor(selectedSession.status, true), color: getSessionColor(selectedSession.status) }}>
+                                    {selectedSession.status.replace('_', ' ').toUpperCase()}
+                                </span>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                                    {new Date(selectedSession.startTime).toLocaleDateString()}
+                                </span>
                             </div>
-                            <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {getSessionsForDate(date).map(session => (
-                                    <div
-                                        key={session.id}
-                                        onClick={() => handleSessionClick(session)}
-                                        style={{
-                                            padding: '0.5rem',
-                                            borderRadius: '6px',
-                                            backgroundColor: 'var(--color-bg-primary)',
-                                            border: '1px solid var(--border-color)',
-                                            borderLeft: `3px solid ${getSessionColor(session.status)}`,
-                                            cursor: 'pointer',
-                                            fontSize: '0.75rem',
-                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: 600, marginBottom: '2px' }}>{formatTime(session.startTime)}</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                                            <Users size={12} color="var(--color-text-secondary)" />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {session.client?.firstName} {session.client?.lastName}
-                                            </span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
-                                            <MapPin size={12} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.room?.name}</span>
-                                        </div>
-                                    </div>
-                                ))}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <DetailItem icon={<Clock size={16} />} label="Time" value={`${formatTime(selectedSession.startTime)} - ${formatTime(selectedSession.endTime)}`} />
+                                <DetailItem icon={<MapPin size={16} />} label="Room" value={selectedSession.room?.name} />
+
+                                <DetailItem icon={<Users size={16} />} label="Client" value={`${selectedSession.client?.firstName} ${selectedSession.client?.lastName}`} />
+                                <DetailItem icon={<UserCheck size={16} />} label="Coach" value={`${selectedSession.coach?.user?.firstName || 'Unknown'} ${selectedSession.coach?.user?.lastName || 'Coach'}`} />
+
+                                <DetailItem icon={<Monitor size={16} />} label="Program" value={selectedSession.programType || '-'} />
+                                {/* Note: emsDeviceId logic assumes generic name if not populated, but session entity has ID. To show Label we might need to populate it. Leaving as is for now. */}
                             </div>
+
+                            {selectedSession.notes && (
+                                <div style={{ marginTop: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>Notes</label>
+                                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '6px', fontSize: '0.875rem' }}>{selectedSession.notes}</div>
+                                </div>
+                            )}
                         </div>
-                    ))}
-                </div>
+                    )}
+                </Modal>
             </div>
 
-            {/* Session Detail Modal */}
-            <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Session Details">
-                {selectedSession && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.25rem 0.5rem', borderRadius: '999px', backgroundColor: getSessionColor(selectedSession.status, true), color: getSessionColor(selectedSession.status) }}>
-                                {selectedSession.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                {new Date(selectedSession.startTime).toLocaleDateString()}
-                            </span>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <DetailItem icon={<Clock size={16} />} label="Time" value={`${formatTime(selectedSession.startTime)} - ${formatTime(selectedSession.endTime)}`} />
-                            <DetailItem icon={<MapPin size={16} />} label="Room" value={selectedSession.room?.name} />
-
-                            <DetailItem icon={<Users size={16} />} label="Client" value={`${selectedSession.client?.firstName} ${selectedSession.client?.lastName}`} />
-                            <DetailItem icon={<UserCheck size={16} />} label="Coach" value={`${selectedSession.coach?.user?.firstName || 'Unknown'} ${selectedSession.coach?.user?.lastName || 'Coach'}`} />
-
-                            <DetailItem icon={<Monitor size={16} />} label="Program" value={selectedSession.programType || '-'} />
-                            {/* Note: emsDeviceId logic assumes generic name if not populated, but session entity has ID. To show Label we might need to populate it. Leaving as is for now. */}
-                        </div>
-
-                        {selectedSession.notes && (
-                            <div style={{ marginTop: '0.5rem' }}>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>Notes</label>
-                                <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '6px', fontSize: '0.875rem' }}>{selectedSession.notes}</div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </Modal>
+            {/* Notifications Widget */}
+            <NotificationsWidget />
         </div>
     );
 };

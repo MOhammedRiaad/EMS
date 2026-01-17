@@ -31,6 +31,9 @@ export interface CreateSessionInput {
     programType?: string;
     notes?: string;
     emsDeviceId?: string;
+    recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+    recurrenceEndDate?: string;
+    recurrenceDays?: number[];
 }
 
 export interface SessionQuery {
@@ -122,7 +125,7 @@ export const sessionsService = {
         if (!response.ok) throw new Error('Failed to delete session');
     },
 
-    async updateStatus(id: string, status: string, cancelledReason?: string): Promise<Session> {
+    async updateStatus(id: string, status: string, cancelledReason?: string, deductSession?: boolean): Promise<Session> {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/sessions/${id}/status`, {
             method: 'PATCH',
@@ -130,7 +133,7 @@ export const sessionsService = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ status, cancelledReason })
+            body: JSON.stringify({ status, cancelledReason, deductSession })
         });
 
         if (!response.ok) throw new Error('Failed to update session status');

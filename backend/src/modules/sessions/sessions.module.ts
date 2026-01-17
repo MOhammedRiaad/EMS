@@ -9,12 +9,14 @@ import { SessionsService } from './sessions.service';
 
 import { ClientsModule } from '../clients/clients.module';
 import { MailerModule } from '../mailer/mailer.module';
+import { PackagesModule } from '../packages/packages.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Session, Room, Studio, Coach]),
         ClientsModule,
         MailerModule,
+        PackagesModule,
     ],
     controllers: [SessionsController],
     providers: [SessionsService],
