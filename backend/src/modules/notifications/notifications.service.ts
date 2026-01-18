@@ -1,12 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThan } from 'typeorm';
+import { Repository, Between, LessThan, In } from 'typeorm';
 import { Session } from '../sessions/entities/session.entity';
 import { ClientPackage, ClientPackageStatus } from '../packages/entities/client-package.entity';
+import { WaitingListEntry, WaitingListStatus } from '../waiting-list/entities/waiting-list.entity';
 
 export interface DashboardNotification {
     id: string;
-    type: 'session_today' | 'session_upcoming' | 'package_expiring' | 'package_low';
+    type: 'session_today' | 'session_upcoming' | 'package_expiring' | 'package_low' | 'waitlist_update';
     title: string;
     message: string;
     link?: string;
@@ -22,6 +23,8 @@ export class NotificationsService {
         private readonly sessionRepository: Repository<Session>,
         @InjectRepository(ClientPackage)
         private readonly clientPackageRepository: Repository<ClientPackage>,
+        @InjectRepository(WaitingListEntry)
+        private readonly waitingListRepository: Repository<WaitingListEntry>,
     ) { }
 
     async getDashboardNotifications(tenantId: string): Promise<DashboardNotification[]> {
@@ -126,6 +129,97 @@ export class NotificationsService {
                 message: `Schedule is set for tomorrow`,
                 link: '/sessions',
                 priority: 'low'
+            });
+        }
+
+        return notifications;
+    }
+
+    async getClientNotifications(tenantId: string, clientId: string): Promise<DashboardNotification[]> {
+        const notifications: DashboardNotification[] = [];
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const in48Hours = new Date(now);
+        in48Hours.setHours(in48Hours.getHours() + 48);
+
+        // 1. Upcoming Sessions (Next 48 Hours)
+        const upcomingSessions = await this.sessionRepository.find({
+            where: {
+                tenantId,
+                clientId,
+                startTime: Between(now, in48Hours),
+                status: 'scheduled'
+            },
+            relations: ['coach', 'coach.user'],
+            order: { startTime: 'ASC' }
+        });
+
+        if (upcomingSessions.length > 0) {
+            notifications.push({
+                id: 'client-upcoming-sessions',
+                type: 'session_upcoming',
+                title: 'Upcoming Session',
+                message: `You have ${upcomingSessions.length} session${upcomingSessions.length > 1 ? 's' : ''} coming up. Next: ${new Date(upcomingSessions[0].startTime).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`,
+                link: '/client/schedule',
+                priority: 'high'
+            });
+        }
+
+        // 2. Package Alerts (Expiring or Low Balance)
+        const in7Days = new Date(now);
+        in7Days.setDate(in7Days.getDate() + 7);
+
+        const packages = await this.clientPackageRepository.find({
+            where: {
+                tenantId,
+                clientId,
+                status: ClientPackageStatus.ACTIVE
+            },
+            relations: ['package']
+        });
+
+        const expiring = packages.filter(p => new Date(p.expiryDate) <= in7Days);
+        const lowBalance = packages.filter(p => p.sessionsRemaining <= 2 && p.sessionsRemaining > 0);
+
+        if (expiring.length > 0) {
+            notifications.push({
+                id: 'client-package-expiring',
+                type: 'package_expiring',
+                title: 'Package Expiring Soon',
+                message: `Your package "${expiring[0].package.name}" expires in ${Math.ceil((new Date(expiring[0].expiryDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))} days.`,
+                link: '/client/profile',
+                priority: 'medium'
+            });
+        } else if (lowBalance.length > 0) {
+            notifications.push({
+                id: 'client-package-low',
+                type: 'package_low',
+                title: 'Low Session Balance',
+                message: `You have only ${lowBalance[0].sessionsRemaining} session${lowBalance[0].sessionsRemaining === 1 ? '' : 's'} remaining in "${lowBalance[0].package.name}".`,
+                link: '/client/profile',
+                priority: 'medium'
+            });
+        }
+
+        // 3. Waitlist Updates (Approved/Notified)
+        const waitlistEntries = await this.waitingListRepository.find({
+            where: {
+                tenantId,
+                clientId,
+                status: In([WaitingListStatus.APPROVED, WaitingListStatus.NOTIFIED])
+            },
+            relations: ['studio']
+        });
+
+        if (waitlistEntries.length > 0) {
+            notifications.push({
+                id: 'client-waitlist-update',
+                type: 'waitlist_update',
+                title: 'Spot Available!',
+                message: `A spot has opened up for your waitlist request! Please contact us or book now.`,
+                link: '/client/booking', // Or wherever they should go
+                priority: 'high'
             });
         }
 

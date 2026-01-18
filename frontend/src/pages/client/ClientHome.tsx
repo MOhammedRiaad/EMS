@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { clientPortalService, type ClientDashboardData } from '../../services/client-portal.service';
-import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight } from 'lucide-react';
+import { clientNotificationsService, type DashboardNotification } from '../../services/client-notifications.service';
+import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -20,18 +21,22 @@ const ClientHome = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [waitingList, setWaitingList] = useState<WaitingListEntry[]>([]);
+    const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
+    const [notificationsLoading, setNotificationsLoading] = useState(true);
 
     useEffect(() => {
         const loadDashboard = async () => {
             try {
-                const [dashboardResult, waitingListResult] = await Promise.all([
+                const [dashboardResult, waitingListResult, notificationsResult] = await Promise.all([
                     clientPortalService.getDashboard(),
-                    clientPortalService.getMyWaitingList()
+                    clientPortalService.getMyWaitingList(),
+                    clientNotificationsService.getAll()
                 ]);
                 setData(dashboardResult);
                 setWaitingList(waitingListResult.filter((e: WaitingListEntry) =>
                     e.status !== 'cancelled' && e.status !== 'booked'
                 ));
+                setNotifications(notificationsResult);
             } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 setError(err.message || 'Failed to load dashboard');
             } finally {
@@ -88,6 +93,35 @@ const ClientHome = () => {
                     {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </div>
             </header>
+
+            {/* Notifications */}
+            {notifications.filter(n => n.priority === 'high' || n.priority === 'medium').length > 0 && (
+                <section className="space-y-3">
+                    {notifications.filter(n => n.priority === 'high' || n.priority === 'medium').map(notification => (
+                        <div key={notification.id} className={`p-4 rounded-xl border flex gap-3 ${notification.priority === 'high'
+                            ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30'
+                            : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'
+                            }`}>
+                            <div className={`mt-0.5 ${notification.priority === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+                                }`}>
+                                <Bell size={18} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className={`text-sm font-bold ${notification.priority === 'high' ? 'text-red-900 dark:text-red-200' : 'text-amber-900 dark:text-amber-200'
+                                    }`}>{notification.title}</h3>
+                                <p className={`text-xs mt-1 ${notification.priority === 'high' ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'
+                                    }`}>{notification.message}</p>
+                                {notification.link && (
+                                    <Link to={notification.link} className={`text-xs font-semibold mt-2 inline-flex items-center ${notification.priority === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+                                        }`}>
+                                        View Details <ChevronRight size={12} className="ml-1" />
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </section>
+            )}
 
             {/* Main Action Card (Next Session or Booking) */}
             <section>
