@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Phone, AlertCircle, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { tenantService } from '../../services/tenant.service';
 import '../../styles/variables.css';
 
 const TenantOnboarding: React.FC = () => {
     const navigate = useNavigate();
-    const { tenant, token, setTenant } = useAuth();
+    const { tenant, setTenant } = useAuth();
 
     const [address, setAddress] = useState('');
     const [phone, setPhone] = useState('');
@@ -29,32 +30,18 @@ const TenantOnboarding: React.FC = () => {
         }
 
         try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-            const response = await fetch(`${API_URL}/tenants/${tenant.id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    address,
-                    phone,
-                    city,
-                    state,
-                    zipCode,
-                }),
+            const updatedTenant = await tenantService.update(tenant.id, {
+                address,
+                phone,
+                city,
+                state,
+                zipCode,
             });
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Failed to update profile');
-            }
-
-            const updatedTenant = await response.json();
             setTenant({
                 id: updatedTenant.id,
                 name: updatedTenant.name,
-                isComplete: updatedTenant.isComplete,
+                isComplete: updatedTenant.isComplete ?? false,
             });
 
             navigate('/');

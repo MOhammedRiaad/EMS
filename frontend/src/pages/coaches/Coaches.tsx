@@ -6,15 +6,14 @@ import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
 import { studiosService, type Studio } from '../../services/studios.service';
+import { usersService } from '../../services/users.service';
 import { Mail, Building2, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { getImageUrl } from '../../utils/imageUtils';
 
 interface UserOption { id: string; email: string; firstName: string | null; lastName: string | null; role: string; }
 
 const Coaches: React.FC = () => {
-    const { token } = useAuth();
     const { canEdit, canDelete } = usePermissions();
     const [coaches, setCoaches] = useState<CoachDisplay[]>([]);
     const [studios, setStudios] = useState<Studio[]>([]);
@@ -44,8 +43,6 @@ const Coaches: React.FC = () => {
     };
     const [formData, setFormData] = useState(initialFormState);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
     const fetchData = async () => {
         try {
             const [coachesData, studiosData] = await Promise.all([coachesService.getAll(), studiosService.getAll()]);
@@ -60,11 +57,8 @@ const Coaches: React.FC = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await fetch(`${API_URL}/auth/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) {
-                const data = await response.json();
-                setUsers(data.filter((u: UserOption) => u.role === 'coach'));
-            }
+            const data = await usersService.getAllUsers('coach');
+            setUsers(data);
         } catch (err) { console.error('Failed to fetch users', err); }
     };
 

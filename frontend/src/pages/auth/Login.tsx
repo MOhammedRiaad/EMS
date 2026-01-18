@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, User, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/auth.service';
 import '../../styles/variables.css';
 
 const Login: React.FC = () => {
@@ -18,22 +19,8 @@ const Login: React.FC = () => {
         setLoading(true);
 
         try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-            const response = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Login failed');
-            }
-
-            const data = await response.json();
-            login(data.accessToken, data.user, data.tenant);
+            const data = await authService.login({ email, password });
+            login(data.token, data.user, data.tenant);
 
             // Check if tenant owner needs to complete onboarding
             if (data.user.role === 'tenant_owner' && data.tenant && !data.tenant.isComplete) {

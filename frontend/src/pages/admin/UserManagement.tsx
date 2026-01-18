@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Users, AlertCircle, Check, Trash2, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usersService } from '../../services/users.service';
 import '../../styles/variables.css';
 
 interface UserData {
@@ -28,8 +29,6 @@ const UserManagement: React.FC = () => {
     const [gender, setGender] = useState<'male' | 'female' | 'other' | 'pnts'>('pnts');
     const [creating, setCreating] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
     // Check if current user can manage users
     const canManageUsers = user?.role === 'tenant_owner' || user?.role === 'admin';
 
@@ -42,17 +41,7 @@ const UserManagement: React.FC = () => {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_URL}/auth/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch users');
-            }
-
-            const data = await response.json();
+            const data = await usersService.getAllUsers();
             setUsers(data);
             setFetchError(null);
         } catch (err: any) {
@@ -68,28 +57,15 @@ const UserManagement: React.FC = () => {
         setCreating(true);
 
         try {
-            const response = await fetch(`${API_URL}/auth/users`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    email,
-                    password,
-                    role,
-                    gender,
-                }),
+            const newUser = await usersService.createUser({
+                firstName,
+                lastName,
+                email,
+                password,
+                role,
+                gender,
             });
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Failed to create user');
-            }
-
-            const newUser = await response.json();
             setUsers([...users, newUser]);
 
             // Reset form

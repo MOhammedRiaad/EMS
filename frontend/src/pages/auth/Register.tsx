@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, User, Lock, Mail, Building2, AlertCircle, ChevronRight, ChevronLeft, Check, X, Loader2 } from 'lucide-react';
+import { tenantService } from '../../services/tenant.service';
+import { authService } from '../../services/auth.service';
 import '../../styles/variables.css';
 
 const Register: React.FC = () => {
@@ -22,8 +24,6 @@ const Register: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
     const checkSlugAvailability = async (name: string) => {
         if (!name.trim()) {
             setSlugAvailable(null);
@@ -32,14 +32,9 @@ const Register: React.FC = () => {
 
         setCheckingSlug(true);
         try {
-            const response = await fetch(`${API_URL}/tenants/check-slug?name=${encodeURIComponent(name)}`);
-            if (response.ok) {
-                const data = await response.json();
-                setSlug(data.slug);
-                setSlugAvailable(data.available);
-            } else {
-                setSlugAvailable(null);
-            }
+            const data = await tenantService.checkSlug(name);
+            setSlug(data.slug);
+            setSlugAvailable(data.available);
         } catch {
             setSlugAvailable(null);
         } finally {
@@ -71,24 +66,13 @@ const Register: React.FC = () => {
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    businessName,
-                    firstName,
-                    lastName,
-                    email,
-                    password,
-                }),
+            await authService.register({
+                name: businessName,
+                ownerEmail: email,
+                ownerPassword: password,
+                ownerFirstName: firstName,
+                ownerLastName: lastName,
             });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Registration failed');
-            }
 
             // On success, redirect to login
             navigate('/login');

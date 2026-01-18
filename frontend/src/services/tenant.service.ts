@@ -17,6 +17,7 @@ export interface Tenant {
     createdAt: string;
     updatedAt: string;
     ownerId: string;
+    isComplete?: boolean;
     settings: TenantSettings;
 }
 
@@ -55,6 +56,13 @@ export const tenantService = {
         });
 
         if (!response.ok) throw new Error('Failed to update tenant profile');
+        return response.json();
+    },
+
+    async checkSlug(name: string): Promise<{ available: boolean; slug: string }> {
+        const response = await fetch(`${API_URL}/tenants/check-slug?name=${encodeURIComponent(name)}`);
+
+        if (!response.ok) throw new Error('Failed to check tenant name availability');
         return response.json();
     }
 };
