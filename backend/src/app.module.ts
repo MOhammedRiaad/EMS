@@ -19,6 +19,8 @@ import { WaitingListModule } from './modules/waiting-list/waiting-list.module';
 import { PackagesModule } from './modules/packages/packages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ClientPortalModule } from './modules/client-portal/client-portal.module';
+import { CoachPortalModule } from './modules/coach-portal/coach-portal.module';
+
 
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -76,6 +78,7 @@ import { ReminderModule } from './modules/reminders/reminder.module';
     PackagesModule,
     NotificationsModule,
     ClientPortalModule,
+    CoachPortalModule,
     ScheduleModule.forRoot(),
     ReminderModule,
   ],

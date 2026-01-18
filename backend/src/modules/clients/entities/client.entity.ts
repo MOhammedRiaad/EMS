@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToOne, OneToMany } from 'typeorm';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { User } from '../../auth/entities/user.entity';
 import { Studio } from '../../studios/entities/studio.entity';
+import { Session } from '../../sessions/entities/session.entity';
 
 export type ClientStatus = 'active' | 'inactive' | 'suspended';
 
@@ -54,6 +55,9 @@ export class Client extends TenantScopedEntityWithUpdate {
     @ManyToOne(() => Studio, { onDelete: 'SET NULL', nullable: true })
     @JoinColumn({ name: 'studio_id' })
     studio: Studio | null;
+
+    @OneToMany(() => Session, session => session.client)
+    sessions: Session[];
 
     get fullName(): string {
         return `${this.firstName} ${this.lastName}`;

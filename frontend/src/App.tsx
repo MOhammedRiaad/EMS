@@ -29,6 +29,12 @@ import ClientBooking from './pages/client/ClientBooking';
 import ClientProgress from './pages/client/ClientProgress';
 import RoleGuard from './components/auth/RoleGuard';
 
+import CoachLayout from './components/layout/CoachLayout';
+import CoachHome from './pages/coach/CoachHome';
+import CoachClients from './pages/coach/CoachClients';
+import CoachClientDetails from './pages/coach/CoachClientDetails';
+import CoachAvailability from './pages/coach/CoachAvailability';
+
 function App() {
   return (
     <AuthProvider>
@@ -51,8 +57,20 @@ function App() {
             </Route>
           </Route>
 
+          {/* Coach Portal Routes */}
+          <Route element={<RoleGuard allowedRoles={['coach']} />}>
+            <Route path="/coach" element={<CoachLayout />}>
+              <Route index element={<Navigate to="home" replace />} />
+              <Route path="home" element={<CoachHome />} />
+              <Route path="clients" element={<CoachClients />} />
+              <Route path="clients/:id" element={<CoachClientDetails />} />
+              <Route path="availability" element={<CoachAvailability />} />
+              <Route path="inbody/new/:clientId" element={<InBodyScanForm />} />
+            </Route>
+          </Route>
+
           {/* Admin / Studio Routes */}
-          <Route element={<RoleGuard allowedRoles={['admin', 'tenant_owner', 'coach']} />}>
+          <Route element={<RoleGuard allowedRoles={['admin', 'tenant_owner']} />}>
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="sessions" element={<Sessions />} />

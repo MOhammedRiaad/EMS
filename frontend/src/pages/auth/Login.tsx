@@ -40,7 +40,11 @@ const Login: React.FC = () => {
                 navigate('/onboarding');
             } else if (data.user.role === 'client') {
                 navigate('/client/home');
-            } else {
+            }
+            else if (data.user.role === 'coach') {
+                navigate('/coach/home');
+            }
+            else {
                 navigate('/');
             }
         } catch (err: any) {

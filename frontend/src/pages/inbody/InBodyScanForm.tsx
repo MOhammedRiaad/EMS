@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import { inbodyService, type CreateInBodyScanInput } from '../../services/inbody.service';
 import { clientsService, type Client } from '../../services/clients.service';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Save, X } from 'lucide-react';
 
 const InBodyScanForm: React.FC = () => {
     const navigate = useNavigate();
-    const { scanId } = useParams<{ scanId?: string }>();
+    const { scanId, clientId } = useParams<{ scanId?: string; clientId?: string }>();
     const isEdit = Boolean(scanId);
 
     const [clients, setClients] = useState<Client[]>([]);
@@ -15,7 +15,7 @@ const InBodyScanForm: React.FC = () => {
     const [loading, setLoading] = useState(isEdit);
 
     const initialFormState: CreateInBodyScanInput = {
-        clientId: '',
+        clientId: clientId || '',
         scanDate: new Date().toISOString().split('T')[0],
         weight: 0,
         bodyFatMass: 0,
@@ -91,108 +91,114 @@ const InBodyScanForm: React.FC = () => {
         }
     };
 
-    const inputStyle = {
-        width: '100%',
-        padding: '0.75rem',
-        borderRadius: 'var(--border-radius-md)',
-        border: '1px solid var(--border-color)',
-        backgroundColor: 'var(--color-bg-primary)',
-        color: 'var(--color-text-primary)',
-        outline: 'none',
-    };
-
     if (loading) {
-        return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
+        return (
+            <div className="flex justify-center items-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        );
     }
 
+    const SectionHeader = ({ title }: { title: string }) => (
+        <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">
+            {title}
+        </h3>
+    );
+
+    const Label = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+            {children} {required && <span className="text-red-500">*</span>}
+        </label>
+    );
+
+    const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+        <input
+            {...props}
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white text-gray-900 placeholder-gray-400"
+        />
+    );
+
     return (
-        <div>
-            <div style={{ marginBottom: '1.5rem' }}>
+        <div className="max-w-4xl mx-auto pb-20">
+            {/* Header */}
+            <div className="mb-8">
                 <button
-                    onClick={() => navigate('/inbody')}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        color: 'var(--color-text-secondary)',
-                        marginBottom: '1rem',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                    }}
+                    onClick={() => clientId ? navigate(`/coach/clients/${clientId}`) : navigate('/inbody')}
+                    className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-4 transition-colors"
                 >
-                    <ArrowLeft size={16} />
-                    Back to InBody Scans
+                    <ArrowLeft size={18} />
+                    <span>{clientId ? 'Back to Client' : 'Back to List'}</span>
                 </button>
-                <PageHeader
-                    title={isEdit ? 'Edit InBody Scan' : 'New InBody Scan'}
-                    description="Record body composition measurements"
-                />
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            {isEdit ? 'Edit InBody Scan' : 'New InBody Scan'}
+                        </h1>
+                        <p className="text-gray-500 mt-1">Record body composition analysis data</p>
+                    </div>
+                </div>
             </div>
 
-            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Main Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     {/* Client Selection */}
                     {!isEdit && (
-                        <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-lg)' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                                Client *
-                            </label>
-                            <select
-                                required
-                                value={formData.clientId}
-                                onChange={e => setFormData({ ...formData, clientId: e.target.value })}
-                                style={inputStyle}
-                            >
-                                <option value="">Select client...</option>
-                                {clients.map(client => (
-                                    <option key={client.id} value={client.id}>
-                                        {client.firstName} {client.lastName}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="mb-8">
+                            <Label required>Client</Label>
+                            {clientId ? (
+                                <div className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-600">
+                                    {clients.find(c => c.id === clientId)?.firstName} {clients.find(c => c.id === clientId)?.lastName}
+                                    <span className="text-xs text-gray-400 ml-2">(Pre-selected)</span>
+                                </div>
+                            ) : (
+                                <select
+                                    required
+                                    value={formData.clientId}
+                                    onChange={e => setFormData({ ...formData, clientId: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white text-gray-900"
+                                >
+                                    <option value="">Select a client...</option>
+                                    {clients.map(client => (
+                                        <option key={client.id} value={client.id}>
+                                            {client.firstName} {client.lastName}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     )}
 
-                    {/* Core Measurements */}
-                    <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-lg)' }}>
-                        <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Core Measurements</h3>
+                    <SectionHeader title="Core Measurements" />
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Scan Date *
-                                </label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={formData.scanDate}
-                                    onChange={e => setFormData({ ...formData, scanDate: e.target.value })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Weight (kg) *
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    required
-                                    value={formData.weight || ''}
-                                    onChange={e => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
-                                    style={inputStyle}
-                                />
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <Label required>Scan Date</Label>
+                            <Input
+                                type="date"
+                                required
+                                value={formData.scanDate}
+                                onChange={e => setFormData({ ...formData, scanDate: e.target.value })}
+                            />
                         </div>
+                        <div>
+                            <Label required>Weight (kg)</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                required
+                                value={formData.weight || ''}
+                                onChange={e => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
+                                placeholder="0.0"
+                            />
+                        </div>
+                    </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Body Fat % *
-                                </label>
-                                <input
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <Label required>Body Fat %</Label>
+                            <div className="relative">
+                                <Input
                                     type="number"
                                     step="0.1"
                                     required
@@ -206,200 +212,177 @@ const InBodyScanForm: React.FC = () => {
                                             bodyFatMass: parseFloat(mass.toFixed(1))
                                         });
                                     }}
-                                    style={inputStyle}
+                                    placeholder="0.0"
                                 />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Body Fat Mass (kg) *
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    required
-                                    value={formData.bodyFatMass || ''}
-                                    onChange={e => setFormData({ ...formData, bodyFatMass: parseFloat(e.target.value) })}
-                                    style={inputStyle}
-                                />
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
-                                    Auto-calculated from weight & body fat %
-                                </div>
+                                <span className="absolute right-4 top-2.5 text-gray-400 text-sm">%</span>
                             </div>
                         </div>
-
-                        <div style={{ marginTop: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                Skeletal Muscle Mass (kg) *
-                            </label>
-                            <input
+                        <div>
+                            <Label required>Body Fat Mass (kg)</Label>
+                            <Input
                                 type="number"
                                 step="0.1"
                                 required
-                                value={formData.skeletalMuscleMass || ''}
-                                onChange={e => setFormData({ ...formData, skeletalMuscleMass: parseFloat(e.target.value) })}
-                                style={inputStyle}
+                                value={formData.bodyFatMass || ''}
+                                onChange={e => setFormData({ ...formData, bodyFatMass: parseFloat(e.target.value) })}
+                                placeholder="0.0"
                             />
+                            <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                Auto-calculated from weight & body fat %
+                            </p>
                         </div>
                     </div>
 
-                    {/* Advanced Metrics */}
-                    <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-lg)' }}>
-                        <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Advanced Metrics (Optional)</h3>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    BMR (kcal/day)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.bmr || ''}
-                                    onChange={e => setFormData({ ...formData, bmr: e.target.value ? parseInt(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                    placeholder="Basal Metabolic Rate"
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Visceral Fat Level
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.visceralFatLevel || ''}
-                                    onChange={e => setFormData({ ...formData, visceralFatLevel: e.target.value ? parseInt(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                    placeholder="1-20 scale"
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Body Water (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.bodyWater || ''}
-                                    onChange={e => setFormData({ ...formData, bodyWater: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Protein (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.protein || ''}
-                                    onChange={e => setFormData({ ...formData, protein: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Mineral (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.mineral || ''}
-                                    onChange={e => setFormData({ ...formData, mineral: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                        </div>
+                    <div className="mb-6">
+                        <Label required>Skeletal Muscle Mass (kg)</Label>
+                        <Input
+                            type="number"
+                            step="0.1"
+                            required
+                            value={formData.skeletalMuscleMass || ''}
+                            onChange={e => setFormData({ ...formData, skeletalMuscleMass: parseFloat(e.target.value) })}
+                            placeholder="0.0"
+                        />
                     </div>
+                </div>
 
-                    {/* Segmental Muscle Analysis */}
-                    <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-lg)' }}>
-                        <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Segmental Muscle Analysis (Optional)</h3>
+                {/* Secondary Metrics Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <SectionHeader title="Advanced Metrics (Optional)" />
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Right Arm (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.rightArmMuscle || ''}
-                                    onChange={e => setFormData({ ...formData, rightArmMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Left Arm (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.leftArmMuscle || ''}
-                                    onChange={e => setFormData({ ...formData, leftArmMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Trunk (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.trunkMuscle || ''}
-                                    onChange={e => setFormData({ ...formData, trunkMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div></div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Right Leg (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.rightLegMuscle || ''}
-                                    onChange={e => setFormData({ ...formData, rightLegMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    Left Leg (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.leftLegMuscle || ''}
-                                    onChange={e => setFormData({ ...formData, leftLegMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
-                                    style={inputStyle}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Notes & File */}
-                    <div style={{ backgroundColor: 'var(--color-bg-secondary)', padding: '1.5rem', borderRadius: 'var(--border-radius-lg)' }}>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                                Notes (Optional)
-                            </label>
-                            <textarea
-                                value={formData.notes || ''}
-                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                style={{ ...inputStyle, height: '100px', resize: 'vertical' }}
-                                placeholder="Any observations or notes..."
-                            />
-                        </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                                Scan File (PDF/Image)
-                            </label>
+                            <Label>BMR (kcal)</Label>
+                            <Input
+                                type="number"
+                                value={formData.bmr || ''}
+                                onChange={e => setFormData({ ...formData, bmr: e.target.value ? parseInt(e.target.value) : undefined })}
+                                placeholder="Basal Metabolic Rate"
+                            />
+                        </div>
+                        <div>
+                            <Label>Visceral Fat Level</Label>
+                            <Input
+                                type="number"
+                                value={formData.visceralFatLevel || ''}
+                                onChange={e => setFormData({ ...formData, visceralFatLevel: e.target.value ? parseInt(e.target.value) : undefined })}
+                                placeholder="1-20"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <Label>Body Water (kg)</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.bodyWater || ''}
+                                onChange={e => setFormData({ ...formData, bodyWater: e.target.value ? parseFloat(e.target.value) : undefined })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Protein (kg)</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.protein || ''}
+                                onChange={e => setFormData({ ...formData, protein: e.target.value ? parseFloat(e.target.value) : undefined })}
+                            />
+                        </div>
+                        <div>
+                            <Label>Mineral (kg)</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.mineral || ''}
+                                onChange={e => setFormData({ ...formData, mineral: e.target.value ? parseFloat(e.target.value) : undefined })}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Segmental Analysis Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <SectionHeader title="Segmental Muscle Analysis (kg)" />
+
+                    <div className="grid grid-cols-3 gap-4 items-center justify-items-center max-w-lg mx-auto">
+                        <div className="w-full">
+                            <Label>Right Arm</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.rightArmMuscle || ''}
+                                onChange={e => setFormData({ ...formData, rightArmMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                placeholder="R. Arm"
+                            />
+                        </div>
+                        <div className="pt-6">
+                            {/* Head placeholder or trunk visual could go here, for now empty spacer */}
+                        </div>
+                        <div className="w-full">
+                            <Label>Left Arm</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.leftArmMuscle || ''}
+                                onChange={e => setFormData({ ...formData, leftArmMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                placeholder="L. Arm"
+                            />
+                        </div>
+
+                        <div className="col-span-3 w-1/2">
+                            <Label>Trunk</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.trunkMuscle || ''}
+                                onChange={e => setFormData({ ...formData, trunkMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                placeholder="Trunk"
+                            />
+                        </div>
+
+                        <div className="w-full">
+                            <Label>Right Leg</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.rightLegMuscle || ''}
+                                onChange={e => setFormData({ ...formData, rightLegMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                placeholder="R. Leg"
+                            />
+                        </div>
+                        <div></div>
+                        <div className="w-full">
+                            <Label>Left Leg</Label>
+                            <Input
+                                type="number"
+                                step="0.1"
+                                value={formData.leftLegMuscle || ''}
+                                onChange={e => setFormData({ ...formData, leftLegMuscle: e.target.value ? parseFloat(e.target.value) : undefined })}
+                                placeholder="L. Leg"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Notes & Files */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <SectionHeader title="Attachments & Notes" />
+
+                    <div className="mb-6">
+                        <Label>Notes</Label>
+                        <textarea
+                            value={formData.notes || ''}
+                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white text-gray-900 min-h-[100px]"
+                            placeholder="Add any additional observations..."
+                        />
+                    </div>
+
+                    <div>
+                        <Label>Original Scan File</Label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
                             <input
                                 type="file"
                                 accept=".pdf,image/*"
@@ -409,48 +392,38 @@ const InBodyScanForm: React.FC = () => {
                                         setFormData({ ...formData, file });
                                     }
                                 }}
-                                style={inputStyle}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
-                                Upload the original InBody scan result sheet
+                            <div className="pointer-events-none">
+                                <p className="text-sm font-medium text-gray-900">
+                                    {formData.file ? formData.file.name : 'Click to upload scan file'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">PDF or Image (Max 10MB)</p>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Action Buttons */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                        <button
-                            type="button"
-                            onClick={() => navigate('/inbody')}
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                borderRadius: 'var(--border-radius-md)',
-                                border: '1px solid var(--border-color)',
-                                backgroundColor: 'transparent',
-                                color: 'var(--color-text-secondary)',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                backgroundColor: 'var(--color-primary)',
-                                color: 'white',
-                                borderRadius: 'var(--border-radius-md)',
-                                border: 'none',
-                                cursor: saving ? 'not-allowed' : 'pointer',
-                                opacity: saving ? 0.6 : 1,
-                            }}
-                        >
-                            {saving ? 'Saving...' : isEdit ? 'Update Scan' : 'Create Scan'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                {/* Actions */}
+                <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-4 -mx-4 border-t border-gray-200 flex justify-end gap-3 rounded-t-xl">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                    >
+                        <X size={18} />
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <Save size={18} />
+                        {saving ? 'Saving...' : 'Save Record'}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 };

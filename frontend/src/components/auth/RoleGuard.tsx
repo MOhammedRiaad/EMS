@@ -18,8 +18,11 @@ const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles }) => {
         if (user.role === 'client') {
             return <Navigate to="/client/home" replace />;
         }
-        if (user.role === 'admin' || user.role === 'tenant_owner' || user.role === 'coach') {
+        if (user.role === 'admin' || user.role === 'tenant_owner') {
             return <Navigate to="/" replace />;
+        }
+        if (user.role === 'coach') {
+            return <Navigate to="/coach/home" replace />;
         }
         return <Navigate to="/login" replace />;
     }
