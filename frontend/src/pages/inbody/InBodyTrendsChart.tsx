@@ -12,12 +12,23 @@ import {
     Area
 } from 'recharts';
 import type { InBodyScan } from '../../services/inbody.service';
+import { useTheme } from '../../context/ThemeContext';
 
 interface InBodyTrendsChartKeys {
     data: InBodyScan[];
 }
 
 const InBodyTrendsChart: React.FC<InBodyTrendsChartKeys> = ({ data }) => {
+    const { theme } = useTheme();
+    const isDark = theme === 'dark';
+
+    // Chart Colors
+    const gridColor = isDark ? '#334155' : '#e5e7eb';
+    const axisTextColor = isDark ? '#94a3b8' : '#6b7280';
+    const tooltipBg = isDark ? 'bg-slate-800' : 'bg-white';
+    const tooltipBorder = isDark ? 'border-slate-700' : 'border-gray-100';
+    const tooltipText = isDark ? 'text-white' : 'text-gray-900';
+
     // Sort data by date ascending
     const sortedData = [...data]
         .sort((a, b) => new Date(a.scanDate).getTime() - new Date(b.scanDate).getTime())
@@ -26,13 +37,13 @@ const InBodyTrendsChart: React.FC<InBodyTrendsChartKeys> = ({ data }) => {
             date: new Date(scan.scanDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         }));
 
-    if (data.length === 0) return <div className="text-center p-4 text-gray-500">No data to display</div>;
+    if (data.length === 0) return <div className="text-center p-4 text-gray-500 dark:text-gray-400">No data to display</div>;
 
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-lg text-sm">
-                    <p className="font-bold text-gray-900 mb-2">{label}</p>
+                <div className={`${tooltipBg} p-3 border ${tooltipBorder} shadow-lg rounded-lg text-sm`}>
+                    <p className={`font-bold ${tooltipText} mb-2`}>{label}</p>
                     {payload.map((entry: any, index: number) => (
                         <p key={index} style={{ color: entry.color }} className="flex items-center gap-2 mb-1">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></span>
@@ -48,8 +59,8 @@ const InBodyTrendsChart: React.FC<InBodyTrendsChartKeys> = ({ data }) => {
     return (
         <div className="flex flex-col gap-8">
             {/* Weight & Muscle Mass Chart */}
-            <div className="h-72 w-full bg-white rounded-xl p-2">
-                <h4 className="text-center mb-4 text-sm font-semibold text-gray-600">Weight vs Muscle Mass</h4>
+            <div className="h-72 w-full bg-white dark:bg-slate-900 rounded-xl p-2 transition-colors">
+                <h4 className="text-center mb-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Weight vs Muscle Mass</h4>
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
@@ -58,10 +69,10 @@ const InBodyTrendsChart: React.FC<InBodyTrendsChartKeys> = ({ data }) => {
                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
                         <XAxis
                             dataKey="date"
-                            tick={{ fontSize: 10, fill: '#6b7280' }}
+                            tick={{ fontSize: 10, fill: axisTextColor }}
                             axisLine={false}
                             tickLine={false}
                             dy={10}
@@ -111,14 +122,14 @@ const InBodyTrendsChart: React.FC<InBodyTrendsChartKeys> = ({ data }) => {
             </div>
 
             {/* Body Fat % Chart */}
-            <div className="h-64 w-full bg-white rounded-xl p-2">
-                <h4 className="text-center mb-4 text-sm font-semibold text-gray-600">Body Fat %</h4>
+            <div className="h-64 w-full bg-white dark:bg-slate-900 rounded-xl p-2 transition-colors">
+                <h4 className="text-center mb-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Body Fat %</h4>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
                         <XAxis
                             dataKey="date"
-                            tick={{ fontSize: 10, fill: '#6b7280' }}
+                            tick={{ fontSize: 10, fill: axisTextColor }}
                             axisLine={false}
                             tickLine={false}
                             dy={10}

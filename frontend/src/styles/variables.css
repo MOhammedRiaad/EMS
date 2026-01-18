@@ -1,20 +1,31 @@
 :root {
-  /* Colors - Premium Dark Theme */
-  --color-bg-primary: #0f172a;   /* Slate 900 */
-  --color-bg-secondary: #1e293b; /* Slate 800 */
-  --color-bg-tertiary: #334155;  /* Slate 700 */
+  /* Colors - Light Theme (Default) */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8fafc;
+  /* Slate 50 */
+  --color-bg-tertiary: #f1f5f9;
+  /* Slate 100 */
 
-  --color-text-primary: #f8fafc; /* Slate 50 */
-  --color-text-secondary: #cbd5e1; /* Slate 300 */
-  --color-text-muted: #64748b;   /* Slate 500 */
+  --color-text-primary: #0f172a;
+  /* Slate 900 */
+  --color-text-secondary: #475569;
+  /* Slate 600 */
+  --color-text-muted: #94a3b8;
+  /* Slate 400 */
 
-  --color-primary: #6366f1;      /* Indigo 500 */
-  --color-primary-hover: #4f46e5; /* Indigo 600 */
-  
-  --color-accent: #10b981;       /* Emerald 500 */
-  --color-danger: #ef4444;       /* Red 500 */
-  --color-warning: #f59e0b;      /* Amber 500 */
-  --color-success: #10b981;      /* Emerald 500 */
+  --color-primary: #6366f1;
+  /* Indigo 500 */
+  --color-primary-hover: #4f46e5;
+  /* Indigo 600 */
+
+  --color-accent: #10b981;
+  /* Emerald 500 */
+  --color-danger: #ef4444;
+  /* Red 500 */
+  --color-warning: #f59e0b;
+  /* Amber 500 */
+  --color-success: #10b981;
+  /* Emerald 500 */
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -36,12 +47,32 @@
   --border-radius-md: 0.5rem;
   --border-radius-lg: 0.75rem;
   --border-width: 1px;
-  --border-color: #334155;
+  --border-color: #e2e8f0;
+  /* Slate 200 */
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.dark {
+  /* Colors - Dark Theme Override */
+  --color-bg-primary: #0f172a;
+  /* Slate 900 */
+  --color-bg-secondary: #1e293b;
+  /* Slate 800 */
+  --color-bg-tertiary: #334155;
+  /* Slate 700 */
+
+  --color-text-primary: #f8fafc;
+  /* Slate 50 */
+  --color-text-secondary: #cbd5e1;
+  /* Slate 300 */
+  --color-text-muted: #64748b;
+  /* Slate 500 */
+
+  --border-color: #334155;
 }
 
 * {

@@ -100,13 +100,13 @@ const InBodyScanForm: React.FC = () => {
     }
 
     const SectionHeader = ({ title }: { title: string }) => (
-        <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">
+        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-slate-800 pb-2 mb-4">
             {title}
         </h3>
     );
 
     const Label = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {children} {required && <span className="text-red-500">*</span>}
         </label>
     );
@@ -114,7 +114,7 @@ const InBodyScanForm: React.FC = () => {
     const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
         <input
             {...props}
-            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white text-gray-900 placeholder-gray-400"
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400"
         />
     );
 
@@ -124,14 +124,14 @@ const InBodyScanForm: React.FC = () => {
             <div className="mb-8">
                 <button
                     onClick={() => clientId ? navigate(`/coach/clients/${clientId}`) : navigate('/inbody')}
-                    className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-4 transition-colors"
+                    className="flex items-center gap-2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 mb-4 transition-colors"
                 >
                     <ArrowLeft size={18} />
                     <span>{clientId ? 'Back to Client' : 'Back to List'}</span>
                 </button>
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                             {isEdit ? 'Edit InBody Scan' : 'New InBody Scan'}
                         </h1>
                         <p className="text-gray-500 mt-1">Record body composition analysis data</p>
@@ -141,13 +141,13 @@ const InBodyScanForm: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Main Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
                     {/* Client Selection */}
                     {!isEdit && (
                         <div className="mb-8">
                             <Label required>Client</Label>
                             {clientId ? (
-                                <div className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-600">
+                                <div className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-gray-300">
                                     {clients.find(c => c.id === clientId)?.firstName} {clients.find(c => c.id === clientId)?.lastName}
                                     <span className="text-xs text-gray-400 ml-2">(Pre-selected)</span>
                                 </div>
@@ -156,7 +156,7 @@ const InBodyScanForm: React.FC = () => {
                                     required
                                     value={formData.clientId}
                                     onChange={e => setFormData({ ...formData, clientId: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white text-gray-900"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                 >
                                     <option value="">Select a client...</option>
                                     {clients.map(client => (
@@ -247,7 +247,7 @@ const InBodyScanForm: React.FC = () => {
                 </div>
 
                 {/* Secondary Metrics Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
                     <SectionHeader title="Advanced Metrics (Optional)" />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -303,7 +303,7 @@ const InBodyScanForm: React.FC = () => {
                 </div>
 
                 {/* Segmental Analysis Card */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
                     <SectionHeader title="Segmental Muscle Analysis (kg)" />
 
                     <div className="grid grid-cols-3 gap-4 items-center justify-items-center max-w-lg mx-auto">
@@ -367,7 +367,7 @@ const InBodyScanForm: React.FC = () => {
                 </div>
 
                 {/* Notes & Files */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
                     <SectionHeader title="Attachments & Notes" />
 
                     <div className="mb-6">
@@ -375,14 +375,14 @@ const InBodyScanForm: React.FC = () => {
                         <textarea
                             value={formData.notes || ''}
                             onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white text-gray-900 min-h-[100px]"
+                            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-h-[100px]"
                             placeholder="Add any additional observations..."
                         />
                     </div>
 
                     <div>
                         <Label>Original Scan File</Label>
-                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer relative">
+                        <div className="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer relative">
                             <input
                                 type="file"
                                 accept=".pdf,image/*"
@@ -395,21 +395,21 @@ const InBodyScanForm: React.FC = () => {
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                             <div className="pointer-events-none">
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {formData.file ? formData.file.name : 'Click to upload scan file'}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">PDF or Image (Max 10MB)</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF or Image (Max 10MB)</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-4 -mx-4 border-t border-gray-200 flex justify-end gap-3 rounded-t-xl">
+                <div className="sticky bottom-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 -mx-4 border-t border-gray-200 dark:border-slate-800 flex justify-end gap-3 rounded-t-xl">
                     <button
                         type="button"
                         onClick={() => navigate(-1)}
-                        className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                        className="px-6 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
                     >
                         <X size={18} />
                         Cancel

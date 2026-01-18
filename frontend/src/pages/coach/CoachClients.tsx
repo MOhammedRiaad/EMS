@@ -36,7 +36,7 @@ const CoachClients = () => {
 
     return (
         <div className="max-w-lg mx-auto space-y-4">
-            <h1 className="text-xl font-bold text-gray-900 mb-4 px-2">My Clients</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 px-2">My Clients</h1>
 
             <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -45,7 +45,7 @@ const CoachClients = () => {
                     placeholder="Search clients..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm placeholder-gray-400 dark:placeholder-gray-500"
                 />
             </div>
 
@@ -59,7 +59,7 @@ const CoachClients = () => {
                         <Link
                             key={client.id}
                             to={`/coach/clients/${client.id}`}
-                            className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                            className="flex items-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow"
                         >
                             <div className="w-10 h-10 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center text-gray-500 font-bold mr-4 border border-gray-200">
                                 {client.avatarUrl ? (
@@ -80,8 +80,8 @@ const CoachClients = () => {
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <div className="font-bold text-gray-900">{client.firstName} {client.lastName}</div>
-                                <div className="text-xs text-gray-500">{client.email}</div>
+                                <div className="font-bold text-gray-900 dark:text-white">{client.firstName} {client.lastName}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">{client.email}</div>
                             </div>
                             <ChevronRight className="text-gray-300" size={20} />
                         </Link>

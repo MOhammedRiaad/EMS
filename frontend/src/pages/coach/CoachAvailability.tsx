@@ -68,7 +68,7 @@ const CoachAvailability = () => {
     return (
         <div className="p-4 space-y-6 pb-20">
             <header className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">Availability</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Availability</h1>
                 <button
                     onClick={handleSave}
                     disabled={saving}
@@ -81,9 +81,9 @@ const CoachAvailability = () => {
 
             <div className="space-y-4">
                 {rules.map((rule, index) => (
-                    <div key={index} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3">
+                    <div key={index} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col gap-3">
                         <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2 text-blue-600 font-medium">
+                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
                                 <Calendar size={18} />
                                 <span>Shift {index + 1}</span>
                             </div>
@@ -97,11 +97,11 @@ const CoachAvailability = () => {
 
                         <div className="grid grid-cols-1 gap-3">
                             <div>
-                                <label className="text-xs text-gray-500 block mb-1">Day</label>
+                                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Day</label>
                                 <select
                                     value={rule.dayOfWeek}
                                     onChange={(e) => updateRule(index, 'dayOfWeek', parseInt(e.target.value))}
-                                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                    className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
                                 >
                                     {WEEKDAYS.map(day => (
                                         <option key={day.value} value={day.value}>{day.label}</option>
@@ -111,21 +111,21 @@ const CoachAvailability = () => {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs text-gray-500 block mb-1">Start Time</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Start Time</label>
                                     <input
                                         type="time"
                                         value={rule.startTime}
                                         onChange={(e) => updateRule(index, 'startTime', e.target.value)}
-                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-500 block mb-1">End Time</label>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">End Time</label>
                                     <input
                                         type="time"
                                         value={rule.endTime}
                                         onChange={(e) => updateRule(index, 'endTime', e.target.value)}
-                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
                                     />
                                 </div>
                             </div>

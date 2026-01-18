@@ -82,7 +82,7 @@
 
 .header {
     height: 64px;
-    background-color: rgba(15, 23, 42, 0.8);
+    background-color: var(--color-bg-secondary);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
     display: flex;

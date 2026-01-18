@@ -17,6 +17,7 @@ import {
     Wallet
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { ThemeToggle } from '../common/ThemeToggle';
 import './Layout.css';
 
 const Layout: React.FC = () => {
@@ -171,6 +172,10 @@ const Layout: React.FC = () => {
                                 {user?.role?.replace('_', ' ') || ''}
                             </span>
                         </div>
+                    </div>
+
+                    <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center' }}>
+                        <ThemeToggle />
                     </div>
                 </header>
 

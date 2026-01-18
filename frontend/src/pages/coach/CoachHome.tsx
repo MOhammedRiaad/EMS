@@ -106,8 +106,8 @@ const CoachHome = () => {
 
             {/* Upcoming Schedule */}
             <div>
-                <h2 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
-                    <Calendar size={20} className="text-blue-600" />
+                <h2 className="font-bold text-gray-800 dark:text-gray-200 text-lg mb-4 flex items-center gap-2">
+                    <Calendar size={20} className="text-blue-600 dark:text-blue-400" />
                     Upcoming Schedule
                 </h2>
 
@@ -124,15 +124,15 @@ const CoachHome = () => {
                                 </h3>
                                 <div className="space-y-3">
                                     {groupedSessions[dateKey].map(session => (
-                                        <div key={session.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden transition-all hover:shadow-md">
+                                        <div key={session.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 relative overflow-hidden transition-all hover:shadow-md">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-lg text-sm">
                                                         {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-gray-900">{session.client.firstName} {session.client.lastName}</div>
-                                                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                                        <div className="font-bold text-gray-900 dark:text-white">{session.client.firstName} {session.client.lastName}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
                                                             <div className={`w-2 h-2 rounded-full ${session.status === 'scheduled' ? 'bg-blue-500' :
                                                                 session.status === 'completed' ? 'bg-green-500' :
                                                                     session.status === 'no_show' ? 'bg-red-500' : 'bg-gray-400'
@@ -148,13 +148,13 @@ const CoachHome = () => {
                                             </div>
 
                                             {session.notes && (
-                                                <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600 mb-3 mx-1">
+                                                <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg text-sm text-gray-600 dark:text-gray-300 mb-3 mx-1">
                                                     "{session.notes}"
                                                 </div>
                                             )}
 
                                             {session.status === 'scheduled' && (
-                                                <div className="flex gap-2 mt-2 pt-3 border-t border-gray-50">
+                                                <div className="flex gap-2 mt-2 pt-3 border-t border-gray-50 dark:border-slate-800">
                                                     <button
                                                         onClick={() => handleStatusUpdate(session.id, 'completed')}
                                                         className="flex-1 bg-green-50 text-green-700 py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-green-100 transition-colors"
@@ -184,7 +184,7 @@ const CoachHome = () => {
                         {hasMore && (
                             <button
                                 onClick={() => setVisibleDays(prev => prev + 7)}
-                                className="w-full py-3 bg-white border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                                className="w-full py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-sm"
                             >
                                 <ChevronDown size={18} />
                                 Show More Sessions

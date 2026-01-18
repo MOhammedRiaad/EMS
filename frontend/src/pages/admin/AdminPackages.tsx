@@ -197,7 +197,7 @@ const AdminPackages: React.FC = () => {
                             required
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
                             placeholder="e.g., Starter Pack"
                         />
                     </div>
@@ -207,7 +207,7 @@ const AdminPackages: React.FC = () => {
                         <textarea
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', minHeight: '60px' }}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', minHeight: '60px', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
                             placeholder="Optional description"
                         />
                     </div>
@@ -221,7 +221,7 @@ const AdminPackages: React.FC = () => {
                                 min={1}
                                 value={formData.totalSessions}
                                 onChange={e => setFormData({ ...formData, totalSessions: parseInt(e.target.value) })}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
                             />
                         </div>
                         <div>
@@ -233,7 +233,7 @@ const AdminPackages: React.FC = () => {
                                 step={0.01}
                                 value={formData.price}
                                 onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
                             />
                         </div>
                         <div>
@@ -244,7 +244,7 @@ const AdminPackages: React.FC = () => {
                                 min={1}
                                 value={formData.validityDays}
                                 onChange={e => setFormData({ ...formData, validityDays: parseInt(e.target.value) })}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
                             />
                         </div>
                     </div>
