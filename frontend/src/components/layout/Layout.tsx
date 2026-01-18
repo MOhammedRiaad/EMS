@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
@@ -14,16 +14,21 @@ import {
     Activity,
     ListPlus,
     Package,
-    Wallet
+    Wallet,
+    Star
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import MenuSection, { type MenuItem } from './MenuSection';
+import { MenuSearch } from './MenuSearch';
+import { Breadcrumbs } from './Breadcrumbs';
 import './Layout.css';
 
 const Layout: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     const { user, tenant, logout, isAuthenticated } = useAuth();
+    const { isPinned } = useMenuPreferences();
 
     // Redirect to login if not authenticated
     React.useEffect(() => {
@@ -56,16 +61,53 @@ const Layout: React.FC = () => {
         return user?.email || 'User';
     };
 
-    // Get page title from route
-    const getPageTitle = () => {
-        const path = location.pathname;
-        if (path === '/') return 'Dashboard';
-        const segment = path.split('/')[1];
-        return segment.charAt(0).toUpperCase() + segment.slice(1);
-    };
-
     // Check if user can see admin menu
     const canSeeAdminMenu = user?.role === 'tenant_owner' || user?.role === 'admin';
+
+    // Define all menu items
+    const coreItems: MenuItem[] = [
+        { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/sessions', label: 'Sessions', icon: Calendar },
+        { path: '/clients', label: 'Clients', icon: Users },
+    ];
+
+    const managementItems: MenuItem[] = [
+        { path: '/coaches', label: 'Coaches', icon: Users },
+        { path: '/studios', label: 'Studios', icon: Building2 },
+        { path: '/rooms', label: 'Rooms', icon: DoorOpen },
+        { path: '/devices', label: 'Devices', icon: Dumbbell },
+        { path: '/inbody', label: 'InBody Scans', icon: Activity },
+    ];
+
+    const clientBusinessItems: MenuItem[] = [
+        { path: '/admin/waiting-list', label: 'Waiting List', icon: ListPlus },
+        { path: '/admin/packages', label: 'Packages', icon: Package },
+        { path: '/admin/reviews', label: 'Reviews', icon: Star },
+    ];
+
+    const analyticsItems: MenuItem[] = [
+        { path: '/admin/coach-performance', label: 'Coach Performance', icon: TrendingUp },
+        { path: '/admin/cash-flow', label: 'Cash Flow', icon: Wallet },
+    ];
+
+    const administrationItems: MenuItem[] = [
+        { path: '/admin/users', label: 'User Management', icon: UserCog },
+        { path: '/admin/settings', label: 'Settings', icon: Settings },
+    ];
+
+    // Combine all items for search
+    const allItems = useMemo(() => {
+        const items = [...coreItems, ...managementItems, ...clientBusinessItems];
+        if (canSeeAdminMenu) {
+            items.push(...analyticsItems, ...administrationItems);
+        }
+        return items;
+    }, [canSeeAdminMenu]);
+
+    // Get pinned items
+    const pinnedItems = useMemo(() => {
+        return allItems.filter(item => isPinned(item.path));
+    }, [allItems, isPinned]);
 
     return (
         <div className="container">
@@ -74,81 +116,62 @@ const Layout: React.FC = () => {
                     <span className="logo-text">{tenant?.name || 'EMS Studio'}</span>
                 </div>
 
+                {/* Menu Search */}
+                <MenuSearch allItems={allItems} onNavigate={navigate} />
+
                 <nav className="nav">
-                    <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <LayoutDashboard className="nav-icon" />
-                        <span>Dashboard</span>
-                    </NavLink>
+                    {/* Pinned Items */}
+                    {pinnedItems.length > 0 && (
+                        <MenuSection
+                            id="pinned"
+                            title="Pinned"
+                            collapsible={false}
+                            items={pinnedItems}
+                        />
+                    )}
 
-                    <NavLink to="/sessions" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Calendar className="nav-icon" />
-                        <span>Sessions</span>
-                    </NavLink>
+                    {/* Core Operations */}
+                    <MenuSection
+                        id="core"
+                        title="Core"
+                        collapsible={false}
+                        items={coreItems}
+                    />
 
-                    <NavLink to="/clients" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Users className="nav-icon" />
-                        <span>Clients</span>
-                    </NavLink>
+                    {/* Management */}
+                    <MenuSection
+                        id="management"
+                        title="Management"
+                        items={managementItems}
+                    />
 
-                    <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '8px 0' }} />
+                    {/* Client & Business */}
+                    <MenuSection
+                        id="client-business"
+                        title="Client & Business"
+                        items={clientBusinessItems}
+                    />
 
-                    <NavLink to="/coaches" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Users className="nav-icon" />
-                        <span>Coaches</span>
-                    </NavLink>
-
-                    <NavLink to="/studios" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Building2 className="nav-icon" />
-                        <span>Studios</span>
-                    </NavLink>
-
-                    <NavLink to="/rooms" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <DoorOpen className="nav-icon" />
-                        <span>Rooms</span>
-                    </NavLink>
-
-                    <NavLink to="/devices" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Dumbbell className="nav-icon" />
-                        <span>Devices</span>
-                    </NavLink>
-
-                    <NavLink to="/inbody" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Activity className="nav-icon" />
-                        <span>InBody Scans</span>
-                    </NavLink>
-
+                    {/* Analytics (Admin/Owner only) */}
                     {canSeeAdminMenu && (
-                        <>
-                            <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '8px 0' }} />
-                            <NavLink to="/admin/users" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                <UserCog className="nav-icon" />
-                                <span>User Management</span>
-                            </NavLink>
-                            <NavLink to="/admin/coach-performance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                <TrendingUp className="nav-icon" />
-                                <span>Coach Performance</span>
-                            </NavLink>
-                            <NavLink to="/admin/waiting-list" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                <ListPlus className="nav-icon" />
-                                <span>Waiting List</span>
-                            </NavLink>
-                            <NavLink to="/admin/packages" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                <Package className="nav-icon" />
-                                <span>Packages</span>
-                            </NavLink>
-                            <NavLink to="/admin/cash-flow" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                                <Wallet className="nav-icon" />
-                                <span>Cash Flow</span>
-                            </NavLink>
-                        </>
+                        <MenuSection
+                            id="analytics"
+                            title="Analytics"
+                            items={analyticsItems}
+                        />
+                    )}
+
+                    {/* Administration (Admin/Owner only) */}
+                    {canSeeAdminMenu && (
+                        <MenuSection
+                            id="administration"
+                            title="Administration"
+                            items={administrationItems}
+                        />
                     )}
                 </nav>
 
                 <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)' }}>
-                    <div className="nav-item">
-                        <Settings className="nav-icon" />
-                        <span>Settings</span>
-                    </div>
                     <div
                         className="nav-item"
                         style={{ color: 'var(--color-danger)', cursor: 'pointer' }}
@@ -162,7 +185,9 @@ const Layout: React.FC = () => {
 
             <main className="main-content">
                 <header className="header">
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{getPageTitle()}</h2>
+                    <div>
+                        <Breadcrumbs />
+                    </div>
 
                     <div className="user-profile">
                         <div className="avatar">{getInitials()}</div>

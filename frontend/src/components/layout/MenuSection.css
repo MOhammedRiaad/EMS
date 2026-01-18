@@ -1,0 +1,78 @@
+.menu-section {
+    margin-bottom: 0.5rem;
+}
+
+.menu-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.menu-section-header.collapsible:hover {
+    color: var(--color-text-secondary);
+}
+
+.menu-section-title {
+    flex: 1;
+}
+
+.menu-section-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.menu-section+.menu-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.5rem;
+}
+
+.menu-item-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.menu-item-wrapper .nav-item {
+    flex: 1;
+}
+
+.menu-item-wrapper .nav-item.pinned {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-left: 2px solid var(--color-primary);
+}
+
+.pin-button {
+    position: absolute;
+    right: 0.5rem;
+    padding: 0.25rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-item-wrapper:hover .pin-button {
+    opacity: 1;
+}
+
+.pin-button:hover {
+    background: var(--color-bg-primary);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}

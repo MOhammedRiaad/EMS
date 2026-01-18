@@ -1,0 +1,122 @@
+.menu-search-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    margin: 0.5rem;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.menu-search-trigger:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-primary);
+}
+
+.menu-search-trigger span {
+    flex: 1;
+    text-align: left;
+    font-size: 0.875rem;
+}
+
+.menu-search-trigger kbd {
+    padding: 0.125rem 0.375rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+    font-family: monospace;
+}
+
+.menu-search-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10vh;
+    z-index: 1000;
+}
+
+.menu-search-modal {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    width: 90%;
+    max-width: 600px;
+    box-shadow: var(--shadow-lg);
+}
+
+.menu-search-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.menu-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+}
+
+.menu-search-close {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+}
+
+.menu-search-close:hover {
+    color: var(--color-text-primary);
+}
+
+.menu-search-results {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.menu-search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.menu-search-result-item:hover,
+.menu-search-result-item.selected {
+    background: var(--color-bg-primary);
+}
+
+.menu-search-result-item span:first-of-type {
+    flex: 1;
+    color: var(--color-text-primary);
+}
+
+.menu-search-path {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.menu-search-no-results {
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-muted);
+}
