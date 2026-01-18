@@ -13,6 +13,7 @@ export interface ClientProfile {
     phone: string | null;
     avatarUrl: string | null;
     memberSince: string;
+    gender?: 'male' | 'female' | 'other' | 'pnts';
 }
 
 export const clientPortalService = {
@@ -118,7 +119,7 @@ export const clientPortalService = {
         return response.json();
     },
 
-    async updateProfile(data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }): Promise<any> {
+    async updateProfile(data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: 'male' | 'female' | 'other' | 'pnts' }): Promise<any> {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/client-portal/profile`, {
             method: 'PATCH',

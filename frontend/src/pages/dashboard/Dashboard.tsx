@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardService, type DashboardStats } from '../../services/dashboard.service';
 import { sessionsService, type Session } from '../../services/sessions.service';
+import { coachesService, type CoachDisplay } from '../../services/coaches.service';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, UserCheck, DollarSign, Clock, MapPin, Monitor } from 'lucide-react';
 import Modal from '../../components/common/Modal';
 import NotificationsWidget from '../../components/dashboard/NotificationsWidget';
@@ -8,6 +9,7 @@ import NotificationsWidget from '../../components/dashboard/NotificationsWidget'
 const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
+    const [coaches, setCoaches] = useState<CoachDisplay[]>([]);
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
         const d = new Date();
         const day = d.getDay();
@@ -31,12 +33,14 @@ const Dashboard: React.FC = () => {
             end.setDate(end.getDate() + 7);
             const endStr = end.toISOString();
 
-            const [statsData, sessionsData] = await Promise.all([
+            const [statsData, sessionsData, coachesData] = await Promise.all([
                 dashboardService.getStats(),
-                sessionsService.getAll({ from: startStr, to: endStr })
+                sessionsService.getAll({ from: startStr, to: endStr }),
+                coachesService.getAll()
             ]);
             setStats(statsData);
             setSessions(sessionsData);
+            setCoaches(coachesData.filter(c => c.active));
         } catch (err) {
             console.error('Failed to fetch dashboard data', err);
         } finally {
@@ -68,6 +72,17 @@ const Dashboard: React.FC = () => {
             return sDate.getDate() === date.getDate() &&
                 sDate.getMonth() === date.getMonth() &&
                 sDate.getFullYear() === date.getFullYear();
+        }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    };
+
+    const getTodaysSessionsForCoach = (coachId: string) => {
+        const today = new Date();
+        return sessions.filter(s => {
+            const sDate = new Date(s.startTime);
+            return s.coachId === coachId &&
+                sDate.getDate() === today.getDate() &&
+                sDate.getMonth() === today.getMonth() &&
+                sDate.getFullYear() === today.getFullYear();
         }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     };
 
@@ -118,11 +133,78 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Two Column Layout: Calendar and Notifications */}
+            {/* Today's Schedule Per Coach */}
+            <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Today's Overview</h2>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, coaches.length)}, 1fr)`, overflowX: 'auto', minHeight: '300px' }}>
+                    {coaches.length > 0 ? coaches.map(coach => {
+                        const coachSessions = getTodaysSessionsForCoach(coach.id);
+                        return (
+                            <div key={coach.id} style={{ borderRight: '1px solid var(--border-color)', minWidth: '250px' }}>
+                                <div style={{ padding: '1rem', backgroundColor: 'var(--color-bg-primary)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.875rem', color: 'var(--color-primary)' }}>
+                                        {coach.firstName[0]}{coach.lastName[0]}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{coach.firstName} {coach.lastName}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{coachSessions.length} sessions</div>
+                                    </div>
+                                </div>
+                                <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {coachSessions.length > 0 ? coachSessions.map(session => (
+                                        <div
+                                            key={session.id}
+                                            onClick={() => handleSessionClick(session)}
+                                            style={{
+                                                padding: '0.75rem',
+                                                borderRadius: '8px',
+                                                backgroundColor: 'var(--color-bg-primary)',
+                                                border: '1px solid var(--border-color)',
+                                                borderLeft: `3px solid ${getSessionColor(session.status)}`,
+                                                cursor: 'pointer',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                                transition: 'transform 0.1s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formatTime(session.startTime)}</span>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '1px 6px', borderRadius: '4px', backgroundColor: getSessionColor(session.status, true), color: getSessionColor(session.status) }}>
+                                                    {session.status}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', marginBottom: '2px' }}>
+                                                <Users size={14} color="var(--color-text-secondary)" />
+                                                <span style={{ fontWeight: 500 }}>{session.client?.firstName} {session.client?.lastName}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                                <MapPin size={12} />
+                                                <span>{session.room?.name || 'Studio'}</span>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-secondary)', fontStyle: 'italic', fontSize: '0.875rem' }}>
+                                            No sessions today
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }) : (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)', gridColumn: '1 / -1' }}>No active coaches found</div>
+                    )}
+                </div>
+            </div>
+
+            {/* Two Column Layout: Weekly Calendar and Notifications */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem' }}>
                 <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
                     <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Weekly Schedule</h2>
+                        <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Weekly Overview</h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
                                 {currentWeekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {weekDates[6].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -136,7 +218,7 @@ const Dashboard: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', overflowX: 'auto' }}>
                         {weekDates.map((date) => (
-                            <div key={date.toISOString()} style={{ minWidth: '140px', borderRight: '1px solid var(--border-color)', minHeight: '400px' }}>
+                            <div key={date.toISOString()} style={{ minWidth: '140px', borderRight: '1px solid var(--border-color)', minHeight: '300px' }}>
                                 <div style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)' }}>
                                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{date.toLocaleDateString(undefined, { weekday: 'short' })}</div>
                                     <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '0.25rem' }}>{date.getDate()}</div>
@@ -163,10 +245,6 @@ const Dashboard: React.FC = () => {
                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {session.client?.firstName} {session.client?.lastName}
                                                 </span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-secondary)' }}>
-                                                <MapPin size={12} />
-                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.room?.name}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -206,6 +284,19 @@ const Dashboard: React.FC = () => {
                                     <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '6px', fontSize: '0.875rem' }}>{selectedSession.notes}</div>
                                 </div>
                             )}
+
+                            {/* Actions */}
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                                <button
+                                    onClick={() => {
+                                        // Implement cancel/complete logic if needed or just close
+                                        setIsDetailModalOpen(false);
+                                    }}
+                                    style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', cursor: 'pointer' }}
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     )}
                 </Modal>

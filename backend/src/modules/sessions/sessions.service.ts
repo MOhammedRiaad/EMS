@@ -5,6 +5,7 @@ import { Session } from './entities/session.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
+import { Tenant } from '../tenants/entities/tenant.entity';
 import { CreateSessionDto, SessionQueryDto, UpdateSessionDto } from './dto';
 import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
@@ -32,6 +33,8 @@ export class SessionsService {
         private readonly studioRepository: Repository<Studio>,
         @InjectRepository(Coach)
         private readonly coachRepository: Repository<Coach>,
+        @InjectRepository(Tenant)
+        private readonly tenantRepository: Repository<Tenant>,
         private mailerService: MailerService,
         private clientsService: ClientsService,
         private packagesService: PackagesService,
@@ -96,6 +99,11 @@ export class SessionsService {
 
         // Validate coach availability
         await this.validateCoachAvailability(dto.coachId, startTime, endTime, tenantId);
+
+        // Validate gender preference
+        if (dto.clientId) {
+            await this.validateCoachGenderPreference(dto.coachId, dto.clientId, tenantId);
+        }
 
         // Validate client has remaining sessions in their package
         if (dto.clientId) {
@@ -560,6 +568,32 @@ export class SessionsService {
         }
     }
 
+    private async validateCoachGenderPreference(coachId: string, clientId: string, tenantId: string): Promise<void> {
+        const coach = await this.coachRepository.findOne({
+            where: { id: coachId, tenantId },
+            relations: ['user'] // Need user relation if coach gender matters (for future), but preference is on Coach entity
+        });
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        if (!coach || !client || !client.user) return; // Skip if data missing
+
+        // 'preferredClientGender' is on Coach entity now.
+        // Assuming client.user.gender was added to User entity
+
+        // Types might be tricky if entity update not propagated to type system yet in IDE context,
+        // but it should work at runtime. Casting as necessary.
+        const coachPreference = (coach as any).preferredClientGender;
+        const clientGender = (client.user as any).gender;
+
+        if (coachPreference && coachPreference !== 'any') {
+            if (clientGender && clientGender !== 'pnts' && coachPreference !== clientGender) {
+                throw new BadRequestException(
+                    `This coach prefers to work with ${coachPreference} clients.`
+                );
+            }
+        }
+    }
+
     async updateStatus(id: string, tenantId: string, status: Session['status'], deductSession?: boolean): Promise<Session> {
         this.logger.log(`updateStatus called: id=${id}, status=${status}`);
         const session = await this.findOne(id, tenantId);
@@ -583,10 +617,32 @@ export class SessionsService {
                 shouldDeductSession = true;
                 this.logger.log(`No-show for session ${id}, deducting session from package`);
             } else if (status === 'cancelled') {
-                // For cancelled: use the deductSession flag passed from frontend
-                // Frontend should ask admin if cancelled < 48h before session time
-                shouldDeductSession = deductSession === true;
-                this.logger.log(`Cancelled session ${id}, deductSession=${deductSession}`);
+                // For cancelled: check policy OR use deductSession override
+
+                if (deductSession !== undefined) {
+                    // Start of Admin Override logic:
+                    // If an explicit override is provided (from Admin UI), respect it.
+                    shouldDeductSession = deductSession;
+                    this.logger.log(`Cancelled session ${id}: using admin override deductSession=${deductSession}`);
+                } else {
+                    // Client-side cancellation (no override provided) -> Use Policy
+                    // Fetch Tenant Settings
+                    const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
+                    // Default to 48 hours if not set
+                    const cancellationWindowHours = tenant?.settings?.cancellationWindowHours || 48;
+
+                    const now = new Date();
+                    const sessionTime = new Date(session.startTime);
+                    const hoursUntilSession = (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                    if (hoursUntilSession < cancellationWindowHours) {
+                        shouldDeductSession = true; // Late cancellation
+                        this.logger.log(`Late cancellation (${hoursUntilSession.toFixed(1)}h < ${cancellationWindowHours}h policy), deducting session.`);
+                    } else {
+                        shouldDeductSession = false; // On time
+                        this.logger.log(`On-time cancellation (${hoursUntilSession.toFixed(1)}h >= ${cancellationWindowHours}h policy), NOT deducting.`);
+                    }
+                }
             }
         }
 

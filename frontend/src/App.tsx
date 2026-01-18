@@ -17,6 +17,7 @@ import CoachPerformance from './pages/admin/CoachPerformance';
 import AdminWaitingList from './pages/admin/AdminWaitingList';
 import AdminPackages from './pages/admin/AdminPackages';
 import AdminCashFlow from './pages/admin/AdminCashFlow';
+import AdminSettings from './pages/admin/AdminSettings';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './styles/variables.css';
@@ -93,6 +94,7 @@ function App() {
                 <Route path="admin/waiting-list" element={<AdminWaitingList />} />
                 <Route path="admin/packages" element={<AdminPackages />} />
                 <Route path="admin/cash-flow" element={<AdminCashFlow />} />
+                <Route path="admin/settings" element={<AdminSettings />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

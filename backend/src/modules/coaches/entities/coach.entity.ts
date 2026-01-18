@@ -17,6 +17,14 @@ export class Coach extends TenantScopedEntity {
     @Column({ type: 'text', array: true, default: [] })
     specializations: string[];
 
+    @Column({
+        name: 'preferred_client_gender',
+        type: 'enum',
+        enum: ['male', 'female', 'any'],
+        default: 'any'
+    })
+    preferredClientGender: 'male' | 'female' | 'any';
+
     @Column({ name: 'availability_rules', type: 'jsonb', default: [] })
     availabilityRules: any[];
 

@@ -7,6 +7,7 @@ export interface Coach {
     bio: string | null;
     specializations: string[];
     active: boolean;
+    preferredClientGender: 'male' | 'female' | 'any';
     // Nested user data from backend
     user: {
         id: string;
@@ -29,6 +30,7 @@ export interface CoachDisplay {
     email: string;
     bio: string | null;
     specializations: string[];
+    preferredClientGender: 'male' | 'female' | 'any';
     studioId: string;
     studioName: string;
     active: boolean;
@@ -45,10 +47,12 @@ export function transformCoachForDisplay(coach: Coach): CoachDisplay {
         email: coach.user?.email || '',
         bio: coach.bio,
         specializations: coach.specializations || [],
+        preferredClientGender: coach.preferredClientGender || 'any',
         studioId: coach.studioId || '',
         studioName: coach.studio?.name || '',
         active: coach.active,
         avatarUrl: coach.user?.avatarUrl || null,
+        availabilityRules: (coach as any).availabilityRules
     };
 }
 
@@ -57,6 +61,7 @@ export interface CreateCoachInput {
     studioId: string;
     bio?: string;
     specializations?: string[];
+    preferredClientGender?: 'male' | 'female' | 'any';
 }
 
 export const coachesService = {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserPlus, Users, AlertCircle, Check, Trash2, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/variables.css';
@@ -14,6 +14,9 @@ interface UserData {
 const UserManagement: React.FC = () => {
     const { token, user } = useAuth();
     const [users, setUsers] = useState<UserData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     // Create user form
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -22,13 +25,42 @@ const UserManagement: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<'admin' | 'coach' | 'client'>('client');
+    const [gender, setGender] = useState<'male' | 'female' | 'other' | 'pnts'>('pnts');
     const [creating, setCreating] = useState(false);
-    const [createError, setCreateError] = useState<string | null>(null);
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
     // Check if current user can manage users
     const canManageUsers = user?.role === 'tenant_owner' || user?.role === 'admin';
+
+    useEffect(() => {
+        if (canManageUsers) {
+            fetchUsers();
+        }
+    }, [canManageUsers, token]);
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_URL}/auth/users`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch users');
+            }
+
+            const data = await response.json();
+            setUsers(data);
+            setFetchError(null);
+        } catch (err: any) {
+            setFetchError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -48,6 +80,7 @@ const UserManagement: React.FC = () => {
                     email,
                     password,
                     role,
+                    gender,
                 }),
             });
 
@@ -65,6 +98,7 @@ const UserManagement: React.FC = () => {
             setEmail('');
             setPassword('');
             setRole('client');
+            setGender('pnts');
             setShowCreateForm(false);
         } catch (err: any) {
             setCreateError(err.message);
@@ -223,25 +257,48 @@ const UserManagement: React.FC = () => {
                             </div>
                         </div>
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Role</label>
-                            <select
-                                value={role}
-                                onChange={(e) => setRole(e.target.value as 'admin' | 'coach' | 'client')}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem 1rem',
-                                    borderRadius: 'var(--border-radius-md)',
-                                    border: '1px solid var(--border-color)',
-                                    backgroundColor: 'var(--color-bg-primary)',
-                                    color: 'var(--color-text-primary)',
-                                    fontSize: '1rem'
-                                }}
-                            >
-                                <option value="client">Client</option>
-                                <option value="coach">Coach</option>
-                                <option value="admin">Admin</option>
-                            </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Role</label>
+                                <select
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value as 'admin' | 'coach' | 'client')}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: 'var(--border-radius-md)',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: 'var(--color-bg-primary)',
+                                        color: 'var(--color-text-primary)',
+                                        fontSize: '1rem'
+                                    }}
+                                >
+                                    <option value="client">Client</option>
+                                    <option value="coach">Coach</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Gender</label>
+                                <select
+                                    value={gender}
+                                    onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other' | 'pnts')}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: 'var(--border-radius-md)',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: 'var(--color-bg-primary)',
+                                        color: 'var(--color-text-primary)',
+                                        fontSize: '1rem'
+                                    }}
+                                >
+                                    <option value="pnts">Prefer not to say</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
@@ -293,7 +350,15 @@ const UserManagement: React.FC = () => {
                 border: '1px solid var(--border-color)',
                 overflow: 'hidden'
             }}>
-                {users.length === 0 ? (
+                {loading ? (
+                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                        Loading users...
+                    </div>
+                ) : fetchError ? (
+                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-danger)' }}>
+                        {fetchError}
+                    </div>
+                ) : users.length === 0 ? (
                     <div style={{ padding: '3rem', textAlign: 'center' }}>
                         <Users size={48} style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }} />
                         <p style={{ color: 'var(--color-text-secondary)' }}>No users created yet. Click "Add User" to create your first user.</p>
@@ -325,9 +390,11 @@ const UserManagement: React.FC = () => {
                                         }}>{u.role}</span>
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                        <button style={{ padding: '0.5rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {u.role !== 'tenant_owner' && (
+                                            <button style={{ padding: '0.5rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

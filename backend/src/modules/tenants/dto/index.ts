@@ -51,4 +51,8 @@ export class UpdateTenantDto {
     @IsString()
     @MaxLength(20)
     zipCode?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    settings?: Record<string, any>;
 }

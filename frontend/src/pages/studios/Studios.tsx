@@ -17,7 +17,16 @@ const Studios: React.FC = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedStudio, setSelectedStudio] = useState<Studio | null>(null);
     const [saving, setSaving] = useState(false);
-    const initialFormState = {
+
+    interface FormState {
+        name: string;
+        address: string;
+        city: string;
+        country: string;
+        openingHours: Record<string, { open: string; close: string } | null>;
+    }
+
+    const initialFormState: FormState = {
         name: '',
         address: '',
         city: '',
@@ -32,7 +41,7 @@ const Studios: React.FC = () => {
             sunday: null // Closed
         }
     };
-    const [formData, setFormData] = useState(initialFormState);
+    const [formData, setFormData] = useState<FormState>(initialFormState);
 
     const fetchStudios = async () => {
         try {
@@ -173,7 +182,8 @@ const Studios: React.FC = () => {
             {/* Opening Hours */}
             <div>
                 <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Opening Hours</label>
-                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                {Object.keys(formData.openingHours).map((key) => {
+                    const day = key as keyof typeof formData.openingHours;
                     const hours = formData.openingHours[day];
                     const isClosed = !hours;
                     return (
@@ -192,15 +202,17 @@ const Studios: React.FC = () => {
                                     />
                                     Open
                                 </label>
-                                {!isClosed && (
+                                {!isClosed && hours && (
                                     <>
                                         <input
                                             type="time"
                                             value={hours.open}
                                             onChange={(e) => {
                                                 const newHours = { ...formData.openingHours };
-                                                newHours[day] = { ...hours, open: e.target.value };
-                                                setFormData({ ...formData, openingHours: newHours });
+                                                if (newHours[day]) {
+                                                    newHours[day] = { ...newHours[day]!, open: e.target.value };
+                                                    setFormData({ ...formData, openingHours: newHours });
+                                                }
                                             }}
                                             style={{ ...inputStyle, width: 'auto', padding: '0.5rem' }}
                                         />
@@ -210,8 +222,10 @@ const Studios: React.FC = () => {
                                             value={hours.close}
                                             onChange={(e) => {
                                                 const newHours = { ...formData.openingHours };
-                                                newHours[day] = { ...hours, close: e.target.value };
-                                                setFormData({ ...formData, openingHours: newHours });
+                                                if (newHours[day]) {
+                                                    newHours[day] = { ...newHours[day]!, close: e.target.value };
+                                                    setFormData({ ...formData, openingHours: newHours });
+                                                }
                                             }}
                                             style={{ ...inputStyle, width: 'auto', padding: '0.5rem' }}
                                         />

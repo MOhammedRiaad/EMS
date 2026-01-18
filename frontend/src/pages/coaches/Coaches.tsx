@@ -31,6 +31,7 @@ const Coaches: React.FC = () => {
         studioId: '',
         bio: '',
         specializations: '',
+        preferredClientGender: 'any' as 'male' | 'female' | 'any',
         availabilityRules: [
             { dayOfWeek: 'monday', available: true, startTime: '09:00', endTime: '17:00' },
             { dayOfWeek: 'tuesday', available: true, startTime: '09:00', endTime: '17:00' },
@@ -77,7 +78,13 @@ const Coaches: React.FC = () => {
         setError(null);
         setSaving(true);
         try {
-            await coachesService.create({ userId: formData.userId, studioId: formData.studioId, bio: formData.bio || undefined, specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()) : undefined });
+            await coachesService.create({
+                userId: formData.userId,
+                studioId: formData.studioId,
+                bio: formData.bio || undefined,
+                specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()) : undefined,
+                preferredClientGender: formData.preferredClientGender
+            });
             setIsCreateModalOpen(false);
             resetForm();
             fetchData();
@@ -95,6 +102,7 @@ const Coaches: React.FC = () => {
             studioId: coach.studioId || '',
             bio: coach.bio || '',
             specializations: coach.specializations?.join(', ') || '',
+            preferredClientGender: coach.preferredClientGender || 'any',
             availabilityRules: (coach.availabilityRules as any) || initialFormState.availabilityRules
         });
         setIsEditModalOpen(true);
@@ -105,7 +113,11 @@ const Coaches: React.FC = () => {
         if (!selectedCoach) return;
         setSaving(true);
         try {
-            await coachesService.update(selectedCoach.id, { bio: formData.bio, specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()) : [] });
+            await coachesService.update(selectedCoach.id, {
+                bio: formData.bio,
+                specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()) : [],
+                preferredClientGender: formData.preferredClientGender
+            });
             setIsEditModalOpen(false);
             setSelectedCoach(null);
             resetForm();
@@ -205,6 +217,14 @@ const Coaches: React.FC = () => {
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Specializations (comma-separated)</label>
                         <input type="text" value={formData.specializations} onChange={e => setFormData({ ...formData, specializations: e.target.value })} style={inputStyle} placeholder="e.g. EMS Training, Weight Loss" />
                     </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Preferred Client Gender</label>
+                        <select value={formData.preferredClientGender} onChange={e => setFormData({ ...formData, preferredClientGender: e.target.value as any })} style={inputStyle}>
+                            <option value="any">Any</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                         <button type="button" onClick={() => { setIsCreateModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
                         <button type="submit" disabled={saving || users.length === 0} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving || users.length === 0 ? 0.6 : 1 }}>{saving ? 'Assigning...' : 'Assign Coach'}</button>
@@ -221,6 +241,14 @@ const Coaches: React.FC = () => {
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Specializations (comma-separated)</label>
                         <input type="text" value={formData.specializations} onChange={e => setFormData({ ...formData, specializations: e.target.value })} style={inputStyle} placeholder="e.g. EMS Training, Weight Loss" />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Preferred Client Gender</label>
+                        <select value={formData.preferredClientGender} onChange={e => setFormData({ ...formData, preferredClientGender: e.target.value as any })} style={inputStyle}>
+                            <option value="any">Any</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
                     </div>
 
                     {/* Availability Rules */}

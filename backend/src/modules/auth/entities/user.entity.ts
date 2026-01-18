@@ -22,6 +22,13 @@ export class User extends TenantScopedEntityWithUpdate {
     })
     role: UserRole;
 
+    @Column({
+        type: 'enum',
+        enum: ['male', 'female', 'other', 'pnts'],
+        default: 'pnts',
+    })
+    gender: 'male' | 'female' | 'other' | 'pnts';
+
     @Column({ name: 'first_name', type: 'varchar', length: 100, nullable: true })
     firstName: string | null;
 

@@ -22,7 +22,7 @@ const ClientHome = () => {
     const [error, setError] = useState<string | null>(null);
     const [waitingList, setWaitingList] = useState<WaitingListEntry[]>([]);
     const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
-    const [notificationsLoading, setNotificationsLoading] = useState(true);
+
 
     useEffect(() => {
         const loadDashboard = async () => {
