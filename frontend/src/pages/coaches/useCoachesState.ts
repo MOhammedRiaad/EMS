@@ -37,6 +37,29 @@ const defaultAvailabilityRules: AvailabilityRule[] = [
     { dayOfWeek: 'sunday', available: false, startTime: '09:00', endTime: '17:00' }
 ];
 
+// Map numeric day indices (0-6) to day names
+const dayIndexToName: Record<number, string> = {
+    0: 'sunday',
+    1: 'monday',
+    2: 'tuesday',
+    3: 'wednesday',
+    4: 'thursday',
+    5: 'friday',
+    6: 'saturday'
+};
+
+// Normalize availability rules: convert numeric dayOfWeek to string names
+const normalizeAvailabilityRules = (rules: any[]): AvailabilityRule[] => {
+    if (!rules || !Array.isArray(rules)) return defaultAvailabilityRules;
+
+    return rules.map(rule => ({
+        ...rule,
+        dayOfWeek: typeof rule.dayOfWeek === 'number'
+            ? dayIndexToName[rule.dayOfWeek] || 'monday'
+            : String(rule.dayOfWeek).toLowerCase()
+    }));
+};
+
 const initialFormState: CoachFormData = {
     email: '',
     password: '',
@@ -167,7 +190,7 @@ export function useCoachesState() {
             bio: coach.bio || '',
             specializations: coach.specializations?.join(', ') || '',
             preferredClientGender: coach.preferredClientGender || 'any',
-            availabilityRules: (coach.availabilityRules as AvailabilityRule[]) || defaultAvailabilityRules
+            availabilityRules: normalizeAvailabilityRules(coach.availabilityRules || [])
         });
         setIsEditModalOpen(true);
     }, []);
@@ -180,7 +203,8 @@ export function useCoachesState() {
             await coachesService.update(selectedCoach.id, {
                 bio: formData.bio,
                 specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()) : [],
-                preferredClientGender: formData.preferredClientGender
+                preferredClientGender: formData.preferredClientGender,
+                availabilityRules: formData.availabilityRules
             });
             setIsEditModalOpen(false);
             setSelectedCoach(null);

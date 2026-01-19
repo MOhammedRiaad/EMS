@@ -494,11 +494,21 @@ export class SessionsService {
         }
 
         const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][startTime.getDay()];
+        const dayIndex = startTime.getDay(); // 0-6 where 0 is Sunday
 
-        // Find rule for this day of week
-        const dayRule = coach.availabilityRules.find(
-            rule => rule.dayOfWeek?.toLowerCase() === dayOfWeek
-        );
+        // Find rule for this day of week - handle both string ("monday") and numeric (1) formats
+        const dayRule = coach.availabilityRules.find(rule => {
+            if (rule.dayOfWeek === undefined || rule.dayOfWeek === null) return false;
+            // Handle numeric dayOfWeek (0-6)
+            if (typeof rule.dayOfWeek === 'number') {
+                return rule.dayOfWeek === dayIndex;
+            }
+            // Handle string dayOfWeek ("sunday", "monday", etc.)
+            if (typeof rule.dayOfWeek === 'string') {
+                return rule.dayOfWeek.toLowerCase() === dayOfWeek;
+            }
+            return false;
+        });
 
         // If no rule for this day, coach is unavailable
         if (!dayRule || !dayRule.available) {
@@ -735,8 +745,26 @@ export class SessionsService {
 
             const validCoaches = availableCoaches.filter(coach => {
                 if (!coach.availabilityRules?.length) return true;
-                const dayRule = coach.availabilityRules.find(r => r.dayOfWeek?.toLowerCase() === dayOfWeek);
+
+                // Find day rule - handle both string ("monday") and numeric (1) dayOfWeek formats
+                const dayIndex = date.getDay(); // 0-6 where 0 is Sunday
+                const dayRule = coach.availabilityRules.find(r => {
+                    if (r.dayOfWeek === undefined || r.dayOfWeek === null) return false;
+                    // Handle numeric dayOfWeek (0-6)
+                    if (typeof r.dayOfWeek === 'number') {
+                        return r.dayOfWeek === dayIndex;
+                    }
+                    // Handle string dayOfWeek ("sunday", "monday", etc.)
+                    if (typeof r.dayOfWeek === 'string') {
+                        return r.dayOfWeek.toLowerCase() === dayOfWeek;
+                    }
+                    return false;
+                });
+
+                // If no rule for this day OR rule says not available, coach is unavailable
                 if (!dayRule || !dayRule.available) return false;
+
+                // If rule has time ranges, validate against them
                 if (dayRule.startTime && dayRule.endTime) {
                     const [sH, sM] = dayRule.startTime.split(':').map(Number);
                     const [eH, eM] = dayRule.endTime.split(':').map(Number);

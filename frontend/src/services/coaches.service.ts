@@ -62,6 +62,8 @@ export interface CreateCoachInput {
     bio?: string;
     specializations?: string[];
     preferredClientGender?: 'male' | 'female' | 'any';
+    availabilityRules?: any[];
+    active?: boolean;
 }
 
 export const coachesService = {

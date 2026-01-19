@@ -3,14 +3,32 @@ import { coachPortalService } from '../../services/coach-portal.service';
 import { Loader2, Plus, Trash2, Calendar, Save } from 'lucide-react';
 
 const WEEKDAYS = [
-    { value: 0, label: 'Sunday' },
-    { value: 1, label: 'Monday' },
-    { value: 2, label: 'Tuesday' },
-    { value: 3, label: 'Wednesday' },
-    { value: 4, label: 'Thursday' },
-    { value: 5, label: 'Friday' },
-    { value: 6, label: 'Saturday' },
+    { value: 'sunday', label: 'Sunday' },
+    { value: 'monday', label: 'Monday' },
+    { value: 'tuesday', label: 'Tuesday' },
+    { value: 'wednesday', label: 'Wednesday' },
+    { value: 'thursday', label: 'Thursday' },
+    { value: 'friday', label: 'Friday' },
+    { value: 'saturday', label: 'Saturday' },
 ];
+
+// Map numeric day indices to day names for normalizing legacy data
+const dayIndexToName: Record<number, string> = {
+    0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday',
+    4: 'thursday', 5: 'friday', 6: 'saturday'
+};
+
+// Normalize rules: convert numeric dayOfWeek to string names
+const normalizeRules = (rules: any[]): any[] => {
+    if (!rules || !Array.isArray(rules)) return [];
+    return rules.map(rule => ({
+        ...rule,
+        dayOfWeek: typeof rule.dayOfWeek === 'number'
+            ? dayIndexToName[rule.dayOfWeek] || 'monday'
+            : String(rule.dayOfWeek).toLowerCase(),
+        available: rule.available !== false // default to true if not explicitly false
+    }));
+};
 
 const CoachAvailability = () => {
     const [rules, setRules] = useState<any[]>([]);
@@ -24,7 +42,7 @@ const CoachAvailability = () => {
     const loadAvailability = async () => {
         try {
             const data = await coachPortalService.getAvailability();
-            setRules(data || []);
+            setRules(normalizeRules(data || []));
         } catch (error) {
             console.error('Failed to load availability', error);
         } finally {
@@ -46,7 +64,7 @@ const CoachAvailability = () => {
     };
 
     const addRule = () => {
-        setRules([...rules, { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }]);
+        setRules([...rules, { dayOfWeek: 'monday', startTime: '09:00', endTime: '17:00', available: true }]);
     };
 
     const removeRule = (index: number) => {
@@ -100,7 +118,7 @@ const CoachAvailability = () => {
                                 <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Day</label>
                                 <select
                                     value={rule.dayOfWeek}
-                                    onChange={(e) => updateRule(index, 'dayOfWeek', parseInt(e.target.value))}
+                                    onChange={(e) => updateRule(index, 'dayOfWeek', e.target.value)}
                                     className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
                                 >
                                     {WEEKDAYS.map(day => (
