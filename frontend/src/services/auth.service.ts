@@ -6,11 +6,11 @@ export interface LoginCredentials {
 }
 
 export interface RegisterDto {
-    name: string;
-    ownerEmail: string;
-    ownerPassword: string;
-    ownerFirstName?: string;
-    ownerLastName?: string;
+    businessName: string;
+    email: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
 }
 
 export interface SetupPasswordDto {
@@ -21,7 +21,7 @@ export interface SetupPasswordDto {
 }
 
 export interface AuthResponse {
-    token: string;
+    accessToken: string;
     user: {
         id: string;
         email: string;

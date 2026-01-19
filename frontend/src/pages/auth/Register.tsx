@@ -67,11 +67,11 @@ const Register: React.FC = () => {
 
         try {
             await authService.register({
-                name: businessName,
-                ownerEmail: email,
-                ownerPassword: password,
-                ownerFirstName: firstName,
-                ownerLastName: lastName,
+                businessName: businessName,
+                email: email,
+                password: password,
+                firstName: firstName,
+                lastName: lastName,
             });
 
             // On success, redirect to login

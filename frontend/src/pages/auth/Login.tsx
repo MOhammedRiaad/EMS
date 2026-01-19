@@ -20,8 +20,7 @@ const Login: React.FC = () => {
 
         try {
             const data = await authService.login({ email, password });
-            login(data.token, data.user, data.tenant);
-
+            login(data.accessToken, data.user, data.tenant);
             // Check if tenant owner needs to complete onboarding
             if (data.user.role === 'tenant_owner' && data.tenant && !data.tenant.isComplete) {
                 navigate('/onboarding');
