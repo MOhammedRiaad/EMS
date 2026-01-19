@@ -674,7 +674,7 @@ export class SessionsService {
 
         return this.sessionRepository.save(session);
     }
-    async getAvailableSlots(tenantId: string, studioId: string, dateStr: string): Promise<{ time: string, status: 'available' | 'full' }[]> {
+    async getAvailableSlots(tenantId: string, studioId: string, dateStr: string, coachId?: string): Promise<{ time: string, status: 'available' | 'full' }[]> {
         const date = new Date(dateStr);
         const startOfDay = new Date(date);
         startOfDay.setHours(0, 0, 0, 0);
@@ -700,7 +700,13 @@ export class SessionsService {
 
         // 2. Get Resources
         const rooms = studio.rooms.filter(r => r.active);
-        const coaches = await this.coachRepository.find({ where: { tenantId, active: true } });
+        let coaches = await this.coachRepository.find({ where: { tenantId, active: true } });
+
+        // Filter by specific coach if requested
+        if (coachId) {
+            coaches = coaches.filter(c => c.id === coachId);
+            // If requested coach is not found/active, coaches will be empty -> no slots
+        }
 
         // 3. Get Existing Sessions
         const sessions = await this.sessionRepository.createQueryBuilder('s')
@@ -799,7 +805,7 @@ export class SessionsService {
         return studio ? studio.id : null;
     }
 
-    async autoAssignResources(tenantId: string, studioId: string, start: Date, end: Date): Promise<{ roomId: string, coachId: string }> {
+    async autoAssignResources(tenantId: string, studioId: string, start: Date, end: Date, preferredCoachId?: string): Promise<{ roomId: string, coachId: string }> {
         // 1. Get overlapping sessions to find occupied resources
         const overlappingSessions = await this.sessionRepository.createQueryBuilder('s')
             .where('s.tenant_id = :tenantId', { tenantId })
@@ -826,9 +832,25 @@ export class SessionsService {
 
         // 3. Find available coach
         const allCoaches = await this.coachRepository.find({ where: { active: true, tenantId } });
-        // Filter by studio if coaches are studio-scoped? Assuming global or linked.
-        // For simplified MVP, just pick any available coach not occupied.
-        const availableCoach = allCoaches.find(c => !occupiedCoachIds.includes(c.id));
+
+        let availableCoach;
+
+        if (preferredCoachId) {
+            // If user selected a specific coach, check availability
+            if (occupiedCoachIds.includes(preferredCoachId)) {
+                throw new Error('Selected coach is already booked for this time slot');
+            }
+            availableCoach = allCoaches.find(c => c.id === preferredCoachId);
+            if (!availableCoach) {
+                // Could act as validation too
+                throw new Error('Selected coach not found or inactive');
+            }
+        } else {
+            // Auto-assign any open coach
+            // Filter by studio if coaches are studio-scoped? Assuming global or linked.
+            // For simplified MVP, just pick any available coach not occupied.
+            availableCoach = allCoaches.find(c => !occupiedCoachIds.includes(c.id));
+        }
 
         // Coach is optional? If booking REQUIRES coach, we throw.
         // Schema says coachId is UUID (required in DTO).

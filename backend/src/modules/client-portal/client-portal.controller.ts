@@ -31,6 +31,7 @@ export class ClientPortalController {
         @Request() req: any,
         @Query('date') date: string,
         @Query('studioId') studioId?: string,
+        @Query('coachId') coachId?: string,
     ) {
         // Use user's default studio if not provided? Or first active studio.
         // For now, assuming single studio or requiring studioId.
@@ -45,14 +46,7 @@ export class ClientPortalController {
             // Actually, let's fetch 'first' studio to be user-friendly.
         }
 
-        // We will delegate to service. GET /slots requires studioId usually.
-        // If not provided, we can't calculate.
-        if (!targetStudioId) {
-            // For simplicity, I'll allow the service to pick one or error. 
-            // But strict API is better.
-        }
-
-        return this.clientPortalService.getAvailableSlots(req.user.tenantId, req.user, date);
+        return this.clientPortalService.getAvailableSlots(req.user.tenantId, req.user, date, coachId);
     }
 
     @Get('sessions')
@@ -61,6 +55,14 @@ export class ClientPortalController {
         const { clientId, tenantId } = req.user;
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.getMySessions(clientId, tenantId, from, to);
+    }
+
+    @Get('coaches')
+    @ApiOperation({ summary: 'Get active coaches suitable for client' })
+    async getCoaches(@Request() req: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getCoaches(clientId, tenantId);
     }
 
     @Post('sessions')

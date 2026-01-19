@@ -6,6 +6,8 @@ import { ClientsService } from '../clients/clients.service';
 import { SessionStatus } from '../sessions/entities/session.entity';
 import { ClientPackageStatus } from '../packages/entities/client-package.entity';
 
+import { CoachesService } from '../coaches/coaches.service';
+
 @Injectable()
 export class ClientPortalService {
     constructor(
@@ -13,7 +15,12 @@ export class ClientPortalService {
         private readonly packagesService: PackagesService,
         private readonly waitingListService: WaitingListService,
         private readonly clientsService: ClientsService,
+        private readonly coachesService: CoachesService,
     ) { }
+
+    // ... existing code ...
+
+
 
     async getDashboard(clientId: string, tenantId: string) {
         // 1. Get next upcoming session
@@ -92,7 +99,8 @@ export class ClientPortalService {
             tenantId,
             studioId,
             new Date(dto.startTime),
-            new Date(dto.endTime)
+            new Date(dto.endTime),
+            dto.coachId
         );
 
         // Construct full creation DTO (or partial object that SessionsService accepts)
@@ -132,10 +140,10 @@ export class ClientPortalService {
         return this.sessionsService.updateStatus(sessionId, tenantId, 'cancelled', deductSession);
     }
 
-    async getAvailableSlots(tenantId: string, user: any, date: string) {
+    async getAvailableSlots(tenantId: string, user: any, date: string, coachId?: string) {
         const defaultId = await this.sessionsService.findFirstActiveStudio(tenantId);
         if (!defaultId) throw new Error('No active studio found');
-        return this.sessionsService.getAvailableSlots(tenantId, defaultId, date);
+        return this.sessionsService.getAvailableSlots(tenantId, defaultId, date, coachId);
     }
 
     async joinWaitingList(clientId: string, tenantId: string, dto: { studioId?: string; preferredDate: string; preferredTimeSlot: string; notes?: string }) {
@@ -159,7 +167,7 @@ export class ClientPortalService {
     }
 
     async getProfile(clientId: string, tenantId: string) {
-        const client = await this.clientsService.findOne(clientId, tenantId);
+        const client = await this.clientsService.findOne(clientId, tenantId, ['user']);
 
         if (!client) {
             throw new Error('Client not found');
@@ -172,8 +180,19 @@ export class ClientPortalService {
             email: client.email,
             phone: client.phone,
             avatarUrl: client.avatarUrl,
-            memberSince: client.createdAt
+            memberSince: client.createdAt,
+            gender: client.user?.gender || (client as any).gender
         };
+    }
+
+    async getCoaches(clientId: string, tenantId: string) {
+        // Get client gender to filter coaches
+        const client = await this.clientsService.findOne(clientId, tenantId, ['user']);
+        if (!client) throw new Error('Client not found');
+
+        const clientGender = client.user?.gender || (client as any).gender;
+
+        return this.coachesService.findActive(tenantId, clientGender);
     }
 
     async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {

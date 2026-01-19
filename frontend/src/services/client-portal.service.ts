@@ -45,15 +45,25 @@ export const clientPortalService = {
 
 
 
-    async getAvailableSlots(date: string, studioId?: string): Promise<{ time: string; status: 'available' | 'full' }[]> {
+    async getAvailableSlots(date: string, studioId?: string, coachId?: string): Promise<{ time: string; status: 'available' | 'full' }[]> {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams({ date });
         if (studioId) params.append('studioId', studioId);
+        if (coachId) params.append('coachId', coachId);
 
         const response = await fetch(`${API_URL}/client-portal/slots?${params.toString()}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Failed to fetch slots');
+        return response.json();
+    },
+
+    async getCoaches(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/coaches`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch coaches');
         return response.json();
     },
 

@@ -29,6 +29,25 @@ export class CoachesService {
         });
     }
 
+    async findActive(tenantId: string, clientGender?: string): Promise<Coach[]> {
+        // Basic active coaches query
+        const coaches = await this.coachRepository.find({
+            where: { tenantId, active: true },
+            relations: ['user', 'studio'],
+            order: { createdAt: 'DESC' }
+        });
+
+        // If client gender is provided, filter by preference
+        if (clientGender) {
+            return coaches.filter(coach =>
+                coach.preferredClientGender === 'any' ||
+                coach.preferredClientGender === clientGender
+            );
+        }
+
+        return coaches;
+    }
+
     async findOne(id: string, tenantId: string): Promise<Coach> {
         const coach = await this.coachRepository.findOne({
             where: { id, tenantId },

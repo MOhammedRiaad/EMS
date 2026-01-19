@@ -1,6 +1,6 @@
 import React from 'react';
-import { Clock, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
-import type { Slot } from './useClientBookingState';
+import { Clock, ChevronLeft, ChevronRight, AlertCircle, User } from 'lucide-react';
+import type { Slot, BookingCoach } from './useClientBookingState';
 
 // ============================================================================
 // DateSelector
@@ -27,6 +27,61 @@ export const DateSelector: React.FC<DateSelectorProps> = ({ selectedDate, onPrev
             </button>
         </div>
     </section>
+);
+
+// ============================================================================
+// CoachList
+// ============================================================================
+
+export interface CoachListProps {
+    coaches: BookingCoach[];
+    selectedCoachId: string | null;
+    onSelect: (id: string | null) => void;
+}
+
+export const CoachList: React.FC<CoachListProps> = ({ coaches, selectedCoachId, onSelect }) => (
+    <div className="flex flex-col space-y-3">
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide px-1">Coach</h3>
+
+        {/* Any Coach Option */}
+        <button
+            onClick={() => onSelect(null)}
+            className={`
+        flex items-center p-2 pr-4 rounded-full border transition-all w-full
+        ${!selectedCoachId
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-200 dark:ring-blue-900'
+                    : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-700 hover:bg-gray-50 dark:hover:bg-slate-800'}
+      `}
+        >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${!selectedCoachId ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-800'}`}>
+                <User size={20} />
+            </div>
+            <span className="font-semibold text-sm">Any Coach</span>
+        </button>
+
+        {/* Coach List */}
+        {coaches.map(coach => (
+            <button
+                key={coach.id}
+                onClick={() => onSelect(coach.id)}
+                className={`
+          flex items-center p-2 pr-4 rounded-full border transition-all text-left w-full
+          ${selectedCoachId === coach.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-200 dark:ring-blue-900'
+                        : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-700 hover:bg-gray-50 dark:hover:bg-slate-800'}
+        `}
+            >
+                {coach.avatarUrl ? (
+                    <img src={coach.avatarUrl} alt={coach.name} className="w-10 h-10 rounded-full object-cover mr-3 border-2 border-white/20 shrink-0" />
+                ) : (
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${selectedCoachId === coach.id ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-800'}`}>
+                        <span className="text-sm font-bold">{coach.name.charAt(0)}</span>
+                    </div>
+                )}
+                <span className="font-semibold text-sm truncate">{coach.name}</span>
+            </button>
+        ))}
+    </div>
 );
 
 // ============================================================================
@@ -64,7 +119,7 @@ export const SlotsGrid: React.FC<SlotsGridProps> = ({ slots, loading, error, sel
                 <button onClick={onNextDay} className="mt-2 text-blue-600 dark:text-blue-400 text-sm font-medium">Check next day</button>
             </div>
         ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 {slots.map(slot => (
                     <button
                         key={slot.time}

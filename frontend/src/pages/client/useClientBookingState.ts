@@ -7,16 +7,42 @@ export interface Slot {
     status: 'available' | 'full';
 }
 
+export interface BookingCoach {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+}
+
 export function useClientBookingState() {
     const navigate = useNavigate();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [slots, setSlots] = useState<Slot[]>([]);
+    const [coaches, setCoaches] = useState<BookingCoach[]>([]);
+    const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
     const [booking, setBooking] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Load slots when date changes
+    // 1. Fetch Coaches on mount
+    useEffect(() => {
+        const loadCoaches = async () => {
+            try {
+                const data = await clientPortalService.getCoaches();
+                const formatted: BookingCoach[] = data.map((c: any) => ({
+                    id: c.id,
+                    name: c.user ? `${c.user.firstName} ${c.user.lastName}` : 'Coach',
+                    avatarUrl: c.user?.avatarUrl || null
+                }));
+                setCoaches(formatted);
+            } catch (err) {
+                console.error("Failed to load coaches", err);
+            }
+        };
+        loadCoaches();
+    }, []);
+
+    // 2. Load slots when date or coach changes
     useEffect(() => {
         const loadSlots = async () => {
             setLoading(true);
@@ -26,7 +52,7 @@ export function useClientBookingState() {
 
             try {
                 const dateStr = selectedDate.toISOString().split('T')[0];
-                const availableSlots = await clientPortalService.getAvailableSlots(dateStr);
+                const availableSlots = await clientPortalService.getAvailableSlots(dateStr, undefined, selectedCoachId || undefined);
                 setSlots(availableSlots);
             } catch (err: any) {
                 console.error("Failed to load slots", err);
@@ -37,7 +63,7 @@ export function useClientBookingState() {
         };
 
         loadSlots();
-    }, [selectedDate]);
+    }, [selectedDate, selectedCoachId]);
 
     const handleDateChange = useCallback((days: number) => {
         const newDate = new Date(selectedDate);
@@ -87,6 +113,7 @@ export function useClientBookingState() {
             await clientPortalService.bookSession({
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
+                coachId: selectedCoachId || undefined,
             });
 
             alert('Session booked successfully!');
@@ -96,7 +123,7 @@ export function useClientBookingState() {
         } finally {
             setBooking(false);
         }
-    }, [selectedSlot, selectedDate, navigate]);
+    }, [selectedSlot, selectedDate, selectedCoachId, navigate]);
 
     const handleAction = useCallback(async () => {
         if (!selectedSlot) return;
@@ -116,6 +143,11 @@ export function useClientBookingState() {
         // Date state
         selectedDate,
         handleDateChange,
+
+        // Coach state
+        coaches,
+        selectedCoachId,
+        setSelectedCoachId,
 
         // Slots
         slots,
