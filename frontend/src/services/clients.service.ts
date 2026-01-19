@@ -37,6 +37,25 @@ export const clientsService = {
         if (!response.ok) throw new Error('Failed to create client');
         return response.json();
     },
+
+    async createWithUser(data: any): Promise<Client> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/create-with-user`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to create client');
+        }
+        return response.json();
+    },
+
     async update(id: string, data: Partial<Client>): Promise<Client> {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/clients/${id}`, {

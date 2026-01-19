@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
 import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import FilterBar from '../../components/common/FilterBar';
 import { clientsService, type Client } from '../../services/clients.service';
-import { Mail, Phone, Upload, User, Package, Send } from 'lucide-react';
+import { Mail, Phone, Upload, User } from 'lucide-react';
 import { storageService } from '../../services/storage.service';
 import { usePermissions } from '../../hooks/usePermissions';
 import ClientPackages from '../../components/clients/ClientPackages';
@@ -26,7 +27,21 @@ const Clients: React.FC = () => {
     const [saving, setSaving] = useState(false);
 
     // Form state
-    const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', avatarUrl: '' });
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        gender: 'male' as 'male' | 'female' | 'other' | 'pnts',
+        phone: '',
+        avatarUrl: ''
+    });
+
+    // Filter state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filters, setFilters] = useState({
+        status: 'all'
+    });
 
     const fetchClients = async () => {
         try {
@@ -41,13 +56,51 @@ const Clients: React.FC = () => {
 
     useEffect(() => { fetchClients(); }, []);
 
-    const resetForm = () => setFormData({ firstName: '', lastName: '', email: '', phone: '', avatarUrl: '' });
+    // Filtered clients
+    const filteredClients = useMemo(() => {
+        return clients.filter(client => {
+            // Search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const matchesName = `${client.firstName} ${client.lastName}`.toLowerCase().includes(query);
+                const matchesEmail = client.email?.toLowerCase().includes(query) || false;
+                const matchesPhone = client.phone?.toLowerCase().includes(query) || false;
+                if (!matchesName && !matchesEmail && !matchesPhone) return false;
+            }
+
+            // Status filter
+            if (filters.status !== 'all' && client.status !== filters.status) {
+                return false;
+            }
+
+            return true;
+        });
+    }, [clients, searchQuery, filters]);
+
+    const handleFilterChange = (key: string, value: any) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilters({ status: 'all' });
+    };
+
+    const resetForm = () => setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        gender: 'male',
+        phone: '',
+        avatarUrl: ''
+    });
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
-            await clientsService.create({ ...formData, status: 'active' });
+            await clientsService.createWithUser(formData);
             setIsCreateModalOpen(false);
             resetForm();
             fetchClients();
@@ -64,10 +117,22 @@ const Clients: React.FC = () => {
             firstName: client.firstName,
             lastName: client.lastName,
             email: client.email || '',
+            password: '', // Don't populate password on edit
+            gender: 'male', // Default, not editable on client edit
             phone: client.phone || '',
             avatarUrl: client.avatarUrl || ''
         });
         setIsEditModalOpen(true);
+    };
+
+    const handleToggleActive = async (clientId: string, currentStatus: string) => {
+        try {
+            const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+            await clientsService.update(clientId, { status: newStatus });
+            fetchClients();
+        } catch (err) {
+            console.error('Failed to toggle client status', err);
+        }
     };
 
     const handleUpdate = async (e: React.FormEvent) => {
@@ -198,27 +263,21 @@ const Clients: React.FC = () => {
             key: 'actions' as keyof Client,
             header: '',
             render: (client: Client) => (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button
-                        onClick={() => handleInvite(client)}
+                        onClick={() => handleToggleActive(client.id, client.status)}
                         style={{
-                            padding: '0.25rem 0.5rem',
-                            color: 'var(--color-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            cursor: 'pointer'
+                            padding: '0.375rem 0.75rem',
+                            fontSize: '0.75rem',
+                            borderRadius: 'var(--border-radius-sm)',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--color-bg-primary)',
+                            color: client.status === 'active' ? 'var(--color-danger)' : 'var(--color-success)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
                         }}
-                        title="Send Invitation"
                     >
-                        <Send size={16} />
-                    </button>
-                    <button
-                        onClick={() => { setSelectedClient(client); setIsPackageModalOpen(true); }}
-                        style={{ padding: '0.25rem 0.5rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                        title="View Packages"
-                    >
-                        <Package size={16} />
+                        {client.status === 'active' ? 'Deactivate' : 'Activate'}
                     </button>
                     <ActionButtons
                         showEdit={canEdit}
@@ -274,7 +333,20 @@ const Clients: React.FC = () => {
             </div>
             <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Email</label>
-                <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={inputStyle} />
+                <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={inputStyle} />
+            </div>
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Password <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <input type="password" required minLength={6} placeholder="Min 6 characters" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
+            </div>
+            <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Gender <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <select required value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value as any })} style={inputStyle}>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="pnts">Prefer not to say</option>
+                </select>
             </div>
             <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Phone</label>
@@ -292,7 +364,28 @@ const Clients: React.FC = () => {
     return (
         <div>
             <PageHeader title="Clients" description="Manage your client base" actionLabel="Add Client" onAction={() => setIsCreateModalOpen(true)} />
-            <DataTable columns={columns} data={clients} isLoading={loading} />
+
+            <FilterBar
+                searchPlaceholder="Search clients by name, email, or phone..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                dropdowns={[
+                    {
+                        key: 'status',
+                        label: 'Status',
+                        options: [
+                            { value: 'active', label: 'Active' },
+                            { value: 'inactive', label: 'Inactive' },
+                            { value: 'suspended', label: 'Suspended' }
+                        ]
+                    }
+                ]}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearAll={handleClearFilters}
+            />
+
+            <DataTable columns={columns} data={filteredClients} isLoading={loading} />
 
             <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="New Client">
                 {renderForm(handleCreate, false)}

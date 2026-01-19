@@ -31,6 +31,12 @@ export class ClientsController {
         return this.clientsService.create(dto, tenantId);
     }
 
+    @Post('create-with-user')
+    @ApiOperation({ summary: 'Create client with user account' })
+    createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
+        return this.clientsService.createWithUser(dto, tenantId);
+    }
+
     @Patch(':id')
     @ApiOperation({ summary: 'Update a client' })
     update(@Param('id') id: string, @Body() dto: UpdateClientDto, @TenantId() tenantId: string) {

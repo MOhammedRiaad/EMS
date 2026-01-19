@@ -1,23 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
 import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import FilterBar from '../../components/common/FilterBar';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
 import { studiosService, type Studio } from '../../services/studios.service';
-import { usersService } from '../../services/users.service';
 import { Mail, Building2, AlertCircle } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { getImageUrl } from '../../utils/imageUtils';
 
-interface UserOption { id: string; email: string; firstName: string | null; lastName: string | null; role: string; }
-
 const Coaches: React.FC = () => {
+    const navigate = useNavigate();
     const { canEdit, canDelete } = usePermissions();
     const [coaches, setCoaches] = useState<CoachDisplay[]>([]);
     const [studios, setStudios] = useState<Studio[]>([]);
-    const [users, setUsers] = useState<UserOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -25,8 +24,19 @@ const Coaches: React.FC = () => {
     const [selectedCoach, setSelectedCoach] = useState<CoachDisplay | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Filter state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filters, setFilters] = useState({
+        studioId: 'all',
+        activeStatus: 'all' // 'all', 'active', 'inactive'
+    });
     const initialFormState = {
-        userId: '',
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        gender: 'male' as 'male' | 'female' | 'other' | 'pnts',
         studioId: '',
         bio: '',
         specializations: '',
@@ -55,15 +65,47 @@ const Coaches: React.FC = () => {
         }
     };
 
-    const fetchUsers = async () => {
-        try {
-            const data = await usersService.getAllUsers('coach');
-            setUsers(data);
-        } catch (err) { console.error('Failed to fetch users', err); }
+    useEffect(() => { fetchData(); }, []);
+
+    // Filtered coaches
+    const filteredCoaches = useMemo(() => {
+        return coaches.filter(coach => {
+            // Search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const matchesName = `${coach.firstName} ${coach.lastName}`.toLowerCase().includes(query);
+                const matchesEmail = coach.email?.toLowerCase().includes(query) || false;
+                const matchesSpecializations = coach.specializations?.some(s =>
+                    s.toLowerCase().includes(query)
+                ) || false;
+                if (!matchesName && !matchesEmail && !matchesSpecializations) return false;
+            }
+
+            // Studio filter
+            if (filters.studioId !== 'all' && coach.studioId !== filters.studioId) {
+                return false;
+            }
+
+            // Active status filter
+            if (filters.activeStatus === 'active' && !coach.active) {
+                return false;
+            }
+            if (filters.activeStatus === 'inactive' && coach.active) {
+                return false;
+            }
+
+            return true;
+        });
+    }, [coaches, searchQuery, filters]);
+
+    const handleFilterChange = (key: string, value: any) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
     };
 
-    useEffect(() => { fetchData(); }, []);
-    useEffect(() => { if (isCreateModalOpen) fetchUsers(); }, [isCreateModalOpen]);
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilters({ studioId: 'all', activeStatus: 'all' });
+    };
 
     const resetForm = () => { setFormData(initialFormState); setError(null); };
 
@@ -72,8 +114,12 @@ const Coaches: React.FC = () => {
         setError(null);
         setSaving(true);
         try {
-            await coachesService.create({
-                userId: formData.userId,
+            await coachesService.createWithUser({
+                email: formData.email,
+                password: formData.password,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                gender: formData.gender,
                 studioId: formData.studioId,
                 bio: formData.bio || undefined,
                 specializations: formData.specializations ? formData.specializations.split(',').map(s => s.trim()) : undefined,
@@ -92,7 +138,11 @@ const Coaches: React.FC = () => {
     const handleEdit = (coach: CoachDisplay) => {
         setSelectedCoach(coach);
         setFormData({
-            userId: '',
+            email: coach.email || '',
+            password: '', // Don't populate on edit
+            firstName: coach.firstName,
+            lastName: coach.lastName,
+            gender: 'male', // Default
             studioId: coach.studioId || '',
             bio: coach.bio || '',
             specializations: coach.specializations?.join(', ') || '',
@@ -100,6 +150,15 @@ const Coaches: React.FC = () => {
             availabilityRules: (coach.availabilityRules as any) || initialFormState.availabilityRules
         });
         setIsEditModalOpen(true);
+    };
+
+    const handleToggleActive = async (coachId: string, currentActive: boolean) => {
+        try {
+            await coachesService.update(coachId, { active: !currentActive });
+            fetchData();
+        } catch (err) {
+            console.error('Failed to toggle coach status', err);
+        }
     };
 
     const handleUpdate = async (e: React.FormEvent) => {
@@ -173,7 +232,26 @@ const Coaches: React.FC = () => {
         },
         ...(canEdit || canDelete ? [{
             key: 'actions' as keyof CoachDisplay, header: '',
-            render: (coach: CoachDisplay) => <ActionButtons showEdit={canEdit} showDelete={canDelete} onEdit={() => handleEdit(coach)} onDelete={() => handleDeleteClick(coach)} />
+            render: (coach: CoachDisplay) => (
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                        onClick={() => handleToggleActive(coach.id, coach.active)}
+                        style={{
+                            padding: '0.375rem 0.75rem',
+                            fontSize: '0.75rem',
+                            borderRadius: 'var(--border-radius-sm)',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--color-bg-primary)',
+                            color: coach.active ? 'var(--color-danger)' : 'var(--color-success)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        {coach.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <ActionButtons showEdit={canEdit} showDelete={canDelete} onEdit={() => handleEdit(coach)} onDelete={() => handleDeleteClick(coach)} />
+                </div>
+            )
         }] : [])
     ];
 
@@ -181,23 +259,79 @@ const Coaches: React.FC = () => {
 
     return (
         <div>
-            <PageHeader title="Coaches" description="Manage your training staff" actionLabel="Add Coach" onAction={() => setIsCreateModalOpen(true)} />
-            <DataTable columns={columns} data={coaches} isLoading={loading} />
+            <PageHeader
+                title="Coaches"
+                description="Manage your training staff"
+                actionLabel="Add Coach"
+                onAction={() => navigate('/coaches/create')}
+            />
 
-            <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Assign Coach">
+            <FilterBar
+                searchPlaceholder="Search coaches by name, email, or specialization..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                dropdowns={[
+                    {
+                        key: 'activeStatus',
+                        label: 'Status',
+                        options: [
+                            { value: 'active', label: 'Active Only' },
+                            { value: 'inactive', label: 'Inactive Only' }
+                        ]
+                    },
+                    {
+                        key: 'studioId',
+                        label: 'Studio',
+                        options: studios.filter(s => s.isActive).map(s => ({
+                            value: s.id,
+                            label: s.name
+                        }))
+                    }
+                ]}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearAll={handleClearFilters}
+            />
+
+            <DataTable columns={columns} data={filteredCoaches} isLoading={loading} />
+
+            <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Create Coach">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {error && <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--color-danger)', color: 'var(--color-danger)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}><AlertCircle size={16} /><span>{error}</span></div>}
-                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>To add a coach, first create a user with "Coach" role in User Management, then assign them here.</p>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Select User</label>
-                        <select required value={formData.userId} onChange={e => setFormData({ ...formData, userId: e.target.value })} style={inputStyle}>
-                            <option value="">Choose a user...</option>
-                            {users.map(u => (<option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>))}
-                        </select>
-                        {users.length === 0 && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>No users with "Coach" role available.</p>}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>First Name <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                            <input type="text" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Last Name <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                            <input type="text" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} style={inputStyle} />
+                        </div>
                     </div>
+
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Select Studio</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Email <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                        <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={inputStyle} />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Password <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                        <input type="password" required minLength={6} placeholder="Min 6 characters" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={inputStyle} />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Gender <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                        <select required value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value as any })} style={inputStyle}>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                            <option value="pnts">Prefer not to say</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Select Studio <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                         <select required value={formData.studioId} onChange={e => setFormData({ ...formData, studioId: e.target.value })} style={inputStyle}>
                             <option value="">Choose a studio...</option>
                             {studios.filter(s => s.isActive).map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
@@ -221,7 +355,7 @@ const Coaches: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                         <button type="button" onClick={() => { setIsCreateModalOpen(false); resetForm(); }} style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}>Cancel</button>
-                        <button type="submit" disabled={saving || users.length === 0} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving || users.length === 0 ? 0.6 : 1 }}>{saving ? 'Assigning...' : 'Assign Coach'}</button>
+                        <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: 'var(--border-radius-md)', opacity: saving ? 0.6 : 1 }}>{saving ? 'Creating...' : 'Create Coach'}</button>
                     </div>
                 </form>
             </Modal>

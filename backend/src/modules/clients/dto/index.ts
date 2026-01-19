@@ -103,3 +103,40 @@ export class UpdateClientDto {
     @IsEnum(['active', 'inactive', 'suspended'])
     status?: 'active' | 'inactive' | 'suspended';
 }
+
+export class CreateClientWithUserDto {
+    @ApiProperty({ description: 'User email address' })
+    @IsEmail()
+    email: string;
+
+    @ApiProperty({ description: 'User password (min 6 characters)' })
+    @IsString()
+    password: string;
+
+    @ApiProperty()
+    @IsString()
+    firstName: string;
+
+    @ApiProperty()
+    @IsString()
+    lastName: string;
+
+    @ApiProperty({ enum: ['male', 'female', 'other', 'pnts'] })
+    @IsEnum(['male', 'female', 'other', 'pnts'])
+    gender: 'male' | 'female' | 'other' | 'pnts';
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    phone?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    avatarUrl?: string;
+
+    @ApiPropertyOptional({ enum: ['active', 'inactive'], default: 'active' })
+    @IsOptional()
+    @IsEnum(['active', 'inactive'])
+    status?: 'active' | 'inactive';
+}

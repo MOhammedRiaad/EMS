@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
 import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import FilterBar from '../../components/common/FilterBar';
 import { sessionsService, type Session } from '../../services/sessions.service';
 import { clientsService, type Client } from '../../services/clients.service';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
@@ -52,6 +53,16 @@ const Sessions: React.FC = () => {
     };
 
     const [formData, setFormData] = useState(initialFormState);
+
+    // Filter state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filters, setFilters] = useState({
+        status: 'all',
+        coachId: 'all',
+        studioId: 'all',
+        dateFrom: '',
+        dateTo: ''
+    });
 
     const fetchData = async () => {
         console.log('fetchData called, fetching sessions...');
@@ -110,6 +121,55 @@ const Sessions: React.FC = () => {
     useEffect(() => {
         console.log('Sessions state changed, count:', sessions.length);
     }, [sessions]);
+
+    // Filtered sessions
+    const filteredSessions = useMemo(() => {
+        return sessions.filter(session => {
+            // Search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const client = clients.find(c => c.id === session.clientId);
+                const coach = coaches.find(c => c.id === session.coachId);
+                const clientName = client ? `${client.firstName} ${client.lastName}`.toLowerCase() : '';
+                const coachName = coach ? `${coach.firstName} ${coach.lastName}`.toLowerCase() : '';
+
+                if (!clientName.includes(query) && !coachName.includes(query)) return false;
+            }
+
+            // Status filter
+            if (filters.status !== 'all' && session.status !== filters.status) {
+                return false;
+            }
+
+            // Coach filter
+            if (filters.coachId !== 'all' && session.coachId !== filters.coachId) {
+                return false;
+            }
+
+            // Studio filter
+            if (filters.studioId !== 'all' && session.studioId !== filters.studioId) {
+                return false;
+            }
+
+            // Date range filter
+            if (filters.dateFrom || filters.dateTo) {
+                const sessionDate = new Date(session.startTime).toISOString().split('T')[0];
+                if (filters.dateFrom && sessionDate < filters.dateFrom) return false;
+                if (filters.dateTo && sessionDate > filters.dateTo) return false;
+            }
+
+            return true;
+        });
+    }, [sessions, clients, coaches, searchQuery, filters]);
+
+    const handleFilterChange = (key: string, value: any) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilters({ status: 'all', coachId: 'all', studioId: 'all', dateFrom: '', dateTo: '' });
+    };
 
     const resetForm = () => {
         setFormData(initialFormState);
@@ -617,12 +677,55 @@ const Sessions: React.FC = () => {
     );
 
     return (
-        <div>
-            <PageHeader title="Sessions" description="Schedule and manage training sessions" actionLabel="New Session" onAction={() => setIsCreateModalOpen(true)} />
+        <div key={refreshKey}>
+            <PageHeader title="Sessions" description="Manage training sessions" actionLabel="Schedule Session" onAction={() => setIsCreateModalOpen(true)} />
+
+            <FilterBar
+                searchPlaceholder="Search by client or coach name..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                dropdowns={[
+                    {
+                        key: 'status',
+                        label: 'Status',
+                        options: [
+                            { value: 'scheduled', label: 'Scheduled' },
+                            { value: 'completed', label: 'Completed' },
+                            { value: 'cancelled', label: 'Cancelled' },
+                            { value: 'no_show', label: 'No Show' }
+                        ]
+                    },
+                    {
+                        key: 'coachId',
+                        label: 'Coach',
+                        options: coaches.map(c => ({
+                            value: c.id,
+                            label: `${c.firstName} ${c.lastName}`
+                        }))
+                    },
+                    {
+                        key: 'studioId',
+                        label: 'Studio',
+                        options: studios.filter(s => s.isActive).map(s => ({
+                            value: s.id,
+                            label: s.name
+                        }))
+                    }
+                ]}
+                dateRange={{
+                    fromKey: 'dateFrom',
+                    toKey: 'dateTo',
+                    label: 'Date Range'
+                }}
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearAll={handleClearFilters}
+            />
+
             <DataTable
-                key={`sessions-table-${refreshKey}`}
+                key={refreshKey}
                 columns={columns}
-                data={sessions}
+                data={filteredSessions}
                 isLoading={loading}
             />
             <Modal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); resetForm(); }} title="Schedule Session">{renderForm(handleCreate, false)}</Modal>

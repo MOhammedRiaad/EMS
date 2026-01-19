@@ -40,6 +40,38 @@ export class ClientsService {
         return this.clientRepository.save(client);
     }
 
+    async createWithUser(dto: any, tenantId: string): Promise<Client> {
+        // Check if email already exists
+        const existingUser = await this.authService.findByEmail(dto.email, tenantId);
+        if (existingUser) {
+            throw new Error('Email is already registered');
+        }
+
+        // Create user account with transaction
+        const user = await this.authService.createClientUser({
+            email: dto.email,
+            password: dto.password,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            role: 'client',
+            gender: dto.gender,
+        } as any, tenantId);
+
+        // Create client profile linked to user
+        const client = this.clientRepository.create({
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            email: dto.email,
+            phone: dto.phone,
+            avatarUrl: dto.avatarUrl,
+            status: dto.status || 'active',
+            userId: user.id,
+            tenantId,
+        });
+
+        return this.clientRepository.save(client);
+    }
+
     async update(id: string, dto: UpdateClientDto, tenantId: string): Promise<Client> {
         const client = await this.findOne(id, tenantId);
         Object.assign(client, dto);

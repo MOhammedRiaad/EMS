@@ -10,6 +10,7 @@ interface UserData {
     firstName: string | null;
     lastName: string | null;
     role: string;
+    active?: boolean;
 }
 
 const UserManagement: React.FC = () => {
@@ -42,7 +43,8 @@ const UserManagement: React.FC = () => {
         try {
             setLoading(true);
             const data = await usersService.getAllUsers();
-            setUsers(data);
+            // Filter to show only admins and tenant_owners (hide clients/coaches)
+            setUsers(data.filter(u => u.role === 'admin' || u.role === 'tenant_owner'));
             setFetchError(null);
         } catch (err: any) {
             setFetchError(err.message);
@@ -80,6 +82,18 @@ const UserManagement: React.FC = () => {
             setCreateError(err.message);
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleDelete = async (userId: string) => {
+        if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+            return;
+        }
+        try {
+            await usersService.deleteUser(userId);
+            fetchUsers();
+        } catch (err) {
+            console.error('Failed to delete user', err);
         }
     };
 
@@ -346,6 +360,7 @@ const UserManagement: React.FC = () => {
                                 <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.875rem' }}>Name</th>
                                 <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.875rem' }}>Email</th>
                                 <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.875rem' }}>Role</th>
+                                <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.875rem' }}>Status</th>
                                 <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.875rem' }}>Actions</th>
                             </tr>
                         </thead>
@@ -358,19 +373,64 @@ const UserManagement: React.FC = () => {
                                         <span style={{
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: 'var(--border-radius-sm)',
-                                            backgroundColor: u.role === 'admin' ? 'var(--color-primary)' : u.role === 'coach' ? 'var(--color-accent)' : 'var(--border-color)',
-                                            color: u.role === 'client' ? 'var(--color-text-primary)' : 'white',
+                                            backgroundColor: u.role === 'tenant_owner' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                            color: u.role === 'tenant_owner' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
                                             fontSize: '0.75rem',
                                             fontWeight: 500,
                                             textTransform: 'capitalize'
-                                        }}>{u.role}</span>
+                                        }}>{u.role.replace('_', ' ')}</span>
+                                    </td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <span style={{
+                                            padding: '0.25rem 0.75rem',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 500,
+                                            backgroundColor: u.active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            color: u.active ? 'var(--color-success)' : 'var(--color-danger)'
+                                        }}>
+                                            {u.active ? 'Active' : 'Inactive'}
+                                        </span>
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                        {u.role !== 'tenant_owner' && (
-                                            <button style={{ padding: '0.5rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                                                <Trash2 size={16} />
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await usersService.toggleActive(u.id, !u.active);
+                                                        fetchUsers();
+                                                    } catch (err) {
+                                                        console.error('Failed to toggle user status', err);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '0.5rem 0.75rem',
+                                                    fontSize: '0.75rem',
+                                                    borderRadius: 'var(--border-radius-sm)',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--color-bg-primary)',
+                                                    color: u.active ? 'var(--color-danger)' : 'var(--color-success)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {u.active ? 'Deactivate' : 'Activate'}
                                             </button>
-                                        )}
+                                            {u.role !== 'tenant_owner' && (
+                                                <button
+                                                    onClick={() => handleDelete(u.id)}
+                                                    style={{
+                                                        padding: '0.5rem',
+                                                        color: 'var(--color-danger)',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

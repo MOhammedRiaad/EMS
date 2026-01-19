@@ -35,6 +35,12 @@ export class CoachesController {
         return this.coachesService.create(dto, tenantId);
     }
 
+    @Post('create-with-user')
+    @ApiOperation({ summary: 'Create coach with user account' })
+    createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
+        return this.coachesService.createWithUser(dto, tenantId);
+    }
+
     @Patch(':id')
     @ApiOperation({ summary: 'Update a coach' })
     update(@Param('id') id: string, @Body() dto: UpdateCoachDto, @TenantId() tenantId: string) {

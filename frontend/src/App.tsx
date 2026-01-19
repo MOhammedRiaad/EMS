@@ -6,6 +6,7 @@ import Register from './pages/auth/Register';
 import TenantOnboarding from './pages/onboarding/TenantOnboarding';
 import Clients from './pages/clients/Clients';
 import Coaches from './pages/coaches/Coaches';
+import CreateCoach from './pages/coaches/CreateCoach';
 import Sessions from './pages/sessions/Sessions';
 import Studios from './pages/studios/Studios';
 import Rooms from './pages/rooms/Rooms';
@@ -83,6 +84,7 @@ function App() {
 
                   <Route path="clients" element={<Clients />} />
                   <Route path="coaches" element={<Coaches />} />
+                  <Route path="coaches/create" element={<CreateCoach />} />
 
                   <Route path="studios" element={<Studios />} />
                   <Route path="rooms" element={<Rooms />} />

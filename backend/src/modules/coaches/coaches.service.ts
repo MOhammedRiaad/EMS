@@ -3,19 +3,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Coach } from './entities/coach.entity';
 import { CreateCoachDto, UpdateCoachDto } from './dto';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class CoachesService {
     constructor(
         @InjectRepository(Coach)
         private readonly coachRepository: Repository<Coach>,
+        private readonly authService: AuthService,
     ) { }
 
     async findAll(tenantId: string): Promise<Coach[]> {
-        return this.coachRepository.find({
-            where: { tenantId, active: true },
+        const coaches = await this.coachRepository.find({
+            where: { tenantId },
             relations: ['user', 'studio'],
+            order: { createdAt: 'DESC' }
         });
+        return coaches;
     }
 
     async findByStudio(studioId: string, tenantId: string): Promise<Coach[]> {
@@ -41,6 +45,36 @@ export class CoachesService {
             ...dto,
             tenantId,
         });
+        return this.coachRepository.save(coach);
+    }
+
+    async createWithUser(dto: any, tenantId: string): Promise<Coach> {
+        // Check if email already exists
+        const existingUser = await this.authService.findByEmail(dto.email, tenantId);
+        if (existingUser) {
+            throw new Error('Email is already registered');
+        }
+
+        // Create user account
+        const user = await this.authService.createClientUser({
+            email: dto.email,
+            password: dto.password,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            role: 'coach',
+            gender: dto.gender,
+        } as any, tenantId);
+
+        // Create coach profile
+        const coach = this.coachRepository.create({
+            userId: user.id,
+            studioId: dto.studioId,
+            bio: dto.bio,
+            specializations: dto.specializations || [],
+            preferredClientGender: dto.preferredClientGender || 'any',
+            tenantId,
+        });
+
         return this.coachRepository.save(coach);
     }
 

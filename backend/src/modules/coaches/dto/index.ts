@@ -50,3 +50,45 @@ export class UpdateCoachDto {
     @IsOptional()
     availabilityRules?: any[];
 }
+
+export class CreateCoachWithUserDto {
+    @ApiProperty({ description: 'User email address' })
+    @IsString()
+    email: string;
+
+    @ApiProperty({ description: 'User password' })
+    @IsString()
+    password: string;
+
+    @ApiProperty()
+    @IsString()
+    firstName: string;
+
+    @ApiProperty()
+    @IsString()
+    lastName: string;
+
+    @ApiProperty({ enum: ['male', 'female', 'other', 'pnts'] })
+    @IsString()
+    gender: 'male' | 'female' | 'other' | 'pnts';
+
+    @ApiProperty()
+    @IsUUID()
+    studioId: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    bio?: string;
+
+    @ApiPropertyOptional({ type: [String] })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    specializations?: string[];
+
+    @ApiPropertyOptional({ enum: ['male', 'female', 'any'], default: 'any' })
+    @IsOptional()
+    @IsString()
+    preferredClientGender?: 'male' | 'female' | 'any';
+}

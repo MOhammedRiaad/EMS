@@ -71,6 +71,16 @@ class UsersService {
     }
 
     /**
+     * Toggle user active status
+     */
+    async toggleActive(id: string, active: boolean): Promise<User> {
+        return authenticatedFetch(`/auth/users/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ active }),
+        });
+    }
+
+    /**
      * Get a specific user by ID
      */
     async getUserById(id: string): Promise<User> {
