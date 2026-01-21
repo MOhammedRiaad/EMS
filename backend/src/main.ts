@@ -1,11 +1,27 @@
+import './instrument';
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppModule } from './app.module';
+import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  // Security Headers
+  app.use(helmet());
+
+  // Use nestjs-pino logger
+  const logger = app.get(Logger);
+  app.useLogger(logger);
+  app.useGlobalInterceptors(new LoggerErrorInterceptor());
+
+  // Global Exception Filter
+  const httpAdapter = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
   // Global prefix
   app.setGlobalPrefix('api');
@@ -48,8 +64,9 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 EMS Studio API running on http://localhost:${port}/api`);
-  console.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
+
+  logger.log(`🚀 EMS Studio API running on http://localhost:${port}/api`);
+  logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

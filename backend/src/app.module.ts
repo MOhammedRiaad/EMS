@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { LoggerModule } from 'nestjs-pino';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
@@ -20,8 +23,6 @@ import { PackagesModule } from './modules/packages/packages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ClientPortalModule } from './modules/client-portal/client-portal.module';
 import { CoachPortalModule } from './modules/coach-portal/coach-portal.module';
-
-
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -31,6 +32,30 @@ import { ReminderModule } from './modules/reminders/reminder.module';
   imports: [
     // Configuration
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const isProduction = configService.get('NODE_ENV') === 'production';
+        return {
+          pinoHttp: {
+            level: isProduction ? 'info' : 'debug',
+            transport: isProduction
+              ? undefined
+              : {
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
+                },
+              },
+          },
+        };
+      },
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => ({
@@ -83,5 +108,11 @@ import { ReminderModule } from './modules/reminders/reminder.module';
     ReminderModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule { }

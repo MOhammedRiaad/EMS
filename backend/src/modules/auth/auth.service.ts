@@ -1,8 +1,11 @@
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { authenticator } from '@otplib/preset-default';
+import { toDataURL } from 'qrcode';
+import * as crypto from 'crypto';
 import { User } from './entities/user.entity';
 import { LoginDto, RegisterTenantOwnerDto, CreateUserDto, SetupPasswordDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
@@ -143,9 +146,41 @@ export class AuthService {
             throw new UnauthorizedException('Invalid credentials');
         }
 
+        // Check Lockout
+        if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+            throw new UnauthorizedException(`Account locked until ${user.lockoutUntil.toISOString()}`);
+        }
+
         const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
         if (!isPasswordValid) {
+            user.failedLoginAttempts += 1;
+            if (user.failedLoginAttempts >= 5) {
+                user.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lockout
+            }
+            await this.userRepository.save(user);
             throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // Reset failed attempts on success
+        if (user.failedLoginAttempts > 0 || user.lockoutUntil) {
+            user.failedLoginAttempts = 0;
+            user.lockoutUntil = null;
+            await this.userRepository.save(user);
+        }
+
+        // Check 2FA
+        if (user.isTwoFactorEnabled) {
+            // Return early indicating 2FA is required. Client should prompt for code.
+            // We don't generate full tokens yet.
+            return {
+                requiresTwoFactor: true,
+                userId: user.id,
+                tenantId: user.tenantId,
+                // Temporary token to verify identity for 2FA step? 
+                // Simple design: Client calls /auth/2fa/authenticate with credentials + token? 
+                // Or we return a partial token. 
+                // For now, let's assume we return a flag and the client must call a separate endpoint `login-2fa` with userId + code.
+            };
         }
 
         // Update last login
@@ -208,6 +243,112 @@ export class AuthService {
         const tenant = await this.tenantsService.findOne(user.tenantId);
 
         return this.generateTokens(user, tenant);
+    }
+
+    // Two-Factor Authentication
+    async generateTwoFactorSecret(user: User) {
+        const secret = authenticator.generateSecret();
+        const otpauthUrl = authenticator.keyuri(user.email, 'EMS Studio', secret);
+        const qrCode = await toDataURL(otpauthUrl);
+
+        // Save secret temporarily (or permanently but disabled)
+        user.twoFactorSecret = secret;
+        await this.userRepository.save(user);
+
+        return { secret, qrCode };
+    }
+
+    async enableTwoFactor(user: User, token: string) {
+        if (!user.twoFactorSecret) {
+            throw new UnauthorizedException('2FA setup not initiated');
+        }
+
+        const isValid = authenticator.verify({
+            token,
+            secret: user.twoFactorSecret,
+        });
+
+        if (!isValid) {
+            throw new UnauthorizedException('Invalid 2FA token');
+        }
+
+        user.isTwoFactorEnabled = true;
+        await this.userRepository.save(user);
+
+        return { message: '2FA enabled successfully' };
+    }
+
+    async verifyTwoFactorLogin(userId: string, token: string) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user || !user.twoFactorSecret) {
+            throw new UnauthorizedException('Invalid user or 2FA not set up');
+        }
+
+        const isValid = authenticator.verify({
+            token,
+            secret: user.twoFactorSecret,
+        });
+
+        if (!isValid) {
+            throw new UnauthorizedException('Invalid 2FA token');
+        }
+
+        // Get tenant info
+        const tenant = await this.tenantsService.findOne(user.tenantId);
+        return this.generateTokens(user, tenant);
+    }
+
+    // Password Reset
+    async forgotPassword(email: string) {
+        const user = await this.userRepository.findOne({ where: { email } });
+        if (!user) {
+            // Silently fail to prevent enumeration
+            return { message: 'If email exists, reset instructions sent.' };
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const hash = await bcrypt.hash(resetToken, 10);
+
+        user.passwordResetToken = hash;
+        user.passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
+        await this.userRepository.save(user);
+
+        // TODO: Send email
+        console.log(`Password reset token method: URL/reset-password?token=${resetToken}&email=${email}`);
+
+        return { message: 'If email exists, reset instructions sent.', debugToken: resetToken };
+    }
+
+    async resetPassword(email: string, token: string, newPassword: string) {
+        const user = await this.userRepository.findOne({
+            where: { email },
+            select: ['id', 'email', 'passwordResetToken', 'passwordResetExpires', 'passwordHash', 'role', 'firstName', 'lastName', 'tenantId', 'failedLoginAttempts', 'lockoutUntil']
+        });
+
+        if (!user || !user.passwordResetToken || !user.passwordResetExpires) {
+            throw new BadRequestException('Invalid or expired token');
+        }
+
+        if (new Date() > user.passwordResetExpires) {
+            throw new BadRequestException('Token expired');
+        }
+
+        const isValid = await bcrypt.compare(token, user.passwordResetToken);
+        if (!isValid) {
+            throw new BadRequestException('Invalid token');
+        }
+
+        const hash = await bcrypt.hash(newPassword, 10);
+        user.passwordHash = hash;
+        user.passwordResetToken = null;
+        user.passwordResetExpires = null;
+        // Also unlock account if locked
+        user.lockoutUntil = null;
+        user.failedLoginAttempts = 0;
+
+        await this.userRepository.save(user);
+
+        return { message: 'Password reset successfully' };
     }
 
     private generateTokens(user: User, tenant?: { id: string; name: string; isComplete: boolean }) {

@@ -47,6 +47,26 @@ export class User extends TenantScopedEntityWithUpdate {
     @Column({ default: true })
     active: boolean;
 
+    @Column({ name: 'failed_login_attempts', default: 0 })
+    failedLoginAttempts: number;
+
+    @Column({ name: 'lockout_until', type: 'timestamptz', nullable: true })
+    lockoutUntil: Date | null;
+
+    @Column({ name: 'is_two_factor_enabled', default: false })
+    isTwoFactorEnabled: boolean;
+
+    @Column({ name: 'two_factor_secret', type: 'varchar', nullable: true, select: false })
+    @Exclude()
+    twoFactorSecret: string | null;
+
+    @Column({ name: 'password_reset_token', type: 'varchar', nullable: true, select: false })
+    @Exclude()
+    passwordResetToken: string | null;
+
+    @Column({ name: 'password_reset_expires', type: 'timestamptz', nullable: true })
+    passwordResetExpires: Date | null;
+
     @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
     lastLoginAt: Date | null;
 

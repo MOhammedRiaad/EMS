@@ -94,6 +94,17 @@ export class AuthResponseDto {
     };
 }
 
+export class TwoFactorRequiredResponse {
+    @ApiProperty()
+    requiresTwoFactor: boolean;
+
+    @ApiProperty()
+    userId: string;
+
+    @ApiProperty()
+    tenantId: string;
+}
+
 export class SetupPasswordDto {
     @ApiProperty()
     @IsString()
@@ -104,3 +115,5 @@ export class SetupPasswordDto {
     @MinLength(8)
     password: string;
 }
+
+export * from './security.dto';
