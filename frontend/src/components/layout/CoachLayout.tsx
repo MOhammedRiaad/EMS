@@ -7,7 +7,7 @@ import { ThemeToggle } from '../common/ThemeToggle';
 const CoachLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, logout, isAuthenticated } = useAuth();
+    const { logout, isAuthenticated } = useAuth();
 
     React.useEffect(() => {
         if (!isAuthenticated) navigate('/login');

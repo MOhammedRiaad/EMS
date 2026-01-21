@@ -6,7 +6,8 @@ import {
     ActivePackageCard,
     WaitingListCard,
     QuickActionsCard,
-    BookingPromoCard
+    BookingPromoCard,
+    FloatingBookButton
 } from './ClientHomeComponents';
 
 const ClientHome = () => {
@@ -16,7 +17,10 @@ const ClientHome = () => {
     if (state.loading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <div className="relative">
+                    <div className="w-12 h-12 rounded-full border-4 border-purple-200 dark:border-slate-700"></div>
+                    <div className="absolute top-0 left-0 w-12 h-12 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+                </div>
             </div>
         );
     }
@@ -24,7 +28,7 @@ const ClientHome = () => {
     if (state.error) {
         return (
             <div className="p-6 text-center">
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl inline-block">{state.error}</div>
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl inline-block">{state.error}</div>
             </div>
         );
     }
@@ -32,47 +36,53 @@ const ClientHome = () => {
     const { nextSession, activePackage } = state.data || {};
 
     return (
-        <div className="p-6 space-y-8 pb-24 max-w-lg mx-auto md:max-w-4xl">
-            {/* Header */}
-            <header className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                        {state.getGreeting()},<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                            {user?.firstName || 'Client'}
-                        </span>
-                    </h1>
-                </div>
-                <div className="w-12 h-12 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold text-lg border-2 border-white dark:border-slate-700 shadow-sm">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </div>
-            </header>
+        <div className="relative min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
+            {/* Decorative background */}
+            <div className="absolute inset-0 bg-gradient-radial pointer-events-none" />
 
-            {/* Notifications */}
-            <NotificationsSection notifications={state.importantNotifications} />
+            <div className="relative p-6 space-y-6 pb-32 max-w-lg mx-auto md:max-w-4xl">
+                {/* Header */}
+                <header className="flex justify-between items-center animate-fade-in-up">
+                    <div>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">{state.getGreeting()}</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            <span className="gradient-text">
+                                {user?.firstName || 'Welcome'}
+                            </span>
+                        </h1>
+                    </div>
+                    <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/30">
+                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    </div>
+                </header>
 
-            {/* Main Action Card (Next Session or Booking) */}
-            <section>
-                <div className="flex justify-between items-center mb-3">
-                    <h2 className="font-semibold text-gray-800 dark:text-gray-200 text-lg">Up Next</h2>
-                </div>
-                <NextSessionCard nextSession={nextSession} />
-            </section>
+                {/* Notifications */}
+                <NotificationsSection notifications={state.importantNotifications} />
 
-            {/* Active Plan & Stats */}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ActivePackageCard activePackage={activePackage} />
-                <WaitingListCard
-                    entries={state.waitingList}
-                    onCancel={state.handleCancelWaitingList}
-                />
-                <QuickActionsCard />
-            </section>
+                {/* Main Action Card (Next Session or Booking) */}
+                <section>
+                    <NextSessionCard nextSession={nextSession} />
+                </section>
 
-            {/* Booking Teaser / Promo */}
-            <BookingPromoCard />
+                {/* Active Plan & Stats */}
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <ActivePackageCard activePackage={activePackage} />
+                    <WaitingListCard
+                        entries={state.waitingList}
+                        onCancel={state.handleCancelWaitingList}
+                    />
+                    <QuickActionsCard />
+                </section>
+
+                {/* Booking Teaser / Promo */}
+                <BookingPromoCard />
+            </div>
+
+            {/* Floating Action Button */}
+            <FloatingBookButton />
         </div>
     );
 };
 
 export default ClientHome;
+

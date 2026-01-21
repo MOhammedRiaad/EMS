@@ -1,0 +1,215 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { sessionsService } from '../sessions.service';
+
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
+describe('SessionsService', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(localStorage.getItem).mockReturnValue('test-token');
+    });
+
+    describe('getAll', () => {
+        it('should fetch all sessions', async () => {
+            const mockSessions = [
+                { id: '1', status: 'scheduled', startTime: '2025-01-21T10:00:00Z' },
+                { id: '2', status: 'completed', startTime: '2025-01-20T10:00:00Z' },
+            ];
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(mockSessions),
+            });
+
+            const result = await sessionsService.getAll();
+
+            expect(result).toEqual(mockSessions);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/sessions'),
+                expect.objectContaining({
+                    headers: { Authorization: 'Bearer test-token' },
+                })
+            );
+        });
+
+        it('should include query parameters', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve([]),
+            });
+
+            await sessionsService.getAll({
+                from: '2025-01-01',
+                to: '2025-01-31',
+                status: 'scheduled',
+            });
+
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringMatching(/from=2025-01-01.*to=2025-01-31.*status=scheduled/),
+                expect.any(Object)
+            );
+        });
+
+        it('should throw error on failed request', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: false,
+            });
+
+            await expect(sessionsService.getAll()).rejects.toThrow(
+                'Failed to fetch sessions'
+            );
+        });
+    });
+
+    describe('create', () => {
+        it('should create a new session', async () => {
+            const newSession = {
+                id: 'new-session',
+                status: 'scheduled',
+                startTime: '2025-01-22T10:00:00Z',
+                endTime: '2025-01-22T11:00:00Z',
+            };
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(newSession),
+            });
+
+            const result = await sessionsService.create({
+                studioId: 'studio-1',
+                roomId: 'room-1',
+                coachId: 'coach-1',
+                clientId: 'client-1',
+                startTime: '2025-01-22T10:00:00Z',
+                endTime: '2025-01-22T11:00:00Z',
+            });
+
+            expect(result).toEqual(newSession);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/sessions'),
+                expect.objectContaining({
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer test-token',
+                    }),
+                })
+            );
+        });
+
+        it('should throw error with conflicts on conflict', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: false,
+                json: () =>
+                    Promise.resolve({
+                        message: 'Scheduling conflict',
+                        conflicts: [{ resource: 'room', id: 'room-1' }],
+                    }),
+            });
+
+            try {
+                await sessionsService.create({
+                    studioId: 'studio-1',
+                    roomId: 'room-1',
+                    coachId: 'coach-1',
+                    clientId: 'client-1',
+                    startTime: '2025-01-22T10:00:00Z',
+                    endTime: '2025-01-22T11:00:00Z',
+                });
+                expect.fail('Should have thrown');
+            } catch (error: any) {
+                expect(error.message).toBe('Scheduling conflict');
+                expect(error.conflicts).toEqual([{ resource: 'room', id: 'room-1' }]);
+            }
+        });
+    });
+
+    describe('update', () => {
+        it('should update session', async () => {
+            const updatedSession = {
+                id: 'session-1',
+                status: 'scheduled',
+                notes: 'Updated notes',
+            };
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(updatedSession),
+            });
+
+            const result = await sessionsService.update('session-1', {
+                notes: 'Updated notes',
+            });
+
+            expect(result).toEqual(updatedSession);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/sessions/session-1'),
+                expect.objectContaining({
+                    method: 'PATCH',
+                })
+            );
+        });
+    });
+
+    describe('delete', () => {
+        it('should delete session', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+            });
+
+            await sessionsService.delete('session-1');
+
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/sessions/session-1'),
+                expect.objectContaining({
+                    method: 'DELETE',
+                })
+            );
+        });
+
+        it('should throw error on failed delete', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: false,
+            });
+
+            await expect(sessionsService.delete('session-1')).rejects.toThrow(
+                'Failed to delete session'
+            );
+        });
+    });
+
+    describe('updateStatus', () => {
+        it('should update session status', async () => {
+            const updatedSession = { id: 'session-1', status: 'completed' };
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve(updatedSession),
+            });
+
+            const result = await sessionsService.updateStatus('session-1', 'completed');
+
+            expect(result).toEqual(updatedSession);
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.stringContaining('/sessions/session-1/status'),
+                expect.objectContaining({
+                    method: 'PATCH',
+                    body: expect.stringContaining('"status":"completed"'),
+                })
+            );
+        });
+
+        it('should include cancel reason when provided', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ status: 'cancelled' }),
+            });
+
+            await sessionsService.updateStatus('session-1', 'cancelled', 'Client request', true);
+
+            expect(mockFetch).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    body: expect.stringContaining('"cancelledReason":"Client request"'),
+                })
+            );
+        });
+    });
+});

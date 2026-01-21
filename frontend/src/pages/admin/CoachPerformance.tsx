@@ -9,7 +9,7 @@ const CoachPerformance: React.FC = () => {
     const [selectedCoach, setSelectedCoach] = useState<CoachDisplay | null>(null);
     const [stats, setStats] = useState<CoachStats | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [_loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchCoaches();

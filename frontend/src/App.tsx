@@ -32,6 +32,9 @@ import ClientSchedule from './pages/client/ClientSchedule';
 import ClientProfile from './pages/client/ClientProfile';
 import ClientBooking from './pages/client/ClientBooking';
 import ClientProgress from './pages/client/ClientProgress';
+import NotificationPreferences from './pages/client/NotificationPreferences';
+import PrivacySettings from './pages/client/PrivacySettings';
+import HelpSupport from './pages/client/HelpSupport';
 import RoleGuard from './components/auth/RoleGuard';
 
 import CoachLayout from './components/layout/CoachLayout';
@@ -61,6 +64,9 @@ function App() {
                   <Route path="book" element={<ClientBooking />} />
                   <Route path="progress" element={<ClientProgress />} />
                   <Route path="profile" element={<ClientProfile />} />
+                  <Route path="notifications" element={<NotificationPreferences />} />
+                  <Route path="privacy" element={<PrivacySettings />} />
+                  <Route path="help" element={<HelpSupport />} />
                 </Route>
               </Route>
 

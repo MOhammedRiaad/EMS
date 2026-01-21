@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
-import { Star, StarOff } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { reviewsService, type Review } from '../../services/reviews.service';
 
 const Reviews: React.FC = () => {

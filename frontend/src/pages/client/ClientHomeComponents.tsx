@@ -1,10 +1,148 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight, Bell } from 'lucide-react';
+import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight, Bell, Flame, Award, Plus } from 'lucide-react';
 import type { DashboardNotification } from '../../services/client-notifications.service';
 import type { WaitingListEntry } from './useClientHomeState';
 
+// ============================================================================
+// Animated Counter Component
+// ============================================================================
+const AnimatedNumber: React.FC<{ value: number; suffix?: string }> = ({ value, suffix = '' }) => {
+    const [displayValue, setDisplayValue] = useState(0);
+
+    useEffect(() => {
+        const duration = 1000;
+        const steps = 30;
+        const increment = value / steps;
+        let current = 0;
+
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= value) {
+                setDisplayValue(value);
+                clearInterval(timer);
+            } else {
+                setDisplayValue(Math.floor(current));
+            }
+        }, duration / steps);
+
+        return () => clearInterval(timer);
+    }, [value]);
+
+    return <span className="tabular-nums">{displayValue}{suffix}</span>;
+};
+
+// ============================================================================
+// Progress Ring Component
+// ============================================================================
+const ProgressRing: React.FC<{
+    progress: number;
+    size?: number;
+    strokeWidth?: number;
+    color?: string;
+}> = ({ progress, size = 120, strokeWidth = 8, color = '#667eea' }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+    return (
+        <svg width={size} height={size} className="progress-ring">
+            {/* Background circle */}
+            <circle
+                stroke="currentColor"
+                className="text-gray-200 dark:text-slate-700"
+                strokeWidth={strokeWidth}
+                fill="transparent"
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+            />
+            {/* Progress circle */}
+            <circle
+                stroke={color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="transparent"
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+                className="progress-ring-circle"
+                style={{
+                    filter: `drop-shadow(0 0 8px ${color}40)`,
+                    transition: 'stroke-dashoffset 1s ease-out'
+                }}
+            />
+        </svg>
+    );
+};
+
+// ============================================================================
+// Countdown Timer Component
+// ============================================================================
+const CountdownTimer: React.FC<{ targetDate: string }> = ({ targetDate }) => {
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const diff = new Date(targetDate).getTime() - new Date().getTime();
+            if (diff > 0) {
+                setTimeLeft({
+                    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                    minutes: Math.floor((diff / 1000 / 60) % 60),
+                });
+            }
+        };
+
+        calculateTimeLeft();
+        const timer = setInterval(calculateTimeLeft, 60000);
+        return () => clearInterval(timer);
+    }, [targetDate]);
+
+    if (timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0) {
+        return <span className="text-green-400 font-bold animate-pulse">Starting Soon!</span>;
+    }
+
+    return (
+        <div className="flex gap-3">
+            {timeLeft.days > 0 && (
+                <div className="text-center">
+                    <div className="text-2xl font-bold text-white tabular-nums">{timeLeft.days}</div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wider">days</div>
+                </div>
+            )}
+            <div className="text-center">
+                <div className="text-2xl font-bold text-white tabular-nums">{timeLeft.hours}</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wider">hrs</div>
+            </div>
+            <div className="text-center">
+                <div className="text-2xl font-bold text-white tabular-nums">{timeLeft.minutes}</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wider">min</div>
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// Streak Badge Component
+// ============================================================================
+export const StreakBadge: React.FC<{ streak: number }> = ({ streak }) => {
+    if (streak === 0) return null;
+
+    return (
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-bold shadow-lg animate-bounce-in">
+            <Flame size={16} className="animate-wiggle" />
+            <span>{streak} Day Streak</span>
+            <span className="text-orange-200">🔥</span>
+        </div>
+    );
+};
+
+// ============================================================================
 // Notifications Section
+// ============================================================================
 interface NotificationsSectionProps {
     notifications: DashboardNotification[];
 }
@@ -13,13 +151,16 @@ export const NotificationsSection: React.FC<NotificationsSectionProps> = ({ noti
     if (notifications.length === 0) return null;
 
     return (
-        <section className="space-y-3">
-            {notifications.map(notification => (
-                <div key={notification.id} className={`p-4 rounded-xl border flex gap-3 ${notification.priority === 'high'
-                    ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30'
-                    : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'
-                    }`}>
-                    <div className={`mt-0.5 ${notification.priority === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+        <section className="space-y-3 animate-fade-in-up">
+            {notifications.map((notification, index) => (
+                <div
+                    key={notification.id}
+                    className={`premium-card p-4 flex gap-3 stagger-${index + 1} ${notification.priority === 'high'
+                            ? 'border-l-4 border-l-red-500'
+                            : 'border-l-4 border-l-amber-500'
+                        }`}
+                >
+                    <div className={`mt-0.5 ${notification.priority === 'high' ? 'text-red-500' : 'text-amber-500'}`}>
                         <Bell size={18} />
                     </div>
                     <div className="flex-1">
@@ -30,8 +171,8 @@ export const NotificationsSection: React.FC<NotificationsSectionProps> = ({ noti
                             {notification.message}
                         </p>
                         {notification.link && (
-                            <Link to={notification.link} className={`text-xs font-semibold mt-2 inline-flex items-center ${notification.priority === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                View Details <ChevronRight size={12} className="ml-1" />
+                            <Link to={notification.link} className={`text-xs font-semibold mt-2 inline-flex items-center gap-1 hover:gap-2 transition-all ${notification.priority === 'high' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                View Details <ChevronRight size={12} />
                             </Link>
                         )}
                     </div>
@@ -41,40 +182,67 @@ export const NotificationsSection: React.FC<NotificationsSectionProps> = ({ noti
     );
 };
 
-// Next Session Card
+// ============================================================================
+// Next Session Card - Premium Glassmorphism Design
+// ============================================================================
 interface NextSessionCardProps {
     nextSession: {
         startTime: string;
         room?: { name: string };
+        coach?: { user?: { firstName: string | null; lastName: string | null } };
     } | undefined;
 }
 
 export const NextSessionCard: React.FC<NextSessionCardProps> = ({ nextSession }) => {
     if (nextSession) {
         return (
-            <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-xl shadow-blue-900/10 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full blur-[60px] opacity-20 -mr-10 -mt-10"></div>
-                <div className="relative z-10">
+            <div className="relative overflow-hidden rounded-3xl animate-fade-in-up">
+                {/* Animated gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
+
+                {/* Decorative orbs */}
+                <div className="orb orb-primary w-64 h-64 -top-20 -right-20 animate-float" />
+                <div className="orb orb-accent w-48 h-48 -bottom-10 -left-10" style={{ animationDelay: '1s' }} />
+
+                {/* Content */}
+                <div className="relative z-10 p-6">
                     <div className="flex justify-between items-start mb-6">
-                        <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl">
-                            <Clock className="text-blue-300" size={24} />
+                        <div className="glass-card-dark p-3 rounded-xl">
+                            <Clock className="text-purple-300" size={24} />
                         </div>
-                        <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">CONFIRMED</span>
+                        <div className="flex items-center gap-2">
+                            <div className="pulse-dot" />
+                            <span className="text-green-400 text-xs font-semibold uppercase tracking-wider">Confirmed</span>
+                        </div>
                     </div>
+
                     <div className="space-y-1 mb-6">
-                        <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">
+                        <p className="text-purple-300 text-sm font-medium uppercase tracking-wider">
                             {new Date(nextSession.startTime).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                         </p>
-                        <h3 className="text-3xl font-bold tracking-tight">
+                        <h3 className="text-4xl font-bold text-white tracking-tight">
                             {new Date(nextSession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </h3>
                     </div>
+
+                    {/* Countdown */}
+                    <div className="mb-6">
+                        <CountdownTimer targetDate={nextSession.startTime} />
+                    </div>
+
                     <div className="flex items-center justify-between pt-6 border-t border-white/10">
-                        <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                            <p className="text-sm text-gray-300 font-medium">{nextSession.room?.name || 'Studio Room'}</p>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                                {nextSession.coach?.user?.firstName?.[0] || 'C'}
+                            </div>
+                            <div>
+                                <p className="text-white font-medium text-sm">
+                                    {nextSession.coach?.user?.firstName || 'Your Coach'}
+                                </p>
+                                <p className="text-gray-400 text-xs">{nextSession.room?.name || 'Studio Room'}</p>
+                            </div>
                         </div>
-                        <Link to="/client/schedule" className="flex items-center text-sm font-medium text-blue-300 hover:text-white transition-colors">
+                        <Link to="/client/schedule" className="btn-gradient px-4 py-2 text-sm flex items-center gap-1">
                             Details <ChevronRight size={16} />
                         </Link>
                     </div>
@@ -83,23 +251,32 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({ nextSession })
         );
     }
 
+    // No session - Show booking CTA
     return (
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-600/20 text-center py-10">
-            <Zap className="mx-auto mb-4 text-blue-200" size={48} />
-            <h3 className="text-xl font-bold mb-2">Ready to work out?</h3>
-            <p className="text-blue-100 mb-6 text-sm">You have no upcoming sessions scheduled.</p>
-            <Link
-                to="/client/book"
-                className="inline-flex items-center bg-white text-blue-600 px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
-            >
-                <Calendar size={18} className="mr-2" />
-                Book a Session
-            </Link>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 animate-fade-in-up animate-gradient">
+            <div className="orb orb-accent w-48 h-48 top-0 right-0 opacity-30" />
+
+            <div className="relative z-10 p-8 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur flex items-center justify-center animate-float">
+                    <Zap className="text-white" size={40} />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Ready to train?</h3>
+                <p className="text-purple-100 mb-6 text-sm">Book your next EMS session and crush your goals!</p>
+                <Link
+                    to="/client/book"
+                    className="inline-flex items-center bg-white text-purple-600 px-6 py-3 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all active:scale-95 hover:-translate-y-1"
+                >
+                    <Calendar size={18} className="mr-2" />
+                    Book Now
+                </Link>
+            </div>
         </div>
     );
 };
 
-// Active Package Card
+// ============================================================================
+// Active Package Card - Radial Progress Design
+// ============================================================================
 interface ActivePackageCardProps {
     activePackage: {
         package?: { name: string };
@@ -112,54 +289,66 @@ interface ActivePackageCardProps {
 }
 
 export const ActivePackageCard: React.FC<ActivePackageCardProps> = ({ activePackage }) => {
-    return (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 relative overflow-hidden">
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">Active Plan</p>
-                    <h3 className="font-bold text-gray-800 dark:text-white text-lg mt-1">{activePackage?.package?.name || 'No Plan'}</h3>
-                </div>
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded-lg text-purple-600 dark:text-purple-400">
-                    <Package size={20} />
-                </div>
-            </div>
+    const totalSessions = activePackage ? (activePackage.sessionsUsed + activePackage.sessionsRemaining) : 0;
+    const progressPercent = activePackage ? (activePackage.sessionsRemaining / totalSessions) * 100 : 0;
 
-            {activePackage ? (
-                <>
-                    <div className="space-y-2 mb-2">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-500 dark:text-gray-400">Package Sessions</span>
-                            <span className="font-bold text-gray-900 dark:text-white">{activePackage.sessionsRemaining} remaining</span>
+    return (
+        <div className="premium-card p-5 animate-fade-in-up stagger-1">
+            <div className="flex items-start justify-between">
+                <div className="flex-1">
+                    <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Active Plan</p>
+                    <h3 className="font-bold text-gray-800 dark:text-white text-lg">{activePackage?.package?.name || 'No Plan'}</h3>
+
+                    {activePackage && (
+                        <div className="mt-4 space-y-2">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500 dark:text-gray-400">Scheduled</span>
+                                <span className="font-semibold text-blue-600 dark:text-blue-400">{activePackage.scheduledSessions || 0}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500 dark:text-gray-400">Available</span>
+                                <span className={`font-bold ${(activePackage.availableSessions || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                                    {activePackage.availableSessions || 0}
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-400 pt-2 border-t border-gray-100 dark:border-slate-800">
+                                Expires {new Date(activePackage.expiryDate).toLocaleDateString()}
+                            </p>
                         </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-500 dark:text-gray-400">Scheduled</span>
-                            <span className="font-semibold text-blue-600 dark:text-blue-400">{activePackage.scheduledSessions || 0} sessions</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-500 dark:text-gray-400">Available to Book</span>
-                            <span className={`font-bold ${(activePackage.availableSessions || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {activePackage.availableSessions || 0} sessions
+                    )}
+                </div>
+
+                {activePackage && (
+                    <div className="relative">
+                        <ProgressRing progress={progressPercent} size={90} strokeWidth={6} />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                                <AnimatedNumber value={activePackage.sessionsRemaining} />
                             </span>
-                        </div>
-                        <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2 mt-2">
-                            <div
-                                className="bg-purple-500 h-2 rounded-full transition-all duration-1000"
-                                style={{ width: `${Math.min(100, (activePackage.sessionsRemaining / (activePackage.sessionsUsed + activePackage.sessionsRemaining)) * 100)}%` }}
-                            ></div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">left</span>
                         </div>
                     </div>
-                    <p className="text-xs text-gray-400">Expires {new Date(activePackage.expiryDate).toLocaleDateString()}</p>
-                </>
-            ) : (
-                <div className="mt-2">
-                    <Link to="/client/profile" className="text-sm text-purple-600 font-medium">View packages &rarr;</Link>
-                </div>
+                )}
+
+                {!activePackage && (
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl text-purple-600 dark:text-purple-400">
+                        <Package size={24} />
+                    </div>
+                )}
+            </div>
+
+            {!activePackage && (
+                <Link to="/client/profile" className="text-sm text-purple-600 font-medium mt-4 inline-flex items-center gap-1 hover:gap-2 transition-all">
+                    View packages <ChevronRight size={14} />
+                </Link>
             )}
         </div>
     );
 };
 
+// ============================================================================
 // Waiting List Card
+// ============================================================================
 interface WaitingListCardProps {
     entries: WaitingListEntry[];
     onCancel: (id: string) => void;
@@ -169,20 +358,23 @@ export const WaitingListCard: React.FC<WaitingListCardProps> = ({ entries, onCan
     if (entries.length === 0) return null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800">
+        <div className="premium-card p-4 animate-fade-in-up stagger-2">
             <div className="flex items-center gap-2 mb-3">
-                <List size={18} className="text-orange-500" />
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/20 text-orange-500">
+                    <List size={16} />
+                </div>
                 <span className="font-semibold text-gray-800 dark:text-gray-200">Waiting List</span>
+                <span className="badge bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 ml-auto">{entries.length}</span>
             </div>
             <div className="space-y-2">
                 {entries.map(entry => (
-                    <div key={entry.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                    <div key={entry.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                         <div>
                             <div className="text-sm font-medium text-gray-800 dark:text-white">
                                 {entry.preferredDate ? new Date(entry.preferredDate).toLocaleDateString() : 'Any Date'}
                                 {entry.preferredTimeSlot && ` · ${entry.preferredTimeSlot}`}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
                                 {entry.studio?.name || 'Studio'} ·{' '}
                                 <span className={`font-medium ${entry.status === 'notified' ? 'text-green-600 dark:text-green-400' :
                                     entry.status === 'approved' ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
@@ -194,7 +386,7 @@ export const WaitingListCard: React.FC<WaitingListCardProps> = ({ entries, onCan
                         </div>
                         <button
                             onClick={() => onCancel(entry.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all active:scale-90"
                             title="Cancel Request"
                         >
                             <X size={16} />
@@ -206,34 +398,52 @@ export const WaitingListCard: React.FC<WaitingListCardProps> = ({ entries, onCan
     );
 };
 
-// Quick Actions
+// ============================================================================
+// Quick Actions - Premium Grid
+// ============================================================================
 export const QuickActionsCard: React.FC = () => (
-    <div className="grid grid-cols-2 gap-3">
-        <Link to="/client/schedule" className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col justify-center items-center text-center hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-            <Calendar size={24} className="text-blue-500 mb-2" />
+    <div className="grid grid-cols-2 gap-3 animate-fade-in-up stagger-3">
+        <Link to="/client/schedule" className="premium-card p-4 flex flex-col items-center text-center group hover:border-blue-200 dark:hover:border-blue-900">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
+                <Calendar size={22} />
+            </div>
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Schedule</span>
         </Link>
-        <Link to="/client/progress" className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col justify-center items-center text-center hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-            <TrendingUp size={24} className="text-green-500 mb-2" />
+        <Link to="/client/progress" className="premium-card p-4 flex flex-col items-center text-center group hover:border-green-200 dark:hover:border-green-900">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg shadow-green-500/30">
+                <TrendingUp size={22} />
+            </div>
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Progress</span>
         </Link>
     </div>
 );
 
+// ============================================================================
 // Booking Promo Card
+// ============================================================================
 export const BookingPromoCard: React.FC = () => (
-    <section className="bg-gray-50 dark:bg-slate-900 rounded-2xl p-5 border border-dashed border-gray-200 dark:border-slate-800">
+    <section className="premium-card p-5 animate-fade-in-up stagger-4">
         <div className="flex items-center space-x-4">
-            <div className="bg-orange-100 dark:bg-orange-900/20 p-3 rounded-full text-orange-600 dark:text-orange-400">
-                <Zap size={20} />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30 animate-float">
+                <Award size={26} />
             </div>
             <div className="flex-1">
-                <h4 className="font-bold text-gray-800 dark:text-white text-sm">Feel like training today?</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Check available slots for today.</p>
+                <h4 className="font-bold text-gray-800 dark:text-white">Keep the momentum!</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Book your next session to stay on track.</p>
             </div>
-            <Link to="/client/book" className="bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
-                Check
+            <Link to="/client/book" className="btn-gradient px-4 py-2 text-sm">
+                Book
             </Link>
         </div>
     </section>
 );
+
+// ============================================================================
+// Floating Action Button for Quick Booking
+// ============================================================================
+export const FloatingBookButton: React.FC = () => (
+    <Link to="/client/book" className="fab" aria-label="Book session">
+        <Plus size={24} />
+    </Link>
+);
+

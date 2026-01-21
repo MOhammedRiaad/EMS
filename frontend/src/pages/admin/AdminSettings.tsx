@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Settings, Save, AlertCircle } from 'lucide-react';
-import { tenantService, type Tenant } from '../../services/tenant.service';
+import { tenantService } from '../../services/tenant.service';
 import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
 

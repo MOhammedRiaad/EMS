@@ -23,7 +23,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
     id,
     title,
     items,
-    defaultExpanded = true,
+    // defaultExpanded is part of the interface but handled internally via context
     collapsible = true,
     onPinItem
 }) => {

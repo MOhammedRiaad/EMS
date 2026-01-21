@@ -44,6 +44,11 @@ export class StorageController {
     async downloadFile(@Query('key') key: string, @Res() res: Response) {
         if (!key) throw new BadRequestException('Key is required');
 
+        // Set CORS headers for cross-origin image loading
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
         try {
             const fileStream = await this.storageService.getFile(key);
             fileStream.pipe(res);
