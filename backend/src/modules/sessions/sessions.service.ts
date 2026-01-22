@@ -10,6 +10,7 @@ import { CreateSessionDto, SessionQueryDto, UpdateSessionDto } from './dto';
 import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
+import { GamificationService } from '../gamification/gamification.service';
 
 export interface ConflictResult {
     hasConflicts: boolean;
@@ -38,7 +39,10 @@ export class SessionsService {
         private mailerService: MailerService,
         private clientsService: ClientsService,
         private packagesService: PackagesService,
+        private gamificationService: GamificationService,
     ) { }
+
+
 
     async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
         const qb = this.sessionRepository.createQueryBuilder('s')
@@ -169,8 +173,30 @@ export class SessionsService {
         const activePackage = clientPackages.find(cp => cp.status === 'active');
 
         if (activePackage) {
-            // Limit by remaining sessions (subtract 1 for the parent session)
-            maxSessionsFromPackage = Math.max(0, activePackage.sessionsRemaining - 1);
+
+            // Count already scheduled sessions to calculate true remaining count
+            const scheduledSessionsCount = await this.sessionRepository.count({
+                where: {
+                    clientId: dto.clientId,
+                    tenantId,
+                    status: 'scheduled' as any
+                }
+            });
+
+            // Limit by remaining sessions (subtract 1 for the parent session which is already saved/validated)
+            const remainingInPackage = Math.max(0, activePackage.sessionsRemaining - scheduledSessionsCount);
+
+            // If parent session took the last spot, maxSessionsFromPackage for recurrence is 0
+            // But we already saved parent.
+            // If we are checking BEFORE parent save, logic differs. Here parent IS saved.
+            // scheduledSessionsCount INCLUDES the parent session we just saved?
+            // "savedSession" is saved at line 136. `scheduled` status is default.
+
+            // If parent is newly saved, it contributes to count.
+            // If we had 10 rem. Parent saved. Rem is 10-1 = 9.
+            // maxSessionsFromPackage = 9.
+
+            maxSessionsFromPackage = remainingInPackage;
 
             // Limit by package expiry date
             if (activePackage.expiryDate) {
@@ -190,8 +216,9 @@ export class SessionsService {
             : [startTime.getDay()];
 
         // Calculate week interval based on pattern
-        const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
         const isMonthly = dto.recurrencePattern === 'monthly';
+        const isDaily = dto.recurrencePattern === 'daily';
+        const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
 
         // Start from the beginning of the week after the start date
         let currentWeekStart = new Date(startTime);
@@ -220,6 +247,53 @@ export class SessionsService {
                 if (!conflicts.hasConflicts) {
                     sessionsToCreate.push(this.createRecurringSessionData(dto, nextDate, sessionDuration, tenantId, parentSession.id));
                 }
+            } else if (isDaily) {
+                // For daily, iterate through each day
+                const nextDate = new Date(startTime);
+                nextDate.setDate(nextDate.getDate() + sessionsToCreate.length + 1);
+
+                if (nextDate > recurrenceEndDate) break;
+
+                const conflicts = await this.checkConflicts({
+                    ...dto,
+                    startTime: nextDate.toISOString(),
+                    endTime: new Date(nextDate.getTime() + sessionDuration).toISOString(),
+                }, tenantId, parentSession.id);
+
+                if (!conflicts.hasConflicts) {
+                    sessionsToCreate.push(this.createRecurringSessionData(dto, nextDate, sessionDuration, tenantId, parentSession.id));
+                }
+            } else if (dto.recurrencePattern === 'variable' && dto.recurrenceSlots?.length) {
+                // Variable pattern: iterate weeks, then iterate slots
+                // recurrenceSlots has { dayOfWeek: number, startTime: "HH:MM" }
+
+                for (const slot of dto.recurrenceSlots) {
+                    if (sessionsToCreate.length >= maxSessionsFromPackage) break;
+
+                    const sessionDate = new Date(currentWeekStart);
+                    sessionDate.setDate(sessionDate.getDate() + slot.dayOfWeek);
+
+                    const [h, m] = slot.startTime.split(':').map(Number);
+                    sessionDate.setHours(h, m, 0, 0);
+
+                    // Skip if before start time (e.g. earlier in same week) or after end date
+                    if (sessionDate <= startTime) continue;
+                    if (sessionDate > recurrenceEndDate) continue;
+
+                    const conflicts = await this.checkConflicts({
+                        ...dto,
+                        startTime: sessionDate.toISOString(),
+                        endTime: new Date(sessionDate.getTime() + sessionDuration).toISOString(),
+                    }, tenantId, parentSession.id);
+
+                    if (!conflicts.hasConflicts) {
+                        sessionsToCreate.push(this.createRecurringSessionData(dto, sessionDate, sessionDuration, tenantId, parentSession.id));
+                    } else {
+                        this.logger.warn(`Skipping recurring variable session on ${sessionDate.toISOString()} due to conflict`);
+                    }
+                }
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+
             } else {
                 // For weekly/biweekly, iterate through selected days
                 for (const dayOfWeek of recurrenceDays) {
@@ -250,14 +324,198 @@ export class SessionsService {
             }
 
             // Safety check to prevent infinite loops
-            if (currentWeekStart > recurrenceEndDate && !isMonthly) break;
-            if (isMonthly && sessionsToCreate.length >= 12) break; // Max 12 monthly sessions
+            if (currentWeekStart > recurrenceEndDate && !isMonthly && !isDaily && dto.recurrencePattern !== 'variable') break;
+            if (dto.recurrencePattern === 'variable' && currentWeekStart > recurrenceEndDate) break;
+            if ((isMonthly || isDaily) && sessionsToCreate.length >= 365) break;
         }
 
         if (sessionsToCreate.length > 0) {
             await this.sessionRepository.save(sessionsToCreate);
             this.logger.log(`Created ${sessionsToCreate.length} recurring sessions for parent ${parentSession.id}`);
         }
+    }
+
+    async validateRecurrence(dto: CreateSessionDto, tenantId: string): Promise<{ validSessions: Date[], conflicts: Array<{ date: Date, conflict: string }> }> {
+        const validSessions: Date[] = [];
+        const conflicts: Array<{ date: Date, conflict: string }> = [];
+
+        // Determine recurrence dates similar to generateRecurringSessions logic
+        const recurrenceDates: Date[] = [];
+        let recurrenceEndDate = new Date(dto.recurrenceEndDate!);
+        const startTime = new Date(dto.startTime);
+        const sessionHour = startTime.getHours();
+        const sessionMinutes = startTime.getMinutes();
+
+        // Basic validation of recurrence fields
+        if (!dto.recurrencePattern || !dto.recurrenceEndDate) {
+            throw new BadRequestException('Recurrence pattern and end date are required for validation');
+        }
+
+        const isDaily = dto.recurrencePattern === 'daily';
+        const isMonthly = dto.recurrencePattern === 'monthly';
+        const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
+
+        // Add the initial session (parent) to check
+        recurrenceDates.push(startTime);
+
+        let maxValidSessions = Infinity;
+
+        if (dto.clientId) {
+            const clientPackages = await this.packagesService.getClientPackages(dto.clientId, tenantId);
+            const activePackage = clientPackages.find(cp => cp.status === 'active');
+
+            if (activePackage) {
+                // Check limits for validation too
+                // Count scheduled.
+                const scheduled = await this.sessionRepository.count({ where: { clientId: dto.clientId, tenantId, status: 'scheduled' as any } });
+
+                // For validation, we are PRE-booking. So scheduled count matches DB.
+                // But we include "startTime" (parent) in validation.
+                // Parent is NOT in DB yet.
+                // So allowed = remaining - scheduled.
+                // We consume from allowed.
+
+                let sessionsRemaining = activePackage.sessionsRemaining - scheduled;
+
+                if (activePackage.expiryDate) {
+                    const expiry = new Date(activePackage.expiryDate);
+                    // Update recurrenceEndDate if expiry is sooner
+                    if (expiry < recurrenceEndDate) {
+                        recurrenceEndDate = expiry;
+                    }
+                }
+
+                // If package empty, we can't book ANY, including parent.
+                if (sessionsRemaining <= 0) {
+                    // Technically parent session validation will fail earlier in 'validateClientHasRemainingSessions'
+                    // But for recurrence validation, we should mark all as invalid or return empty?
+                    // Or simply limit generation?
+                    return { validSessions: [], conflicts: [] };
+                }
+
+                // Limit loop
+                // Logic below uses validSessions.length to stop?
+                // Or we iterate dates and stop when remaining == 0?
+                // Let's create a limit
+
+                maxValidSessions = sessionsRemaining;
+            }
+        }
+
+        let validCount = 0;
+
+        if (isDaily) {
+            // Daily logic
+            let nextDate = new Date(startTime);
+            nextDate.setDate(nextDate.getDate() + 1);
+            while (nextDate <= recurrenceEndDate && recurrenceDates.length < 365) {
+                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
+                recurrenceDates.push(new Date(nextDate));
+                nextDate.setDate(nextDate.getDate() + 1);
+            }
+        } else if (isMonthly) {
+            // Monthly logic
+            let nextDate = new Date(startTime);
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            while (nextDate <= recurrenceEndDate && recurrenceDates.length < 12) {
+                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
+                recurrenceDates.push(new Date(nextDate));
+                nextDate.setMonth(nextDate.getMonth() + 1);
+            }
+        } else if (dto.recurrencePattern === 'variable' && dto.recurrenceSlots?.length) {
+            // Variable logic
+            let currentWeekStart = new Date(startTime);
+            currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+            currentWeekStart.setHours(0, 0, 0, 0);
+
+            // Move to including current week if variable time is later?
+            // "Variable" means we specified slots.
+            // If we book for "Mon 10am". Slot Mon 16pm.
+            // We want that SAME DAY to be potentially included if it's separate?
+            // But standard recurrence usually starts NEXT week or NEXT instance.
+            // Let's assume standard behavior: Start checking from next "logical" week or continue current week?
+            // "Weekly" logic in `generate` does: `currentWeekStart + 7*interval`.
+            // But `recurrenceDays` logic uses `currentWeekStart`.
+
+            // If we use standard logic:
+            // "Weekly" typically skips the *immediate* parent week for "next occurrence",
+            // BUT implementation checks: `if (sessionDate <= startTime) continue;`
+            // So we can start from current week!
+
+            while (currentWeekStart <= recurrenceEndDate && recurrenceDates.length < 100) {
+                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
+
+                for (const slot of dto.recurrenceSlots) {
+                    if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
+
+                    const sessionDate = new Date(currentWeekStart);
+                    sessionDate.setDate(sessionDate.getDate() + slot.dayOfWeek);
+                    const [h, m] = slot.startTime.split(':').map(Number);
+                    sessionDate.setHours(h, m, 0, 0);
+
+                    if (sessionDate <= startTime) continue;
+                    if (sessionDate > recurrenceEndDate) continue;
+
+                    recurrenceDates.push(new Date(sessionDate));
+                }
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            }
+
+        } else {
+            // Weekly/Biweekly logic
+            const recurrenceDays = dto.recurrenceDays?.length
+                ? dto.recurrenceDays.map(d => Number(d))
+                : [startTime.getDay()];
+
+            let currentWeekStart = new Date(startTime);
+            currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+            currentWeekStart.setHours(0, 0, 0, 0);
+
+            // Move to next week
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+
+            while (currentWeekStart <= recurrenceEndDate && recurrenceDates.length < 100) { // Safety limit
+                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
+
+                for (const dayOfWeek of recurrenceDays) {
+                    if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
+
+                    const sessionDate = new Date(currentWeekStart);
+                    sessionDate.setDate(sessionDate.getDate() + dayOfWeek);
+                    sessionDate.setHours(sessionHour, sessionMinutes, 0, 0);
+
+                    if (sessionDate <= startTime) continue;
+                    if (sessionDate > recurrenceEndDate) continue;
+
+                    recurrenceDates.push(new Date(sessionDate));
+                }
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+            }
+        }
+
+        const sessionDuration = new Date(dto.endTime).getTime() - startTime.getTime();
+
+        // Validate each date
+        for (const date of recurrenceDates) {
+            const checkDto = {
+                ...dto,
+                startTime: date.toISOString(),
+                endTime: new Date(date.getTime() + sessionDuration).toISOString()
+            };
+
+            const conflictResult = await this.checkConflicts(checkDto, tenantId);
+
+            if (conflictResult.hasConflicts) {
+                conflicts.push({
+                    date: date,
+                    conflict: conflictResult.conflicts[0].message // Just take the first conflict message
+                });
+            } else {
+                validSessions.push(date);
+            }
+        }
+
+        return { validSessions, conflicts };
     }
 
     private createRecurringSessionData(dto: CreateSessionDto, startTime: Date, durationMs: number, tenantId: string, parentSessionId: string): Partial<Session> {
@@ -282,9 +540,12 @@ export class SessionsService {
         };
     }
 
-    private getNextOccurrence(date: Date, pattern: 'weekly' | 'biweekly' | 'monthly'): Date {
+    private getNextOccurrence(date: Date, pattern: 'daily' | 'weekly' | 'biweekly' | 'monthly'): Date {
         const next = new Date(date);
         switch (pattern) {
+            case 'daily':
+                next.setDate(next.getDate() + 1);
+                break;
             case 'weekly':
                 next.setDate(next.getDate() + 7);
                 break;
@@ -622,6 +883,10 @@ export class SessionsService {
             if (status === 'completed') {
                 // Completed sessions always deduct
                 shouldDeductSession = true;
+
+                // Trigger gamification check
+                this.gamificationService.checkAndUnlockAchievements(session.clientId, tenantId)
+                    .catch(err => this.logger.error(`Failed to check achievements for client ${session.clientId}`, err));
             } else if (status === 'no_show') {
                 // No-show always deducts (client didn't show up)
                 shouldDeductSession = true;

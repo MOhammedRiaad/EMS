@@ -55,7 +55,7 @@ export class Session extends TenantScopedEntityWithUpdate {
 
     // Recurrence fields
     @Column({ name: 'recurrence_pattern', type: 'varchar', length: 20, nullable: true })
-    recurrencePattern: 'weekly' | 'biweekly' | 'monthly' | null;
+    recurrencePattern: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'variable' | null;
 
     @Column({ name: 'recurrence_end_date', type: 'date', nullable: true })
     recurrenceEndDate: Date | null;

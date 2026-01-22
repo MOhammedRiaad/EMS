@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar, User, LogOut } from 'lucide-react';
+import { Home, Calendar, User, LogOut, Trophy } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
 
@@ -47,6 +47,11 @@ const ClientLayout: React.FC = () => {
                     <NavLink to="/client/schedule" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>
                         <Calendar size={24} />
                         <span className="text-[10px] font-medium">Schedule</span>
+                    </NavLink>
+
+                    <NavLink to="/client/leaderboard" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>
+                        <Trophy size={24} />
+                        <span className="text-[10px] font-medium">Leaderboard</span>
                     </NavLink>
 
                     <NavLink to="/client/profile" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>

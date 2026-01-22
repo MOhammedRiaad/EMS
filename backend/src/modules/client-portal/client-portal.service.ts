@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { PackagesService } from '../packages/packages.service';
 import { WaitingListService } from '../waiting-list/waiting-list.service';
@@ -7,6 +8,9 @@ import { SessionStatus } from '../sessions/entities/session.entity';
 import { ClientPackageStatus } from '../packages/entities/client-package.entity';
 
 import { CoachesService } from '../coaches/coaches.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 
 @Injectable()
 export class ClientPortalService {
@@ -16,6 +20,9 @@ export class ClientPortalService {
         private readonly waitingListService: WaitingListService,
         private readonly clientsService: ClientsService,
         private readonly coachesService: CoachesService,
+        private readonly authService: AuthService,
+        @InjectRepository(FavoriteCoach)
+        private readonly favoriteCoachRepo: Repository<FavoriteCoach>,
     ) { }
 
     // ... existing code ...
@@ -117,6 +124,36 @@ export class ClientPortalService {
         return this.sessionsService.create(sessionData, tenantId);
     }
 
+    async validateSession(clientId: string, tenantId: string, dto: any) {
+        // Resolve studio
+        let studioId = dto.studioId;
+        if (!studioId) {
+            studioId = await this.sessionsService.findFirstActiveStudio(tenantId);
+        }
+        if (!studioId) throw new Error('No active studio found');
+
+        // Auto-assign Room & Coach (for the initial slot)
+        // This assumes we try to book the SAME resources for the series.
+        const { roomId, coachId } = await this.sessionsService.autoAssignResources(
+            tenantId,
+            studioId,
+            new Date(dto.startTime),
+            new Date(dto.endTime),
+            dto.coachId
+        );
+
+        // Construct full creation DTO for validation
+        const sessionData = {
+            ...dto,
+            clientId,
+            studioId,
+            roomId,
+            coachId,
+        };
+
+        return this.sessionsService.validateRecurrence(sessionData, tenantId);
+    }
+
     async cancelSession(clientId: string, tenantId: string, sessionId: string, reason?: string) {
         // Verify session belongs to client
         const session = await this.sessionsService.findOne(sessionId, tenantId);
@@ -195,29 +232,40 @@ export class ClientPortalService {
         return this.coachesService.findActive(tenantId, clientGender);
     }
 
-    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {
-        const client = await this.clientsService.findOne(clientId, tenantId);
+    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string }) {
+        const client = await this.clientsService.findOne(clientId, tenantId, ['user']);
 
         if (!client) {
             throw new Error('Client not found');
         }
 
-        // Update allowed fields
+        // Update Client allowed fields
         const updateData: any = {};
         if (dto.firstName !== undefined) updateData.firstName = dto.firstName;
         if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
         if (dto.phone !== undefined) updateData.phone = dto.phone;
         if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
 
-        const updated = await this.clientsService.update(clientId, updateData, tenantId);
+        let clientUpdated = client;
+        if (Object.keys(updateData).length > 0) {
+            clientUpdated = await this.clientsService.update(clientId, updateData, tenantId);
+        }
+
+        // Update User (Gender)
+        let updatedGender = client.user?.gender;
+        if (dto.gender && client.userId) {
+            await this.authService.update(client.userId, { gender: dto.gender as any });
+            updatedGender = dto.gender as any;
+        }
 
         return {
-            id: updated.id,
-            firstName: updated.firstName,
-            lastName: updated.lastName,
-            email: updated.email,
-            phone: updated.phone,
-            avatarUrl: updated.avatarUrl
+            id: clientUpdated.id,
+            firstName: clientUpdated.firstName,
+            lastName: clientUpdated.lastName,
+            email: clientUpdated.email,
+            phone: clientUpdated.phone,
+            avatarUrl: clientUpdated.avatarUrl,
+            gender: updatedGender
         };
     }
 
@@ -245,8 +293,42 @@ export class ClientPortalService {
         }
 
         // Use the remove method to delete the entry
-        await this.waitingListService.remove(entryId, tenantId);
-
         return { message: 'Waiting list entry cancelled successfully' };
+    }
+
+    async toggleFavoriteCoach(clientId: string, tenantId: string, coachId: string) {
+        // Check if coach exists and is active
+        const coach = await this.coachesService.findOne(coachId, tenantId);
+        if (!coach) throw new Error('Coach not found');
+
+        const existing = await this.favoriteCoachRepo.findOne({
+            where: { clientId, tenantId, coachId }
+        });
+
+        if (existing) {
+            await this.favoriteCoachRepo.remove(existing);
+            return { favorited: false };
+        } else {
+            const favorite = this.favoriteCoachRepo.create({
+                clientId,
+                tenantId,
+                coachId,
+            });
+            await this.favoriteCoachRepo.save(favorite);
+            return { favorited: true };
+        }
+    }
+
+    async getFavoriteCoaches(clientId: string, tenantId: string) {
+        const favorites = await this.favoriteCoachRepo.find({
+            where: { clientId, tenantId },
+            relations: ['coach', 'coach.user'],
+            order: { favoritedAt: 'DESC' }
+        });
+
+        return favorites.map(f => ({
+            ...f.coach,
+            favoritedAt: f.favoritedAt
+        }));
     }
 }

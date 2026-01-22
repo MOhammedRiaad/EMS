@@ -17,6 +17,8 @@ const PrivacySettings: React.FC = () => {
         { id: 'profile_visible', label: 'Profile Visibility', description: 'Allow coaches to see your profile details', icon: <Eye size={20} />, enabled: true },
         { id: 'show_progress', label: 'Share Progress', description: 'Let coaches view your InBody progress', icon: <Activity size={20} />, enabled: true },
         { id: 'photo_consent', label: 'Photo Consent', description: 'Allow coaches to take progress photos', icon: <Camera size={20} />, enabled: false },
+        { id: 'leaderboard_visible', label: 'Leaderboard Visibility', description: 'Show my name and stats on the leaderboard', icon: <Activity size={20} />, enabled: true },
+        { id: 'activity_feed_visible', label: 'Activity Feed', description: 'Display my achievements in the activity feed', icon: <Activity size={20} />, enabled: true },
     ]);
 
     const toggleSetting = (id: string) => {

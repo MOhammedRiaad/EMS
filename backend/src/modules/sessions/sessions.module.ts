@@ -12,12 +12,15 @@ import { ClientsModule } from '../clients/clients.module';
 import { MailerModule } from '../mailer/mailer.module';
 import { PackagesModule } from '../packages/packages.module';
 
+import { GamificationModule } from '../gamification/gamification.module';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([Session, Room, Studio, Coach, Tenant]),
         ClientsModule,
         MailerModule,
         PackagesModule,
+        GamificationModule,
     ],
     controllers: [SessionsController],
     providers: [SessionsService],

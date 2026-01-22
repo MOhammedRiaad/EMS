@@ -1,14 +1,20 @@
+import { useState } from 'react';
 import { TrendingUp, Target } from 'lucide-react';
 import InBodyTrendsChart from '../inbody/InBodyTrendsChart';
 import { useClientProgressState } from './useClientProgressState';
-import { StatsCards, ScanHistoryList, EmptyScansState, GoalProgress, AchievementBadges } from './ClientProgressComponents';
+import { StatsCards, ScanHistoryList, EmptyScansState, GoalProgress } from './ClientProgressComponents';
+import { AchievementsSection } from '../../components/client/gamification/AchievementsSection';
+import { useClientGoals } from '../../hooks/useClientGoals';
+import { GoalSettingModal } from '../../components/client/gamification/GoalSettingModal';
 
 const ClientProgress = () => {
     const { scans, latestScan, loading, error } = useClientProgressState();
+    const { goals, refetch: refetchGoals } = useClientGoals();
+    const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
     const previousScan = scans.length > 1 ? scans[1] : undefined;
 
-    // Demo session count - in real app, fetch from API
-    const sessionCount = scans.length * 3;
+    const weightGoal = goals.find((g: any) => g.goalType === 'weight')?.targetValue;
+    const bodyFatGoal = goals.find((g: any) => g.goalType === 'body_fat')?.targetValue;
 
     if (loading) {
         return (
@@ -51,14 +57,25 @@ const ClientProgress = () => {
 
                 {/* Goal Progress */}
                 {latestScan && (
-                    <GoalProgress
-                        currentWeight={latestScan.weight}
-                        currentBodyFat={latestScan.bodyFatPercentage}
-                    />
+                    <div className="relative mb-6 group">
+                        <GoalProgress
+                            currentWeight={latestScan.weight}
+                            currentBodyFat={latestScan.bodyFatPercentage}
+                            targetWeight={weightGoal}
+                            targetBodyFat={bodyFatGoal}
+                        />
+                        <button
+                            onClick={() => setIsGoalModalOpen(true)}
+                            className="absolute top-6 right-6 p-2 bg-white/50 hover:bg-white dark:bg-black/20 dark:hover:bg-black/40 text-gray-700 dark:text-gray-200 rounded-lg transition-all text-xs font-semibold flex items-center gap-1 backdrop-blur-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+                            title="Update Goals"
+                        >
+                            <Target size={14} /> Update Goals
+                        </button>
+                    </div>
                 )}
 
                 {/* Achievement Badges */}
-                <AchievementBadges sessionCount={sessionCount} />
+                <AchievementsSection />
 
                 {/* Charts */}
                 {scans.length > 0 ? (
@@ -79,6 +96,12 @@ const ClientProgress = () => {
 
                 {/* History List */}
                 {scans.length > 0 && <ScanHistoryList scans={scans} />}
+
+                <GoalSettingModal
+                    isOpen={isGoalModalOpen}
+                    onClose={() => setIsGoalModalOpen(false)}
+                    onSuccess={refetchGoals}
+                />
             </div>
         </div>
     );

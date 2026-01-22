@@ -14,8 +14,7 @@ import {
     Activity,
     ListPlus,
     Package,
-    Wallet,
-    Star
+    Wallet
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
@@ -82,10 +81,10 @@ const Layout: React.FC = () => {
     const clientBusinessItems: MenuItem[] = [
         { path: '/admin/waiting-list', label: 'Waiting List', icon: ListPlus },
         { path: '/admin/packages', label: 'Packages', icon: Package },
-        { path: '/admin/reviews', label: 'Reviews', icon: Star },
     ];
 
     const analyticsItems: MenuItem[] = [
+        { path: '/analytics', label: 'Analytics', icon: TrendingUp },
         { path: '/admin/coach-performance', label: 'Coach Performance', icon: TrendingUp },
         { path: '/admin/cash-flow', label: 'Cash Flow', icon: Wallet },
     ];

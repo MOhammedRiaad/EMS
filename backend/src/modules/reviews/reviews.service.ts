@@ -63,10 +63,14 @@ export class ReviewsService {
     async findByCoach(coachId: string, tenantId: string, query?: ReviewQueryDto): Promise<ClientSessionReview[]> {
         const qb = this.reviewRepository.createQueryBuilder('review')
             .where('review.tenant_id = :tenantId', { tenantId })
-            .andWhere('review.coach_id = :coachId', { coachId })
             .leftJoinAndSelect('review.client', 'client')
             .leftJoinAndSelect('review.session', 'session')
             .orderBy('review.created_at', 'DESC');
+
+        // Only filter by coachId if it's not 'all'
+        if (coachId !== 'all') {
+            qb.andWhere('review.coach_id = :coachId', { coachId });
+        }
 
         if (query?.minRating) {
             qb.andWhere('review.rating >= :minRating', { minRating: query.minRating });
@@ -76,13 +80,18 @@ export class ReviewsService {
     }
 
     async getCoachStats(coachId: string, tenantId: string): Promise<{ averageRating: number; totalReviews: number }> {
-        const result = await this.reviewRepository
+        const qb = this.reviewRepository
             .createQueryBuilder('review')
             .select('AVG(review.rating)', 'average')
             .addSelect('COUNT(*)', 'total')
-            .where('review.tenant_id = :tenantId', { tenantId })
-            .andWhere('review.coach_id = :coachId', { coachId })
-            .getRawOne();
+            .where('review.tenant_id = :tenantId', { tenantId });
+
+        // Only filter by coachId if it's not 'all'
+        if (coachId !== 'all') {
+            qb.andWhere('review.coach_id = :coachId', { coachId });
+        }
+
+        const result = await qb.getRawOne();
 
         return {
             averageRating: parseFloat(result.average) || 0,

@@ -27,6 +27,8 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReminderModule } from './modules/reminders/reminder.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { GamificationModule } from './modules/gamification/gamification.module';
 
 @Module({
   imports: [
@@ -34,7 +36,7 @@ import { ReminderModule } from './modules/reminders/reminder.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{
       ttl: 60000,
-      limit: 10,
+      limit: 100,
     }]),
     LoggerModule.forRootAsync({
       imports: [ConfigModule],
@@ -106,6 +108,8 @@ import { ReminderModule } from './modules/reminders/reminder.module';
     CoachPortalModule,
     ScheduleModule.forRoot(),
     ReminderModule,
+    AnalyticsModule,
+    GamificationModule,
   ],
   controllers: [HealthController],
   providers: [

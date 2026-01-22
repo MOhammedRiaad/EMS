@@ -5,7 +5,9 @@ import {
     FilterTabs,
     SessionCard,
     EmptyState,
-    ReviewModal
+    ReviewModal,
+    CalendarView,
+    HistoryFilterControls
 } from './ClientScheduleComponents';
 
 const ClientSchedule = () => {
@@ -33,20 +35,39 @@ const ClientSchedule = () => {
                 </div>
             )}
 
-            <div className="space-y-3">
-                {state.filteredSessions.length === 0 ? (
-                    <EmptyState filter={state.filter} />
-                ) : (
-                    state.filteredSessions.map(session => (
-                        <SessionCard
-                            key={session.id}
-                            session={session}
-                            filter={state.filter}
-                            onCancel={state.handleCancel}
-                            onReview={state.openReviewModal}
-                        />
-                    ))
+            <div className="space-y-4">
+                {state.filter === 'upcoming' && (
+                    <CalendarView
+                        currentMonth={state.calendarMonth}
+                        onMonthChange={state.handleCalendarMonthChange}
+                        sessions={state.sessions}
+                        selectedDate={state.selectedDate}
+                        onSelectDate={state.setSelectedDate}
+                    />
                 )}
+
+                {state.filter === 'past' && (
+                    <HistoryFilterControls
+                        filter={state.historyFilter}
+                        setFilter={state.setHistoryFilter}
+                    />
+                )}
+
+                <div className="space-y-3">
+                    {state.filteredSessions.length === 0 ? (
+                        <EmptyState filter={state.filter} />
+                    ) : (
+                        state.filteredSessions.map(session => (
+                            <SessionCard
+                                key={session.id}
+                                session={session}
+                                filter={state.filter}
+                                onCancel={state.handleCancel}
+                                onReview={state.openReviewModal}
+                            />
+                        ))
+                    )}
+                </div>
             </div>
 
             {state.showReviewModal && (

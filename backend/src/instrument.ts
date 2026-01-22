@@ -1,4 +1,7 @@
 // This file must be imported before any other modules in main.ts
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import * as Sentry from '@sentry/nestjs';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 

@@ -73,6 +73,14 @@ export class ClientPortalController {
         return this.clientPortalService.bookSession(clientId, tenantId, dto);
     }
 
+    @Post('sessions/validate')
+    @ApiOperation({ summary: 'Validate recurring session' })
+    async validateSession(@Request() req: any, @Body() dto: ClientBookSessionDto) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.validateSession(clientId, tenantId, dto);
+    }
+
     @Patch('sessions/:id/cancel')
     @ApiOperation({ summary: 'Cancel a session' })
     async cancelSession(@Request() req: any, @Param('id') id: string, @Body('reason') reason: string) {
@@ -98,7 +106,7 @@ export class ClientPortalController {
 
     @Patch('profile')
     @ApiOperation({ summary: 'Update client profile' })
-    async updateProfile(@Request() req: any, @Body() dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string }) {
+    async updateProfile(@Request() req: any, @Body() dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string }) {
         const { clientId, tenantId } = req.user;
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.updateProfile(clientId, tenantId, dto);
@@ -118,5 +126,21 @@ export class ClientPortalController {
         const { clientId, tenantId } = req.user;
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.cancelWaitingListEntry(clientId, tenantId, id);
+    }
+
+    @Post('favorite-coaches/:coachId')
+    @ApiOperation({ summary: 'Toggle favorite status for a coach' })
+    async toggleFavoriteCoach(@Request() req: any, @Param('coachId') coachId: string) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.toggleFavoriteCoach(clientId, tenantId, coachId);
+    }
+
+    @Get('favorite-coaches')
+    @ApiOperation({ summary: 'Get favorite coaches' })
+    async getFavoriteCoaches(@Request() req: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getFavoriteCoaches(clientId, tenantId);
     }
 }

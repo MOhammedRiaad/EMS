@@ -1,6 +1,18 @@
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsInt, Min, Max, IsIn, IsUUID } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString, IsInt, Min, Max, IsIn, IsUUID, IsArray, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+
+export class RecurrenceSlotDto {
+    @ApiProperty()
+    @IsInt()
+    @Min(0)
+    @Max(6)
+    dayOfWeek: number;
+
+    @ApiProperty({ example: '10:00' })
+    @IsString()
+    startTime: string;
+}
 
 export class CreateSessionDto {
     @ApiProperty()
@@ -49,10 +61,10 @@ export class CreateSessionDto {
     @IsString()
     notes?: string;
 
-    @ApiPropertyOptional({ enum: ['weekly', 'biweekly', 'monthly'] })
+    @ApiPropertyOptional({ enum: ['daily', 'weekly', 'biweekly', 'monthly', 'variable'] })
     @IsOptional()
-    @IsIn(['weekly', 'biweekly', 'monthly'])
-    recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+    @IsIn(['daily', 'weekly', 'biweekly', 'monthly', 'variable'])
+    recurrencePattern?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'variable';
 
     @ApiPropertyOptional({ example: '2024-03-15' })
     @IsOptional()
@@ -61,7 +73,15 @@ export class CreateSessionDto {
 
     @ApiPropertyOptional({ example: [1, 4], description: 'Days of week for recurrence (0=Sun, 1=Mon, ..., 6=Sat)' })
     @IsOptional()
+    @IsArray()
     recurrenceDays?: number[];
+
+    @ApiPropertyOptional({ type: [RecurrenceSlotDto], description: 'Slots for variable recurrence' })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => RecurrenceSlotDto)
+    recurrenceSlots?: RecurrenceSlotDto[];
 }
 
 export class SessionQueryDto {

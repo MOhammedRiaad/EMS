@@ -1,6 +1,15 @@
 import React from 'react';
-import { Calendar, Clock, X, MapPin } from 'lucide-react';
+import { Calendar, Clock, X, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Session } from './useClientScheduleState';
+
+// ============================================================================
+// FilterTabs
+// ============================================================================
+
+export interface FilterTabsProps {
+    filter: 'upcoming' | 'past';
+    setFilter: (filter: 'upcoming' | 'past') => void;
+}
 
 // ============================================================================
 // FilterTabs
@@ -27,6 +36,168 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({ filter, setFilter }) => 
         </button>
     </div>
 );
+
+// ============================================================================
+// CalendarView
+// ============================================================================
+
+export interface CalendarViewProps {
+    currentMonth: Date;
+    onMonthChange: (increment: number) => void;
+    sessions: Session[];
+    selectedDate: Date | null;
+    onSelectDate: (date: Date) => void;
+}
+
+export const CalendarView: React.FC<CalendarViewProps> = ({ currentMonth, onMonthChange, sessions, selectedDate, onSelectDate }) => {
+    // Generate calendar days
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    // First day of month
+    const firstDay = new Date(year, month, 1);
+    // Last day of month
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Start grid from Sunday of first week
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+
+    // End grid at Saturday of last week
+    const endDate = new Date(lastDay);
+    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+
+    const weeks = [];
+    let current = new Date(startDate);
+
+    while (current <= endDate) {
+        const week = [];
+        for (let i = 0; i < 7; i++) {
+            week.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+        }
+        weeks.push(week);
+    }
+
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    return (
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-4">
+            <div className="flex items-center justify-between mb-4">
+                <button onClick={() => onMonthChange(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full">
+                    <ChevronLeft size={20} />
+                </button>
+                <h2 className="font-bold text-gray-800 dark:text-white">
+                    {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                </h2>
+                <button onClick={() => onMonthChange(1)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full">
+                    <ChevronRight size={20} />
+                </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+                {weekDays.map(d => (
+                    <div key={d} className="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        {d}
+                    </div>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+                {weeks.map((week, wIndex) => (
+                    <React.Fragment key={wIndex}>
+                        {week.map((day, dIndex) => {
+                            const isCurrentMonth = day.getMonth() === month;
+                            const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
+                            const isToday = day.toDateString() === new Date().toDateString();
+
+                            // Find sessions for this day
+                            const daySessions = sessions.filter(s => {
+                                const sDate = new Date(s.startTime);
+                                return sDate.toDateString() === day.toDateString() && s.status !== 'cancelled';
+                            });
+
+                            return (
+                                <button
+                                    key={dIndex}
+                                    onClick={() => onSelectDate(day)}
+                                    className={`
+                                        h-20 sm:h-24 p-1 rounded-lg border transition-all flex flex-col items-start justify-start text-left relative overflow-hidden group
+                                        ${isCurrentMonth ? 'bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800' : 'bg-gray-50 dark:bg-slate-950 border-transparent text-gray-300'}
+                                        ${isSelected ? 'ring-2 ring-blue-500 z-10' : 'hover:border-blue-200 dark:hover:border-blue-800'}
+                                    `}
+                                >
+                                    <span className={`
+                                        text-xs font-semibold mb-1 w-6 h-6 flex items-center justify-center rounded-full
+                                        ${isToday ? 'bg-blue-600 text-white' : ''}
+                                    `}>
+                                        {day.getDate()}
+                                    </span>
+
+                                    <div className="w-full space-y-1 overflow-y-auto scrollbar-hide">
+                                        {daySessions.map(s => (
+                                            <div key={s.id} className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded px-1 py-0.5 truncate w-full">
+                                                <span className="font-bold">{new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span className="block opacity-75 truncate text-[9px]">Coach</span>
+                                                {/* Ideally coach name. But Session interface needs coach name. */}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </React.Fragment>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// ============================================================================
+// HistoryFilterControls
+// ============================================================================
+
+export interface HistoryFilterControlsProps {
+    filter: { status: 'all' | 'completed' | 'cancelled', month: string };
+    setFilter: (filter: { status: 'all' | 'completed' | 'cancelled', month: string }) => void;
+}
+
+export const HistoryFilterControls: React.FC<HistoryFilterControlsProps> = ({ filter, setFilter }) => {
+    // Generate dates for filter (last 12 months)
+    const months = [{ value: 'all', label: 'All Time' }];
+    const today = new Date();
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        months.push({
+            value: `${d.getFullYear()}-${d.getMonth() + 1}`,
+            label: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+        });
+    }
+
+    return (
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+            <select
+                value={filter.status}
+                onChange={(e) => setFilter({ ...filter, status: e.target.value as any })}
+                className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+
+            <select
+                value={filter.month}
+                onChange={(e) => setFilter({ ...filter, month: e.target.value })}
+                className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                {months.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+};
 
 // ============================================================================
 // SessionCard

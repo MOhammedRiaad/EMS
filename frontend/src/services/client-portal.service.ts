@@ -95,6 +95,20 @@ export const clientPortalService = {
         return response.json();
     },
 
+    async validateRecurrence(data: any): Promise<{ validSessions: string[], conflicts: Array<{ date: string, conflict: string }> }> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/sessions/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to validate recurrence');
+        }
+        return response.json();
+    },
+
     async cancelSession(id: string, reason?: string): Promise<any> {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/client-portal/sessions/${id}/cancel`, {
@@ -159,5 +173,71 @@ export const clientPortalService = {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error('Failed to cancel waiting list entry');
+    },
+
+    async getAchievements(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/gamification/achievements`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch achievements');
+        return response.json();
+    },
+
+    async getGoals(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/gamification/goals`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch goals');
+        return response.json();
+    },
+
+    async setGoal(data: { goalType: string; targetValue: number; deadline?: string; notes?: string }): Promise<any> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/gamification/goals`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to set goal');
+        return response.json();
+    },
+
+    async getLeaderboard(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/gamification/leaderboard`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch leaderboard');
+        return response.json();
+    },
+
+    async getActivityFeed(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/gamification/feed`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch activity feed');
+        return response.json();
+    },
+
+    async toggleFavoriteCoach(coachId: string): Promise<{ favorited: boolean }> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/favorite-coaches/${coachId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to toggle favorite coach');
+        return response.json();
+    },
+
+    async getFavoriteCoaches(): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/client-portal/favorite-coaches`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch favorite coaches');
+        return response.json();
     }
 };

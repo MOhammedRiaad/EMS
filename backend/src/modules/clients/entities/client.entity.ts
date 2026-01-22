@@ -39,6 +39,13 @@ export class Client extends TenantScopedEntityWithUpdate {
     @Column({ name: 'consent_flags', type: 'jsonb', default: { marketing: false, data_processing: true } })
     consentFlags: { marketing: boolean; data_processing: boolean };
 
+    @Column({
+        name: 'privacy_preferences',
+        type: 'jsonb',
+        default: { leaderboard_visible: true, activity_feed_visible: true }
+    })
+    privacyPreferences: { leaderboard_visible: boolean; activity_feed_visible: boolean };
+
     @Column({ name: 'health_notes', type: 'text', nullable: true })
     healthNotes: string | null;
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ChevronLeft, ChevronRight, AlertCircle, User, Sparkles } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, AlertCircle, User, Sparkles, Heart } from 'lucide-react';
 import type { Slot, BookingCoach } from './useClientBookingState';
 
 // ============================================================================
@@ -54,9 +54,10 @@ export interface CoachListProps {
     coaches: BookingCoach[];
     selectedCoachId: string | null;
     onSelect: (id: string | null) => void;
+    onToggleFavorite?: (id: string, e: React.MouseEvent) => void;
 }
 
-export const CoachList: React.FC<CoachListProps> = ({ coaches, selectedCoachId, onSelect }) => (
+export const CoachList: React.FC<CoachListProps> = ({ coaches, selectedCoachId, onSelect, onToggleFavorite }) => (
     <div className="flex flex-col space-y-3 animate-slide-in-left">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">Select Coach</h3>
 
@@ -81,25 +82,52 @@ export const CoachList: React.FC<CoachListProps> = ({ coaches, selectedCoachId, 
 
         {/* Coach List */}
         {coaches.map((coach, index) => (
-            <button
-                key={coach.id}
-                onClick={() => onSelect(coach.id)}
-                className={`
-                    flex items-center p-3 rounded-xl border-2 transition-all text-left w-full group stagger-${index + 1}
-                    ${selectedCoachId === coach.id
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-500/30'
-                        : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'}
-                `}
-            >
-                {coach.avatarUrl ? (
-                    <img src={coach.avatarUrl} alt={coach.name} className="w-10 h-10 rounded-xl object-cover mr-3 border-2 border-white/20 shrink-0 group-hover:scale-110 transition-transform" />
-                ) : (
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 transition-transform group-hover:scale-110 ${selectedCoachId === coach.id ? 'bg-white/20' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800'}`}>
-                        <span className="text-sm font-bold">{coach.name.charAt(0)}</span>
+            <div key={coach.id} className="relative group">
+                <button
+                    onClick={() => onSelect(coach.id)}
+                    className={`
+                        flex items-center p-3 rounded-xl border-2 transition-all text-left w-full group stagger-${index + 1} pr-10
+                        ${selectedCoachId === coach.id
+                            ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-500/30'
+                            : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'}
+                    `}
+                >
+                    {coach.avatarUrl ? (
+                        <img src={coach.avatarUrl} alt={coach.name} className="w-10 h-10 rounded-xl object-cover mr-3 border-2 border-white/20 shrink-0 group-hover:scale-110 transition-transform" />
+                    ) : (
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 transition-transform group-hover:scale-110 ${selectedCoachId === coach.id ? 'bg-white/20' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800'}`}>
+                            <span className="text-sm font-bold">{coach.name.charAt(0)}</span>
+                        </div>
+                    )}
+                    <div className="flex flex-col overflow-hidden">
+                        <span className="font-semibold text-sm truncate">{coach.name}</span>
+                        {coach.isFavorite && (
+                            <span className={`text-[10px] ${selectedCoachId === coach.id ? 'text-blue-100' : 'text-blue-500'} flex items-center gap-0.5`}>
+                                <Heart size={10} fill="currentColor" /> Favorited
+                            </span>
+                        )}
                     </div>
+                </button>
+                {/* Favorite Button */}
+                {onToggleFavorite && (
+                    <button
+                        onClick={(e) => onToggleFavorite(coach.id, e)}
+                        className={`
+                            absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all z-10
+                            ${selectedCoachId === coach.id
+                                ? 'text-white/70 hover:text-white hover:bg-white/20'
+                                : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}
+                        `}
+                        title={coach.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                        <Heart
+                            size={18}
+                            fill={coach.isFavorite ? "currentColor" : "none"}
+                            className={coach.isFavorite && selectedCoachId !== coach.id ? "text-red-500" : ""}
+                        />
+                    </button>
                 )}
-                <span className="font-semibold text-sm truncate">{coach.name}</span>
-            </button>
+            </div>
         ))}
     </div>
 );
@@ -186,6 +214,118 @@ export const SlotsGrid: React.FC<SlotsGridProps> = ({ slots, loading, error, sel
 );
 
 // ============================================================================
+// RecurrenceSelector - Premium Segmented Control
+// ============================================================================
+
+export interface RecurrenceSelectorProps {
+    value: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'variable' | null;
+    onChange: (value: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'variable' | null) => void;
+    disabled?: boolean;
+    slots?: { dayOfWeek: number; startTime: string }[];
+    onSlotsChange?: (slots: { dayOfWeek: number; startTime: string }[]) => void;
+}
+
+export const RecurrenceSelector: React.FC<RecurrenceSelectorProps> = ({ value, onChange, disabled, slots = [], onSlotsChange }) => {
+    const options = [
+        { label: 'One-time', value: null },
+        { label: 'Daily', value: 'daily' },
+        { label: 'Weekly', value: 'weekly' },
+        { label: 'Bi-Weekly', value: 'biweekly' },
+        { label: 'Monthly', value: 'monthly' },
+        { label: 'Custom', value: 'variable' },
+    ] as const;
+
+    const [newDay, setNewDay] = React.useState(1);
+    const [newTime, setNewTime] = React.useState('10:00');
+
+    const handleAddSlot = () => {
+        if (onSlotsChange) {
+            onSlotsChange([...slots, { dayOfWeek: newDay, startTime: newTime }]);
+        }
+    };
+
+    const handleRemoveSlot = (index: number) => {
+        if (onSlotsChange) {
+            onSlotsChange(slots.filter((_, i) => i !== index));
+        }
+    };
+
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    return (
+        <div className="flex flex-col space-y-2 mb-4 animate-fade-in-up">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">Repeat Session</h3>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {options.map((option) => (
+                    <button
+                        key={option.label}
+                        onClick={() => onChange(option.value)}
+                        disabled={disabled}
+                        className={`
+                            px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border
+                            ${value === option.value
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-purple-300'}
+                            ${disabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}
+                        `}
+                    >
+                        {option.label}
+                    </button>
+                ))}
+            </div>
+            {value && value !== 'variable' && (
+                <div className="flex items-start gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl text-xs text-purple-700 dark:text-purple-300">
+                    <Sparkles size={14} className="mt-0.5" />
+                    <p>
+                        Recurring sessions will be booked for the same time slot automatically.
+                        {value === 'daily' && ' Every day for the next year.'}
+                        {value === 'weekly' && ' Same day every week.'}
+                        {value === 'biweekly' && ' Same day every two weeks.'}
+                        {value === 'monthly' && ' Same day every month.'}
+                    </p>
+                </div>
+            )}
+            {value === 'variable' && (
+                <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+                    <h4 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Custom Schedule</h4>
+                    <div className="flex gap-2 mb-3">
+                        <select
+                            value={newDay}
+                            onChange={(e) => setNewDay(Number(e.target.value))}
+                            className="p-2 rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-600 text-sm"
+                        >
+                            {days.map((d, i) => <option key={d} value={i}>{d}</option>)}
+                        </select>
+                        <input
+                            type="time"
+                            value={newTime}
+                            onChange={(e) => setNewTime(e.target.value)}
+                            className="p-2 rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-600 text-sm"
+                        />
+                        <button
+                            onClick={handleAddSlot}
+                            className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                        >
+                            Add
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {slots.map((slot, index) => (
+                            <div key={index} className="flex justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-lg border dark:border-slate-700 text-sm">
+                                <span>{days[slot.dayOfWeek]} at {slot.startTime}</span>
+                                <button onClick={() => handleRemoveSlot(index)} className="text-red-500 hover:bg-red-50 rounded p-1">
+                                    Remove
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ============================================================================
 // BookingSummary - Premium Bottom Sheet
 // ============================================================================
 
@@ -195,40 +335,120 @@ export interface BookingSummaryProps {
     slotStatus: 'available' | 'full' | undefined;
     booking: boolean;
     onAction: () => void;
+    canBook?: boolean; // New optional prop
 }
 
-export const BookingSummary: React.FC<BookingSummaryProps> = ({ selectedDate, selectedSlot, slotStatus, booking, onAction }) => (
-    <div className="fixed bottom-0 left-0 right-0 p-4 glass-card border-t border-gray-200 dark:border-slate-800 flex items-center justify-between pb-8 z-50 animate-fade-in-up">
-        <div>
-            {selectedSlot ? (
-                <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
-                        {slotStatus === 'full' ? 'Waitlist Request' : 'Booking'}
-                    </p>
-                    <p className="text-lg font-bold text-gray-800 dark:text-white">
-                        {selectedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · {selectedSlot}
-                    </p>
-                </div>
-            ) : (
-                <p className="text-gray-400 dark:text-gray-500 text-sm">Select a time slot</p>
-            )}
-        </div>
-        <button
-            disabled={!selectedSlot || booking}
-            onClick={onAction}
-            className={`
+export const BookingSummary: React.FC<BookingSummaryProps> = ({ selectedDate, selectedSlot, slotStatus, booking, onAction, canBook }) => {
+    // If canBook is provided, use it. Otherwise default to selectedSlot check.
+    const isBookable = canBook !== undefined ? canBook : !!selectedSlot;
+
+    return (
+        <div className="fixed bottom-0 left-0 right-0 p-4 glass-card border-t border-gray-200 dark:border-slate-800 flex items-center justify-between pb-8 z-50 animate-fade-in-up">
+            <div>
+                {selectedSlot ? (
+                    <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
+                            {slotStatus === 'full' ? 'Waitlist Request' : 'Booking'}
+                        </p>
+                        <p className="text-lg font-bold text-gray-800 dark:text-white">
+                            {selectedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · {selectedSlot}
+                        </p>
+                    </div>
+                ) : (
+                    // If not selectedSlot but isBookable (variable recurrence), show custom message?
+                    isBookable ? (
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
+                                Custom Schedule
+                            </p>
+                            <p className="text-lg font-bold text-gray-800 dark:text-white">
+                                Variable Recurrence
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="text-gray-400 dark:text-gray-500 text-sm">Select a time slot</p>
+                    )
+                )}
+            </div>
+            <button
+                disabled={!isBookable || booking}
+                onClick={onAction}
+                className={`
                 px-8 py-3 rounded-xl font-bold text-white transition-all active:scale-95
-                ${!selectedSlot || booking
-                    ? 'bg-gray-300 dark:bg-slate-700 cursor-not-allowed'
-                    : (slotStatus === 'full'
-                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 hover:-translate-y-0.5'
-                        : 'btn-gradient')}
+                ${!isBookable || booking
+                        ? 'bg-gray-300 dark:bg-slate-700 cursor-not-allowed'
+                        : (slotStatus === 'full'
+                            ? 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 hover:-translate-y-0.5'
+                            : 'btn-gradient')}
             `}
-        >
-            {booking
-                ? 'Processing...'
-                : (slotStatus === 'full' ? 'Join Waitlist' : 'Confirm Booking')}
-        </button>
-    </div>
-);
+            >
+                {booking
+                    ? 'Processing...'
+                    : (slotStatus === 'full' ? 'Join Waitlist' : 'Confirm Booking')}
+            </button>
+        </div>
+    );
+};
+
+// ============================================================================
+// ConflictReviewModal - Premium Modal for Conflicts
+// ============================================================================
+
+export interface ConflictReviewModalProps {
+    conflicts: Array<{ date: string, conflict: string }>;
+    validSessionsCount: number;
+    onCancel: () => void;
+    onProceed: () => void;
+}
+
+export const ConflictReviewModal: React.FC<ConflictReviewModalProps> = ({ conflicts, validSessionsCount, onCancel, onProceed }) => {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4 text-amber-500">
+                        <AlertCircle size={32} />
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Scheduling Conflicts</h2>
+                    </div>
+
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm">
+                        Some recurring sessions cannot be booked due to conflicts.
+                        We can book <strong>{validSessionsCount}</strong> sessions successfully.
+                    </p>
+
+                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 mb-6 max-h-48 overflow-y-auto custom-scrollbar">
+                        <h4 className="text-xs font-bold uppercase text-amber-600 dark:text-amber-400 mb-2 tracking-wider">Conflicts ({conflicts.length})</h4>
+                        <ul className="space-y-2">
+                            {conflicts.map((c, i) => (
+                                <li key={i} className="flex justify-between text-xs border-b border-amber-100 dark:border-amber-800/30 last:border-0 pb-1 last:pb-0">
+                                    <span className="font-semibold text-gray-700 dark:text-gray-300">
+                                        {new Date(c.date).toLocaleDateString()}
+                                    </span>
+                                    <span className="text-amber-600 dark:text-amber-400 italic text-right max-w-[60%] truncate">
+                                        {c.conflict}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onCancel}
+                            className="flex-1 px-4 py-3 rounded-xl font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={onProceed}
+                            className="flex-1 px-4 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+                        >
+                            Proceed Anyway
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 

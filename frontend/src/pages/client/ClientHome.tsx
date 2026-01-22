@@ -9,6 +9,7 @@ import {
     BookingPromoCard,
     FloatingBookButton
 } from './ClientHomeComponents';
+import { ActivityFeed } from '../../components/client/social/ActivityFeed';
 
 const ClientHome = () => {
     const { user } = useAuth();
@@ -40,7 +41,7 @@ const ClientHome = () => {
             {/* Decorative background */}
             <div className="absolute inset-0 bg-gradient-radial pointer-events-none" />
 
-            <div className="relative p-6 space-y-6 pb-32 max-w-lg mx-auto md:max-w-4xl">
+            <div className="relative p-6 space-y-6 pb-32 max-w-lg mx-auto md:max-w-6xl">
                 {/* Header */}
                 <header className="flex justify-between items-center animate-fade-in-up">
                     <div>
@@ -56,26 +57,38 @@ const ClientHome = () => {
                     </div>
                 </header>
 
-                {/* Notifications */}
-                <NotificationsSection notifications={state.importantNotifications} />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Main Content Column */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Notifications */}
+                        <NotificationsSection notifications={state.importantNotifications} />
 
-                {/* Main Action Card (Next Session or Booking) */}
-                <section>
-                    <NextSessionCard nextSession={nextSession} />
-                </section>
+                        {/* Main Action Card (Next Session or Booking) */}
+                        <section>
+                            <NextSessionCard nextSession={nextSession} />
+                        </section>
 
-                {/* Active Plan & Stats */}
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <ActivePackageCard activePackage={activePackage} />
-                    <WaitingListCard
-                        entries={state.waitingList}
-                        onCancel={state.handleCancelWaitingList}
-                    />
-                    <QuickActionsCard />
-                </section>
+                        {/* Active Plan & Stats */}
+                        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <ActivePackageCard activePackage={activePackage} />
+                            <WaitingListCard
+                                entries={state.waitingList}
+                                onCancel={state.handleCancelWaitingList}
+                            />
+                            <QuickActionsCard />
+                        </section>
+                        <div className="mt-6">
+                            <BookingPromoCard />
+                        </div>
+                    </div>
 
-                {/* Booking Teaser / Promo */}
-                <BookingPromoCard />
+                    {/* Sidebar Column */}
+                    <div className="space-y-6">
+                        <div className="sticky top-6">
+                            <ActivityFeed />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Floating Action Button */}
@@ -85,4 +98,3 @@ const ClientHome = () => {
 };
 
 export default ClientHome;
-

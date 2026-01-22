@@ -5,6 +5,9 @@ import { PackagesService } from '../packages/packages.service';
 import { WaitingListService } from '../waiting-list/waiting-list.service';
 import { ClientsService } from '../clients/clients.service';
 import { CoachesService } from '../coaches/coaches.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+import { AuthService } from '../auth/auth.service';
 import { ClientPackageStatus } from '../packages/entities/client-package.entity';
 
 describe('ClientPortalService', () => {
@@ -14,6 +17,8 @@ describe('ClientPortalService', () => {
     let waitingListService: jest.Mocked<WaitingListService>;
     let clientsService: jest.Mocked<ClientsService>;
     let coachesService: jest.Mocked<CoachesService>;
+    let authService: jest.Mocked<AuthService>;
+    let favoriteCoachRepo: any;
 
     const mockClient = {
         id: 'client-123',
@@ -110,6 +115,22 @@ describe('ClientPortalService', () => {
                         findActive: jest.fn(),
                     },
                 },
+                {
+                    provide: AuthService,
+                    useValue: {
+                        update: jest.fn(),
+                    },
+                },
+                {
+                    provide: getRepositoryToken(FavoriteCoach),
+                    useValue: {
+                        findOne: jest.fn(),
+                        save: jest.fn(),
+                        remove: jest.fn(),
+                        find: jest.fn(),
+                        create: jest.fn(),
+                    },
+                },
             ],
         }).compile();
 
@@ -119,6 +140,8 @@ describe('ClientPortalService', () => {
         waitingListService = module.get(WaitingListService);
         clientsService = module.get(ClientsService);
         coachesService = module.get(CoachesService);
+        authService = module.get(AuthService);
+        favoriteCoachRepo = module.get(getRepositoryToken(FavoriteCoach));
 
         jest.clearAllMocks();
     });
@@ -262,7 +285,7 @@ describe('ClientPortalService', () => {
 
     describe('getAvailableSlots', () => {
         it('should return available slots', async () => {
-            const mockSlots = [
+            const mockSlots: { time: string; status: 'available' | 'full' }[] = [
                 { time: '10:00', status: 'available' },
                 { time: '10:20', status: 'available' },
             ];
@@ -426,6 +449,70 @@ describe('ClientPortalService', () => {
             await expect(
                 service.getCoaches('nonexistent', 'tenant-123')
             ).rejects.toThrow('Client not found');
+        });
+    });
+
+    describe('toggleFavoriteCoach', () => {
+        it('should favorite a coach if not already favorited', async () => {
+            coachesService.findOne.mockResolvedValue({ id: 'coach-123' } as any);
+            favoriteCoachRepo.findOne.mockResolvedValue(null);
+            favoriteCoachRepo.create.mockReturnValue({ coachId: 'coach-123' });
+            favoriteCoachRepo.save.mockResolvedValue({});
+
+            const result = await service.toggleFavoriteCoach('client-123', 'tenant-123', 'coach-123');
+
+            expect(favoriteCoachRepo.create).toHaveBeenCalledWith({
+                clientId: 'client-123',
+                tenantId: 'tenant-123',
+                coachId: 'coach-123',
+            });
+            expect(favoriteCoachRepo.save).toHaveBeenCalled();
+            expect(result).toEqual({ favorited: true });
+        });
+
+        it('should unfavorite a coach if already favorited', async () => {
+            coachesService.findOne.mockResolvedValue({ id: 'coach-123' } as any);
+            favoriteCoachRepo.findOne.mockResolvedValue({ id: 'fav-1' });
+            favoriteCoachRepo.remove.mockResolvedValue({});
+
+            const result = await service.toggleFavoriteCoach('client-123', 'tenant-123', 'coach-123');
+
+            expect(favoriteCoachRepo.remove).toHaveBeenCalledWith({ id: 'fav-1' });
+            expect(result).toEqual({ favorited: false });
+        });
+
+        it('should throw error if coach not found', async () => {
+            coachesService.findOne.mockResolvedValue(null);
+
+            await expect(
+                service.toggleFavoriteCoach('client-123', 'tenant-123', 'coach-123')
+            ).rejects.toThrow('Coach not found');
+        });
+    });
+
+    describe('getFavoriteCoaches', () => {
+        it('should return list of favorite coaches', async () => {
+            const mockFavorites = [
+                {
+                    favoritedAt: new Date(),
+                    coach: {
+                        id: 'coach-1',
+                        user: { firstName: 'C1' }
+                    }
+                }
+            ];
+            favoriteCoachRepo.find.mockResolvedValue(mockFavorites);
+
+            const result = await service.getFavoriteCoaches('client-123', 'tenant-123');
+
+            expect(favoriteCoachRepo.find).toHaveBeenCalledWith({
+                where: { clientId: 'client-123', tenantId: 'tenant-123' },
+                relations: ['coach', 'coach.user'],
+                order: { favoritedAt: 'DESC' }
+            });
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe('coach-1');
+            expect(result[0]).toHaveProperty('favoritedAt');
         });
     });
 });

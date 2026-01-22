@@ -6,7 +6,7 @@ import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import FilterBar from '../../components/common/FilterBar';
 import { type Client } from '../../services/clients.service';
-import { Mail, Phone } from 'lucide-react';
+import { Mail, Phone, Package } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import ClientPackages from '../../components/clients/ClientPackages';
 import { getImageUrl } from '../../utils/imageUtils';
@@ -103,6 +103,24 @@ const Clients: React.FC = () => {
                         }}
                     >
                         {client.status === 'active' ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                        onClick={() => state.handleManagePackages(client)}
+                        title="Manage Packages"
+                        style={{
+                            padding: '0.375rem 0.5rem',
+                            fontSize: '0.75rem',
+                            borderRadius: 'var(--border-radius-sm)',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--color-bg-primary)',
+                            color: 'var(--color-text-primary)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <Package size={14} />
                     </button>
                     <ActionButtons
                         showEdit={canEdit}

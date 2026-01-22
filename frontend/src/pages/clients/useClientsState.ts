@@ -186,6 +186,11 @@ export function useClientsState() {
         }
     }, []);
 
+    const handleManagePackages = useCallback((client: Client) => {
+        setSelectedClient(client);
+        setIsPackageModalOpen(true);
+    }, []);
+
     const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -243,6 +248,7 @@ export function useClientsState() {
         handleDeleteClick,
         handleDeleteConfirm,
         handleInvite,
-        handleAvatarUpload
+        handleAvatarUpload,
+        handleManagePackages
     };
 }

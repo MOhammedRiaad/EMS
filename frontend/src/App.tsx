@@ -19,6 +19,7 @@ import AdminWaitingList from './pages/admin/AdminWaitingList';
 import AdminPackages from './pages/admin/AdminPackages';
 import AdminCashFlow from './pages/admin/AdminCashFlow';
 import AdminSettings from './pages/admin/AdminSettings';
+import Analytics from './pages/admin/Analytics';
 import Reviews from './pages/admin/Reviews';
 import { AuthProvider } from './contexts/AuthContext';
 import { MenuPreferencesProvider } from './contexts/MenuPreferencesContext';
@@ -35,6 +36,7 @@ import ClientProgress from './pages/client/ClientProgress';
 import NotificationPreferences from './pages/client/NotificationPreferences';
 import PrivacySettings from './pages/client/PrivacySettings';
 import HelpSupport from './pages/client/HelpSupport';
+import { LeaderboardPage } from './pages/client/LeaderboardPage';
 import RoleGuard from './components/auth/RoleGuard';
 
 import CoachLayout from './components/layout/CoachLayout';
@@ -65,6 +67,7 @@ function App() {
                   <Route path="progress" element={<ClientProgress />} />
                   <Route path="profile" element={<ClientProfile />} />
                   <Route path="notifications" element={<NotificationPreferences />} />
+                  <Route path="leaderboard" element={<LeaderboardPage />} />
                   <Route path="privacy" element={<PrivacySettings />} />
                   <Route path="help" element={<HelpSupport />} />
                 </Route>
@@ -107,6 +110,7 @@ function App() {
                   <Route path="admin/packages" element={<AdminPackages />} />
                   <Route path="admin/cash-flow" element={<AdminCashFlow />} />
                   <Route path="admin/settings" element={<AdminSettings />} />
+                  <Route path="analytics" element={<Analytics />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

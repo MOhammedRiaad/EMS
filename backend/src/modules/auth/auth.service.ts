@@ -378,4 +378,17 @@ export class AuthService {
             } : undefined,
         };
     }
+    async update(id: string, updateData: Partial<User>) {
+        const user = await this.userRepository.findOne({ where: { id } });
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Filter out sensitive fields just in case
+        delete updateData.passwordHash;
+        delete updateData.passwordResetToken;
+
+        Object.assign(user, updateData);
+        return this.userRepository.save(user);
+    }
 }

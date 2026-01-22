@@ -1,6 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { useClientBookingState } from './useClientBookingState';
-import { DateSelector, SlotsGrid, BookingSummary, CoachList } from './ClientBookingComponents';
+import { DateSelector, SlotsGrid, BookingSummary, CoachList, RecurrenceSelector, ConflictReviewModal } from './ClientBookingComponents';
 
 const ClientBooking = () => {
     const state = useClientBookingState();
@@ -20,6 +20,7 @@ const ClientBooking = () => {
                         coaches={state.coaches}
                         selectedCoachId={state.selectedCoachId}
                         onSelect={state.setSelectedCoachId}
+                        onToggleFavorite={state.handleToggleFavorite}
                     />
                 </aside>
 
@@ -28,6 +29,14 @@ const ClientBooking = () => {
                         selectedDate={state.selectedDate}
                         onPrev={() => state.handleDateChange(-1)}
                         onNext={() => state.handleDateChange(1)}
+                    />
+
+                    {/* Only show recurrence selector if a date is selected? Or always? */}
+                    <RecurrenceSelector
+                        value={state.recurrencePattern}
+                        onChange={state.setRecurrencePattern}
+                        slots={state.recurrenceSlots}
+                        onSlotsChange={state.setRecurrenceSlots}
                     />
 
                     <SlotsGrid
@@ -47,7 +56,20 @@ const ClientBooking = () => {
                 slotStatus={state.getSelectedSlotStatus()}
                 booking={state.booking}
                 onAction={state.handleAction}
+                canBook={
+                    !!state.selectedSlot ||
+                    (state.recurrencePattern === 'variable' && state.recurrenceSlots.length > 0)
+                }
             />
+
+            {state.showConflictModal && state.validationResult && (
+                <ConflictReviewModal
+                    conflicts={state.validationResult.conflicts}
+                    validSessionsCount={state.validationResult.validSessions.length}
+                    onCancel={() => state.setShowConflictModal(false)}
+                    onProceed={state.handleProceedWithConflicts}
+                />
+            )}
         </div>
     );
 };

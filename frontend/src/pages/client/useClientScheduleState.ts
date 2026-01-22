@@ -10,11 +10,23 @@ export interface Session {
     review?: { rating: number };
 }
 
+export interface HistoryFilter {
+    status: 'all' | 'completed' | 'cancelled';
+    month: string; // 'YYYY-MM' or 'all'
+}
+
 export function useClientScheduleState() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'upcoming' | 'past'>('upcoming');
+
+    // Calendar State
+    const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+    // History Filter State
+    const [historyFilter, setHistoryFilter] = useState<HistoryFilter>({ status: 'all', month: 'all' });
 
     // Review Modal State
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -83,14 +95,48 @@ export function useClientScheduleState() {
         }
     }, []);
 
+    // Filter Logic
     const filteredSessions = sessions.filter(session => {
-        const isPast = new Date(session.startTime) < new Date() || session.status === 'completed';
-        return filter === 'upcoming' ? !isPast : isPast;
+        const sessionDate = new Date(session.startTime);
+        const isPast = sessionDate < new Date() || session.status === 'completed';
+
+        if (filter === 'upcoming') {
+            if (isPast) return false;
+            // Additional filtering for calendar view?
+            // If user selects a date on calendar, filter by that date.
+            // If not, show all upcoming? Or just show the calendar?
+            // "Select date to filter the session list below"
+            if (selectedDate) {
+                return sessionDate.toDateString() === selectedDate.toDateString();
+            }
+            return true;
+        } else {
+            // History Tab
+            if (!isPast) return false;
+
+            // Apply History Filters
+            if (historyFilter.status !== 'all' && session.status !== historyFilter.status) return false;
+
+            if (historyFilter.month !== 'all') {
+                const [year, month] = historyFilter.month.split('-').map(Number);
+                if (sessionDate.getFullYear() !== year || sessionDate.getMonth() + 1 !== month) return false;
+            }
+
+            return true;
+        }
     }).sort((a, b) => {
         return filter === 'upcoming'
             ? new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
             : new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
     });
+
+    const handleCalendarMonthChange = useCallback((increment: number) => {
+        setCalendarMonth(prev => {
+            const next = new Date(prev);
+            next.setMonth(next.getMonth() + increment);
+            return next;
+        });
+    }, []);
 
     return {
         // Data
@@ -102,6 +148,16 @@ export function useClientScheduleState() {
         error,
         filter,
         setFilter,
+
+        // Calendar
+        calendarMonth,
+        handleCalendarMonthChange,
+        selectedDate,
+        setSelectedDate,
+
+        // History Filter
+        historyFilter,
+        setHistoryFilter,
 
         // Review modal
         showReviewModal,

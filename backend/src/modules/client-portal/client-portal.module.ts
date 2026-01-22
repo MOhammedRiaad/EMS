@@ -1,3 +1,4 @@
+import { AuthModule } from '../auth/auth.module';
 import { Module } from '@nestjs/common';
 import { ClientPortalController } from './client-portal.controller';
 import { ClientPortalService } from './client-portal.service';
@@ -7,8 +8,19 @@ import { WaitingListModule } from '../waiting-list/waiting-list.module';
 import { ClientsModule } from '../clients/clients.module';
 import { CoachesModule } from '../coaches/coaches.module';
 
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+
 @Module({
-    imports: [SessionsModule, PackagesModule, WaitingListModule, ClientsModule, CoachesModule],
+    imports: [
+        TypeOrmModule.forFeature([FavoriteCoach]),
+        SessionsModule,
+        PackagesModule,
+        WaitingListModule,
+        ClientsModule,
+        CoachesModule,
+        AuthModule
+    ],
     controllers: [ClientPortalController],
     providers: [ClientPortalService],
 })
