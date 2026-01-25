@@ -8,6 +8,44 @@ const getHeaders = () => {
     };
 };
 
+export class ApiError extends Error {
+    statusCode?: number;
+    error?: string;
+    conflicts?: any[];
+
+    constructor(message: string, statusCode?: number, error?: string, conflicts?: any[]) {
+        super(message);
+        this.name = 'ApiError';
+        this.statusCode = statusCode;
+        this.error = error;
+        this.conflicts = conflicts;
+    }
+}
+
+const formatErrorMessage = (errorData: any): string => {
+    if (typeof errorData.message === 'string') {
+        return errorData.message;
+    }
+
+    if (Array.isArray(errorData.message)) {
+        return errorData.message.join('. ');
+    }
+
+    if (errorData.message && typeof errorData.message === 'object') {
+        if (errorData.message.message) {
+            if (typeof errorData.message.message === 'string') {
+                return errorData.message.message;
+            }
+            if (Array.isArray(errorData.message.message)) {
+                return errorData.message.message.join('. ');
+            }
+        }
+        return JSON.stringify(errorData.message);
+    }
+
+    return errorData.error || 'API request failed';
+};
+
 export const api = {
     async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<{ data: T }> {
         const url = new URL(`${API_URL}${endpoint}`);
@@ -21,7 +59,8 @@ export const api = {
 
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
-            throw { response: { data } };
+            const message = formatErrorMessage(data);
+            throw new ApiError(message, response.status, data.error, data.conflicts);
         }
 
         const data = await response.json();
@@ -38,7 +77,8 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw { response: { data } };
+            const message = formatErrorMessage(data);
+            throw new ApiError(message, response.status, data.error, data.conflicts);
         }
 
         return { data };
@@ -54,7 +94,8 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw { response: { data } };
+            const message = formatErrorMessage(data);
+            throw new ApiError(message, response.status, data.error, data.conflicts);
         }
 
         return { data };
@@ -69,7 +110,8 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw { response: { data } };
+            const message = formatErrorMessage(data);
+            throw new ApiError(message, response.status, data.error, data.conflicts);
         }
 
         return { data };
@@ -89,7 +131,8 @@ export const authenticatedFetch = async (endpoint: string, options: RequestInit 
 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || 'API request failed');
+        const message = formatErrorMessage(data);
+        throw new ApiError(message, response.status, data.error, data.conflicts);
     }
     return response.json();
 };

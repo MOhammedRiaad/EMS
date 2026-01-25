@@ -27,9 +27,21 @@ export class CreateSessionDto {
     @IsUUID()
     coachId: string;
 
-    @ApiProperty()
+    @ApiPropertyOptional()
+    @IsOptional()
     @IsUUID()
-    clientId: string;
+    clientId?: string;
+
+    @ApiPropertyOptional({ enum: ['individual', 'group'] })
+    @IsOptional()
+    @IsIn(['individual', 'group'])
+    type?: 'individual' | 'group';
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    capacity?: number;
 
     @ApiPropertyOptional()
     @IsOptional()

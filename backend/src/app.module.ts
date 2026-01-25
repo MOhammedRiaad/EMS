@@ -31,6 +31,8 @@ import { ReminderModule } from './modules/reminders/reminder.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { GamificationModule } from './modules/gamification/gamification.module';
 import { WaiversModule } from './modules/waivers/waivers.module';
+import { TermsModule } from './modules/terms/terms.module';
+import { ParqModule } from './modules/parq/parq.module';
 
 @Module({
   imports: [
@@ -113,6 +115,8 @@ import { WaiversModule } from './modules/waivers/waivers.module';
     AnalyticsModule,
     GamificationModule,
     WaiversModule,
+    ParqModule,
+    TermsModule,
     RetailModule,
   ],
   controllers: [HealthController],

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { authenticatedFetch } from './api';
 
 export interface DashboardStats {
     activeClients: number;
@@ -7,16 +7,21 @@ export interface DashboardStats {
     revenue: number;
 }
 
+export interface DashboardNotification {
+    id: string;
+    type: 'session_today' | 'session_upcoming' | 'package_expiring' | 'package_low' | 'waitlist_update';
+    title: string;
+    message: string;
+    link?: string;
+    priority: 'high' | 'medium' | 'low';
+}
+
 export const dashboardService = {
     async getStats(): Promise<DashboardStats> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/dashboard/stats`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        return authenticatedFetch('/dashboard/stats');
+    },
 
-        if (!response.ok) throw new Error('Failed to fetch dashboard stats');
-        return response.json();
+    async getNotifications(): Promise<DashboardNotification[]> {
+        return authenticatedFetch('/notifications/dashboard');
     }
 };

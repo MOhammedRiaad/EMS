@@ -1,10 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToOne, OneToMany } from 'typeorm';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Studio } from '../../studios/entities/studio.entity';
 import { Room } from '../../rooms/entities/room.entity';
 import { Coach } from '../../coaches/entities/coach.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientSessionReview } from '../../reviews/entities/review.entity';
+import { SessionParticipant } from './session-participant.entity';
 
 export type SessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
@@ -19,8 +20,8 @@ export class Session extends TenantScopedEntityWithUpdate {
     @Column({ name: 'coach_id', type: 'uuid' })
     coachId: string;
 
-    @Column({ name: 'client_id', type: 'uuid' })
-    clientId: string;
+    @Column({ name: 'client_id', type: 'uuid', nullable: true })
+    clientId: string | null;
 
     @Column({ name: 'ems_device_id', type: 'uuid', nullable: true })
     emsDeviceId: string | null;
@@ -43,6 +44,16 @@ export class Session extends TenantScopedEntityWithUpdate {
         default: 'scheduled',
     })
     status: SessionStatus;
+
+    @Column({
+        type: 'enum',
+        enum: ['individual', 'group'],
+        default: 'individual',
+    })
+    type: 'individual' | 'group';
+
+    @Column({ type: 'int', default: 1 })
+    capacity: number;
 
     @Column({ type: 'text', nullable: true })
     notes: string | null;
@@ -84,6 +95,9 @@ export class Session extends TenantScopedEntityWithUpdate {
     @ManyToOne(() => Client, { onDelete: 'RESTRICT' })
     @JoinColumn({ name: 'client_id' })
     client: Client;
+
+    @OneToMany(() => SessionParticipant, participant => participant.session)
+    participants: SessionParticipant[];
 
     @Column({ name: 'reminder_sent_at', type: 'timestamptz', nullable: true })
     reminderSentAt: Date | null;

@@ -145,8 +145,8 @@
 #### 2.8 Legal & Compliance (Critical) ⚖️
 - [x] **Digital Waivers**: Flexible HTML contracts signature capture
 - [x] **Signature Storage**: Secure storage of client signatures
-- [ ] **PAR-Q Forms**: Medical readiness questionnaire on onboarding
-- [ ] **Terms Acceptance**: Versioned Terms of Service tracking
+- [x] **PAR-Q Forms**: Medical readiness questionnaire on onboarding
+- [x] **Terms Acceptance**: Versioned Terms of Service tracking
 
 ---
 

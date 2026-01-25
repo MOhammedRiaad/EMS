@@ -151,6 +151,7 @@ describe('SessionsService', () => {
                         getActivePackageForClient: jest.fn(),
                         getClientPackages: jest.fn(),
                         useSession: jest.fn(),
+                        returnSession: jest.fn(),
                     },
                 },
                 {
@@ -403,6 +404,26 @@ describe('SessionsService', () => {
             const result = await service.updateStatus('session-123', 'tenant-123', 'cancelled');
 
             expect(result.cancelledAt).toBeInstanceOf(Date);
+        });
+
+        it('should refund session when changing from completed to cancelled', async () => {
+            const completedSession = { ...mockSession, status: 'completed' as const };
+            sessionRepository.findOne.mockResolvedValue(completedSession);
+            packagesService.returnSession.mockResolvedValue(undefined as any);
+
+            const result = await service.updateStatus('session-123', 'tenant-123', 'cancelled');
+
+            expect(result.status).toBe('cancelled');
+            expect(packagesService.returnSession).toHaveBeenCalledWith(mockActivePackage.id, 'tenant-123');
+        });
+
+        it('should deduct session if admin override deductSession is true on cancel', async () => {
+            const scheduledSession = { ...mockSession, status: 'scheduled' as const };
+            sessionRepository.findOne.mockResolvedValue(scheduledSession);
+
+            await service.updateStatus('session-123', 'tenant-123', 'cancelled', true);
+
+            expect(packagesService.useSession).toHaveBeenCalled();
         });
     });
 

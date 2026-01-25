@@ -19,6 +19,8 @@ export interface SessionFormData {
     recurrencePattern: '' | 'weekly' | 'biweekly' | 'monthly';
     recurrenceEndDate: string;
     recurrenceDays: number[];
+    type: 'individual' | 'group';
+    capacity: number;
 }
 
 export interface SessionFilters {
@@ -41,7 +43,9 @@ const initialFormState: SessionFormData = {
     intensityLevel: 5,
     recurrencePattern: '',
     recurrenceEndDate: '',
-    recurrenceDays: []
+    recurrenceDays: [],
+    type: 'individual',
+    capacity: 1
 };
 
 const initialFilters: SessionFilters = {
@@ -184,7 +188,7 @@ export function useSessionsState() {
             await sessionsService.create({
                 studioId: formData.studioId,
                 roomId: formData.roomId,
-                clientId: formData.clientId,
+                clientId: formData.clientId || undefined,
                 coachId: formData.coachId,
                 startTime: start.toISOString(),
                 endTime: end.toISOString(),
@@ -192,7 +196,9 @@ export function useSessionsState() {
                 notes: formData.notes || undefined,
                 recurrencePattern: formData.recurrencePattern || undefined,
                 recurrenceEndDate: formData.recurrenceEndDate || undefined,
-                recurrenceDays: formData.recurrenceDays.length > 0 ? formData.recurrenceDays : undefined
+                recurrenceDays: formData.recurrenceDays.length > 0 ? formData.recurrenceDays : undefined,
+                type: formData.type,
+                capacity: formData.capacity
             });
 
             setIsCreateModalOpen(false);
@@ -229,7 +235,9 @@ export function useSessionsState() {
             intensityLevel: session.intensityLevel || 5,
             recurrencePattern: '',
             recurrenceEndDate: '',
-            recurrenceDays: []
+            recurrenceDays: [],
+            type: session.type || 'individual',
+            capacity: session.capacity || 1
         });
         setIsEditModalOpen(true);
     }, []);
@@ -246,7 +254,7 @@ export function useSessionsState() {
             await sessionsService.update(selectedSession.id, {
                 studioId: formData.studioId,
                 roomId: formData.roomId,
-                clientId: formData.clientId,
+                clientId: formData.clientId || undefined,
                 coachId: formData.coachId,
                 startTime: start.toISOString(),
                 endTime: end.toISOString(),
@@ -408,6 +416,7 @@ export function useSessionsState() {
         handleDeleteConfirm,
         handleStatusClick,
         handleStatusConfirm,
-        closeStatusModal
+        closeStatusModal,
+        refresh: fetchData
     };
 }

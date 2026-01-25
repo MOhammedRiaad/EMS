@@ -22,22 +22,8 @@ interface SessionFormProps {
     onCancel: () => void;
 }
 
-const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '0.75rem',
-    borderRadius: 'var(--border-radius-md)',
-    border: '1px solid var(--border-color)',
-    backgroundColor: 'var(--color-bg-primary)',
-    color: 'var(--color-text-primary)',
-    outline: 'none'
-};
-
-const labelStyle: React.CSSProperties = {
-    display: 'block',
-    marginBottom: '0.5rem',
-    fontSize: '0.875rem',
-    color: 'var(--color-text-secondary)'
-};
+const inputClass = "w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-900";
+const labelClass = "block mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export const SessionForm: React.FC<SessionFormProps> = ({
     formData,
@@ -54,34 +40,52 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     onCancel
 }) => {
     return (
-        <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
             {error && (
-                <div style={{
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid var(--color-danger)',
-                    color: 'var(--color-danger)',
-                    padding: '0.75rem',
-                    borderRadius: 'var(--border-radius-md)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.875rem'
-                }}>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-3 rounded-lg flex items-center gap-2 text-sm">
                     <AlertCircle size={16} />
                     <span>{error}</span>
                 </div>
             )}
 
+            {/* Session Type */}
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className={labelClass}>Session Type</label>
+                    <select
+                        value={formData.type}
+                        onChange={e => setFormData(prev => ({ ...prev, type: e.target.value as 'individual' | 'group' }))}
+                        className={inputClass}
+                        disabled={isEdit}
+                    >
+                        <option value="individual">Individual</option>
+                        <option value="group">Group</option>
+                    </select>
+                </div>
+                {formData.type === 'group' && (
+                    <div>
+                        <label className={labelClass}>Capacity</label>
+                        <input
+                            type="number"
+                            min="2"
+                            value={formData.capacity}
+                            onChange={e => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) }))}
+                            className={inputClass}
+                        />
+                    </div>
+                )}
+            </div>
+
             {/* Studio Selection */}
             <div>
-                <label style={labelStyle}>
-                    <Building2 size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Studio
+                <label className={labelClass}>
+                    <Building2 size={14} className="inline mr-1" /> Studio
                 </label>
                 <select
                     required
                     value={formData.studioId}
                     onChange={e => setFormData(prev => ({ ...prev, studioId: e.target.value, roomId: '', emsDeviceId: '' }))}
-                    style={inputStyle}
+                    className={inputClass}
                     disabled={isEdit}
                 >
                     <option value="">Select a Studio</option>
@@ -92,16 +96,16 @@ export const SessionForm: React.FC<SessionFormProps> = ({
             </div>
 
             {/* Room and Device Selection */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={labelStyle}>
-                        <DoorOpen size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> Room
+                    <label className={labelClass}>
+                        <DoorOpen size={14} className="inline mr-1" /> Room
                     </label>
                     <select
                         required
                         value={formData.roomId}
                         onChange={e => setFormData(prev => ({ ...prev, roomId: e.target.value }))}
-                        style={inputStyle}
+                        className={inputClass}
                         disabled={!formData.studioId}
                     >
                         <option value="">{formData.studioId ? 'Select a Room' : 'Select Studio first'}</option>
@@ -111,13 +115,13 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                     </select>
                 </div>
                 <div>
-                    <label style={labelStyle}>
-                        <Cpu size={14} style={{ display: 'inline', marginRight: '0.25rem' }} /> EMS Device (optional)
+                    <label className={labelClass}>
+                        <Cpu size={14} className="inline mr-1" /> EMS Device (optional)
                     </label>
                     <select
                         value={formData.emsDeviceId}
                         onChange={e => setFormData(prev => ({ ...prev, emsDeviceId: e.target.value }))}
-                        style={inputStyle}
+                        className={inputClass}
                         disabled={!formData.studioId}
                     >
                         <option value="">{formData.studioId ? (devices.length > 0 ? 'Select a Device' : 'No devices available') : 'Select Studio first'}</option>
@@ -129,28 +133,34 @@ export const SessionForm: React.FC<SessionFormProps> = ({
             </div>
 
             {/* Client and Coach Selection */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={labelStyle}>Client</label>
-                    <select
-                        required
-                        value={formData.clientId}
-                        onChange={e => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
-                        style={inputStyle}
-                    >
-                        <option value="">Select a Client</option>
-                        {clients.map(c => (
-                            <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-                        ))}
-                    </select>
+                    <label className={labelClass}>Client</label>
+                    {formData.type === 'individual' ? (
+                        <select
+                            required
+                            value={formData.clientId}
+                            onChange={e => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                            className={inputClass}
+                        >
+                            <option value="">Select a Client</option>
+                            {clients.map(c => (
+                                <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                            Participants are managed in session details after creation.
+                        </div>
+                    )}
                 </div>
                 <div>
-                    <label style={labelStyle}>Coach</label>
+                    <label className={labelClass}>Coach</label>
                     <select
                         required
                         value={formData.coachId}
                         onChange={e => setFormData(prev => ({ ...prev, coachId: e.target.value }))}
-                        style={inputStyle}
+                        className={inputClass}
                     >
                         <option value="">Select a Coach</option>
                         {coaches.map(c => (
@@ -161,38 +171,38 @@ export const SessionForm: React.FC<SessionFormProps> = ({
             </div>
 
             {/* Date/Time and Duration */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+            <div className="grid grid-cols-[2fr_1fr] gap-4">
                 <div>
-                    <label style={labelStyle}>Date & Time</label>
+                    <label className={labelClass}>Date & Time</label>
                     <input
                         type="datetime-local"
                         required
                         value={formData.startTime}
                         onChange={e => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                        style={inputStyle}
+                        className={inputClass}
                     />
                 </div>
                 <div>
-                    <label style={labelStyle}>Duration (min)</label>
+                    <label className={labelClass}>Duration (min)</label>
                     <input
                         type="number"
                         min="10"
                         step="5"
                         value={formData.duration}
                         onChange={e => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                        style={inputStyle}
+                        className={inputClass}
                     />
                 </div>
             </div>
 
             {/* Intensity Level and Notes */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+            <div className="grid grid-cols-[1fr_2fr] gap-4">
                 <div>
-                    <label style={labelStyle}>Intensity Level</label>
+                    <label className={labelClass}>Intensity Level</label>
                     <select
                         value={formData.intensityLevel}
                         onChange={e => setFormData(prev => ({ ...prev, intensityLevel: parseInt(e.target.value) }))}
-                        style={inputStyle}
+                        className={inputClass}
                     >
                         <option value="1">1 - Very Light</option>
                         <option value="2">2 - Light</option>
@@ -207,11 +217,11 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                     </select>
                 </div>
                 <div>
-                    <label style={labelStyle}>Notes (Optional)</label>
+                    <label className={labelClass}>Notes (Optional)</label>
                     <textarea
                         value={formData.notes}
                         onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        style={{ ...inputStyle, resize: 'vertical', minHeight: '60px' }}
+                        className={`${inputClass} min-h-[60px] resize-y`}
                         placeholder="Session notes..."
                     />
                 </div>
@@ -219,27 +229,21 @@ export const SessionForm: React.FC<SessionFormProps> = ({
 
             {/* Recurring Sessions - only in create mode */}
             {!isEdit && (
-                <RecurrenceSection formData={formData} setFormData={setFormData} inputStyle={inputStyle} />
+                <RecurrenceSection formData={formData} setFormData={setFormData} inputClass={inputClass} />
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+            <div className="flex justify-end gap-2 mt-4">
                 <button
                     type="button"
                     onClick={onCancel}
-                    style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >
                     Cancel
                 </button>
                 <button
                     type="submit"
                     disabled={saving}
-                    style={{
-                        padding: '0.5rem 1rem',
-                        backgroundColor: 'var(--color-primary)',
-                        color: 'white',
-                        borderRadius: 'var(--border-radius-md)',
-                        opacity: saving ? 0.6 : 1
-                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg opacity-100 disabled:opacity-60 transition-all font-medium"
                 >
                     {saving ? 'Saving...' : isEdit ? 'Reschedule Session' : 'Schedule Session'}
                 </button>
@@ -252,20 +256,15 @@ export const SessionForm: React.FC<SessionFormProps> = ({
 interface RecurrenceSectionProps {
     formData: SessionFormData;
     setFormData: React.Dispatch<React.SetStateAction<SessionFormData>>;
-    inputStyle: React.CSSProperties;
+    inputClass: string;
 }
 
-const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setFormData, inputStyle }) => {
+const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setFormData, inputClass }) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-        <div style={{
-            backgroundColor: 'var(--color-bg-secondary)',
-            padding: '1rem',
-            borderRadius: 'var(--border-radius-md)',
-            border: '1px solid var(--border-color)'
-        }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <label className="flex items-center gap-2 mb-3 cursor-pointer">
                 <input
                     type="checkbox"
                     checked={!!formData.recurrencePattern}
@@ -274,15 +273,16 @@ const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setForm
                         recurrencePattern: e.target.checked ? 'weekly' : '',
                         recurrenceEndDate: e.target.checked ? prev.recurrenceEndDate : ''
                     }))}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                 />
-                <span style={{ fontWeight: 500 }}>Make this a recurring session</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">Make this a recurring session</span>
             </label>
 
             {formData.recurrencePattern && (
                 <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                            <label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
                                 Repeat
                             </label>
                             <select
@@ -291,7 +291,7 @@ const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setForm
                                     ...prev,
                                     recurrencePattern: e.target.value as 'weekly' | 'biweekly' | 'monthly'
                                 }))}
-                                style={inputStyle}
+                                className={inputClass}
                             >
                                 <option value="weekly">Weekly</option>
                                 <option value="biweekly">Every 2 Weeks</option>
@@ -299,14 +299,14 @@ const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setForm
                             </select>
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                            <label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
                                 Until Date
                             </label>
                             <input
                                 type="date"
                                 value={formData.recurrenceEndDate}
                                 onChange={e => setFormData(prev => ({ ...prev, recurrenceEndDate: e.target.value }))}
-                                style={inputStyle}
+                                className={inputClass}
                                 min={formData.startTime.split('T')[0] || new Date().toISOString().split('T')[0]}
                                 required={!!formData.recurrencePattern}
                             />
@@ -314,11 +314,11 @@ const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setForm
                     </div>
 
                     {formData.recurrencePattern !== 'monthly' && (
-                        <div style={{ marginTop: '0.75rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                        <div className="mt-3">
+                            <label className="block mb-1 text-xs text-gray-500 dark:text-gray-400">
                                 Days of Week (select multiple for 2+ sessions/week)
                             </label>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <div className="flex gap-2 flex-wrap">
                                 {days.map((day, index) => {
                                     const isSelected = formData.recurrenceDays.includes(index);
                                     return (
@@ -331,23 +331,20 @@ const RecurrenceSection: React.FC<RecurrenceSectionProps> = ({ formData, setForm
                                                     : [...formData.recurrenceDays, index].sort((a, b) => a - b);
                                                 setFormData(prev => ({ ...prev, recurrenceDays: newDays }));
                                             }}
-                                            style={{
-                                                padding: '0.25rem 0.5rem',
-                                                borderRadius: '4px',
-                                                border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--border-color)'}`,
-                                                backgroundColor: isSelected ? 'var(--color-primary)' : 'transparent',
-                                                color: isSelected ? 'white' : 'var(--color-text-primary)',
-                                                cursor: 'pointer',
-                                                fontSize: '0.75rem',
-                                                fontWeight: isSelected ? 600 : 400
-                                            }}
+                                            className={`
+                                                px-2 py-1 rounded text-xs transition-colors border
+                                                ${isSelected
+                                                    ? 'bg-blue-600 border-blue-600 text-white font-semibold'
+                                                    : 'bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-blue-400'
+                                                }
+                                            `}
                                         >
                                             {day}
                                         </button>
                                     );
                                 })}
                             </div>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem', marginBottom: 0 }}>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 Leave empty to use the same day as the first session
                             </p>
                         </div>

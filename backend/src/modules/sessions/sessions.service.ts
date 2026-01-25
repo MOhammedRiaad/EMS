@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Session } from './entities/session.entity';
+import { Session, SessionStatus } from './entities/session.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
@@ -51,7 +51,8 @@ export class SessionsService {
             .leftJoinAndSelect('s.coach', 'coach')
             .leftJoinAndSelect('coach.user', 'coachUser')
             .leftJoinAndSelect('s.client', 'client')
-            .leftJoinAndSelect('s.review', 'review');
+            .leftJoinAndSelect('s.review', 'review')
+            .leftJoinAndSelect('s.participants', 'participants');
 
         if (query.studioId) {
             qb.andWhere('s.studio_id = :studioId', { studioId: query.studioId });
@@ -83,7 +84,7 @@ export class SessionsService {
     async findOne(id: string, tenantId: string): Promise<Session> {
         const session = await this.sessionRepository.findOne({
             where: { id, tenantId },
-            relations: ['room', 'coach', 'coach.user', 'client'],
+            relations: ['room', 'coach', 'coach.user', 'client', 'participants', 'participants.client'],
         });
         if (!session) {
             throw new NotFoundException(`Session ${id} not found`);
@@ -127,6 +128,8 @@ export class SessionsService {
         const isRecurring = !!dto.recurrencePattern && !!dto.recurrenceEndDate;
         const session = this.sessionRepository.create({
             ...dto,
+            type: dto.type || 'individual',
+            capacity: dto.capacity || 1,
             tenantId,
             isRecurringParent: isRecurring,
             recurrencePattern: dto.recurrencePattern || null,
@@ -140,20 +143,22 @@ export class SessionsService {
             await this.generateRecurringSessions(savedSession, dto, tenantId);
         }
 
-        // Send confirmation email
-        try {
-            const client = await this.clientsService.findOne(dto.clientId, tenantId);
-            if (client && client.email) {
-                const recurrenceText = isRecurring ? ` (recurring ${dto.recurrencePattern})` : '';
-                await this.mailerService.sendMail(
-                    client.email,
-                    'Session Confirmed - EMS Studio',
-                    `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}${recurrenceText}.`,
-                    `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>${recurrenceText}.</p><p>See you there!</p>`
-                );
+        // Send confirmation email (only for individual sessions)
+        if (dto.clientId) {
+            try {
+                const client = await this.clientsService.findOne(dto.clientId, tenantId);
+                if (client && client.email) {
+                    const recurrenceText = isRecurring ? ` (recurring ${dto.recurrencePattern})` : '';
+                    await this.mailerService.sendMail(
+                        client.email,
+                        'Session Confirmed - EMS Studio',
+                        `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}${recurrenceText}.`,
+                        `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>${recurrenceText}.</p><p>See you there!</p>`
+                    );
+                }
+            } catch (error) {
+                this.logger.error('Failed to send session confirmation email', error);
             }
-        } catch (error) {
-            this.logger.error('Failed to send session confirmation email', error);
         }
 
         return savedSession;
@@ -167,43 +172,45 @@ export class SessionsService {
         const sessionHour = startTime.getHours();
         const sessionMinutes = startTime.getMinutes();
 
-        // Check client's active package for limits
+        // Check client's active package for limits (only if client exists)
         let maxSessionsFromPackage = Infinity;
-        const clientPackages = await this.packagesService.getClientPackages(dto.clientId, tenantId);
-        const activePackage = clientPackages.find(cp => cp.status === 'active');
+        if (dto.clientId) {
+            const clientPackages = await this.packagesService.getClientPackages(dto.clientId, tenantId);
+            const activePackage = clientPackages.find(cp => cp.status === 'active');
 
-        if (activePackage) {
+            if (activePackage) {
 
-            // Count already scheduled sessions to calculate true remaining count
-            const scheduledSessionsCount = await this.sessionRepository.count({
-                where: {
-                    clientId: dto.clientId,
-                    tenantId,
-                    status: 'scheduled' as any
-                }
-            });
+                // Count already scheduled sessions to calculate true remaining count
+                const scheduledSessionsCount = await this.sessionRepository.count({
+                    where: {
+                        clientId: dto.clientId,
+                        tenantId,
+                        status: 'scheduled' as any
+                    }
+                });
 
-            // Limit by remaining sessions (subtract 1 for the parent session which is already saved/validated)
-            const remainingInPackage = Math.max(0, activePackage.sessionsRemaining - scheduledSessionsCount);
+                // Limit by remaining sessions (subtract 1 for the parent session which is already saved/validated)
+                const remainingInPackage = Math.max(0, activePackage.sessionsRemaining - scheduledSessionsCount);
 
-            // If parent session took the last spot, maxSessionsFromPackage for recurrence is 0
-            // But we already saved parent.
-            // If we are checking BEFORE parent save, logic differs. Here parent IS saved.
-            // scheduledSessionsCount INCLUDES the parent session we just saved?
-            // "savedSession" is saved at line 136. `scheduled` status is default.
+                // If parent session took the last spot, maxSessionsFromPackage for recurrence is 0
+                // But we already saved parent.
+                // If we are checking BEFORE parent save, logic differs. Here parent IS saved.
+                // scheduledSessionsCount INCLUDES the parent session we just saved?
+                // "savedSession" is saved at line 136. `scheduled` status is default.
 
-            // If parent is newly saved, it contributes to count.
-            // If we had 10 rem. Parent saved. Rem is 10-1 = 9.
-            // maxSessionsFromPackage = 9.
+                // If parent is newly saved, it contributes to count.
+                // If we had 10 rem. Parent saved. Rem is 10-1 = 9.
+                // maxSessionsFromPackage = 9.
 
-            maxSessionsFromPackage = remainingInPackage;
+                maxSessionsFromPackage = remainingInPackage;
 
-            // Limit by package expiry date
-            if (activePackage.expiryDate) {
-                const packageExpiry = new Date(activePackage.expiryDate);
-                if (packageExpiry < recurrenceEndDate) {
-                    recurrenceEndDate = packageExpiry;
-                    this.logger.log(`Limiting recurrence end date to package expiry: ${recurrenceEndDate.toISOString()}`);
+                // Limit by package expiry date
+                if (activePackage.expiryDate) {
+                    const packageExpiry = new Date(activePackage.expiryDate);
+                    if (packageExpiry < recurrenceEndDate) {
+                        recurrenceEndDate = packageExpiry;
+                        this.logger.log(`Limiting recurrence end date to package expiry: ${recurrenceEndDate.toISOString()}`);
+                    }
                 }
             }
         }
@@ -532,6 +539,8 @@ export class SessionsService {
             notes: dto.notes || null,
             status: 'scheduled',
             tenantId,
+            type: dto.type || 'individual',
+            capacity: dto.capacity || 1,
             parentSessionId,
             isRecurringParent: false,
             recurrencePattern: null,
@@ -604,7 +613,7 @@ export class SessionsService {
                 studioId: mergedData.studioId,
                 roomId: mergedData.roomId,
                 coachId: mergedData.coachId,
-                clientId: mergedData.clientId,
+                clientId: mergedData.clientId ?? undefined,
                 startTime: mergedData.startTime.toISOString(),
                 endTime: mergedData.endTime.toISOString(),
                 emsDeviceId: mergedData.emsDeviceId || undefined,
@@ -623,6 +632,8 @@ export class SessionsService {
         Object.assign(session, dto);
         return this.sessionRepository.save(session);
     }
+
+
 
     async checkConflicts(dto: CreateSessionDto, tenantId: string, excludeSessionId?: string): Promise<ConflictResult> {
         const conflicts: ConflictResult['conflicts'] = [];
@@ -668,17 +679,19 @@ export class SessionsService {
             });
         }
 
-        // Check client conflict
-        const clientConflict = await baseQuery()
-            .andWhere('s.client_id = :clientId', { clientId: dto.clientId })
-            .getOne();
+        // Check client conflict (only for individual sessions or if client is specified)
+        if (dto.clientId) {
+            const clientConflict = await baseQuery()
+                .andWhere('s.client_id = :clientId', { clientId: dto.clientId })
+                .getOne();
 
-        if (clientConflict) {
-            conflicts.push({
-                type: 'client',
-                sessionId: clientConflict.id,
-                message: 'Client already has a session at this time',
-            });
+            if (clientConflict) {
+                conflicts.push({
+                    type: 'client',
+                    sessionId: clientConflict.id,
+                    message: 'Client already has a session at this time',
+                });
+            }
         }
 
         // Check EMS device conflict (if specified)
@@ -865,7 +878,7 @@ export class SessionsService {
         }
     }
 
-    async updateStatus(id: string, tenantId: string, status: Session['status'], deductSession?: boolean): Promise<Session> {
+    async updateStatus(id: string, tenantId: string, status: SessionStatus, deductSession?: boolean): Promise<Session> {
         this.logger.log(`updateStatus called: id=${id}, status=${status}`);
         const session = await this.findOne(id, tenantId);
         this.logger.log(`Found session: id=${session.id}, current status=${session.status}`);
@@ -876,34 +889,42 @@ export class SessionsService {
             session.cancelledAt = new Date();
         }
 
-        // Determine if we should deduct a session from the client's package
-        let shouldDeductSession = false;
+        // Handle Individual Session Package Logic (Group sessions handled via SessionParticipantsService)
+        if (session.type !== 'group' && session.clientId) {
+            const isConsuming = ['completed', 'no_show'].includes(status);
+            const wasConsuming = ['completed', 'no_show'].includes(previousStatus);
 
-        if (session.clientId && previousStatus !== status) {
-            if (status === 'completed') {
-                // Completed sessions always deduct
-                shouldDeductSession = true;
+            if (isConsuming && !wasConsuming) {
+                // Status changed to Consumed (Completed/No-Show) -> Deduct
+                // Check if already deducted? We assume "scheduled" didn't deduct.
+                const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
+                if (activePackage) {
+                    await this.packagesService.useSession(activePackage.id, tenantId);
+                    this.logger.log(`Deducted session for client ${session.clientId} (Status: ${status})`);
 
-                // Trigger gamification check
-                this.gamificationService.checkAndUnlockAchievements(session.clientId, tenantId)
-                    .catch(err => this.logger.error(`Failed to check achievements for client ${session.clientId}`, err));
-            } else if (status === 'no_show') {
-                // No-show always deducts (client didn't show up)
-                shouldDeductSession = true;
-                this.logger.log(`No-show for session ${id}, deducting session from package`);
-            } else if (status === 'cancelled') {
-                // For cancelled: check policy OR use deductSession override
+                    // Trigger gamification on completion
+                    if (status === 'completed') {
+                        this.gamificationService.checkAndUnlockAchievements(session.clientId, tenantId)
+                            .catch(err => this.logger.error(`Failed to check achievements for client ${session.clientId}`, err));
+                    }
+                }
+            } else if (!isConsuming && wasConsuming) {
+                // Status changed FROM Consumed TO Non-Consumed (e.g. Cancelled) -> Refund
+                const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
+                if (activePackage) {
+                    await this.packagesService.returnSession(activePackage.id, tenantId);
+                    this.logger.log(`Refunded session for client ${session.clientId} (Status: ${previousStatus} -> ${status})`);
+                }
+            } else if (status === 'cancelled' && previousStatus === 'scheduled') {
+                // Scheduled -> Cancelled
+                // Logic for late cancellation deduction
 
+                let shouldDeduct = false;
                 if (deductSession !== undefined) {
-                    // Start of Admin Override logic:
-                    // If an explicit override is provided (from Admin UI), respect it.
-                    shouldDeductSession = deductSession;
-                    this.logger.log(`Cancelled session ${id}: using admin override deductSession=${deductSession}`);
+                    shouldDeduct = deductSession;
                 } else {
-                    // Client-side cancellation (no override provided) -> Use Policy
-                    // Fetch Tenant Settings
+                    // Check policy
                     const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
-                    // Default to 48 hours if not set
                     const cancellationWindowHours = tenant?.settings?.cancellationWindowHours || 48;
 
                     const now = new Date();
@@ -911,31 +932,21 @@ export class SessionsService {
                     const hoursUntilSession = (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
                     if (hoursUntilSession < cancellationWindowHours) {
-                        shouldDeductSession = true; // Late cancellation
-                        this.logger.log(`Late cancellation (${hoursUntilSession.toFixed(1)}h < ${cancellationWindowHours}h policy), deducting session.`);
-                    } else {
-                        shouldDeductSession = false; // On time
-                        this.logger.log(`On-time cancellation (${hoursUntilSession.toFixed(1)}h >= ${cancellationWindowHours}h policy), NOT deducting.`);
+                        shouldDeduct = true; // Late cancel
+                    }
+                }
+
+                if (shouldDeduct) {
+                    const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
+                    if (activePackage) {
+                        await this.packagesService.useSession(activePackage.id, tenantId);
+                        this.logger.log(`Late cancellation deduction for client ${session.clientId}`);
                     }
                 }
             }
         }
 
-        if (shouldDeductSession && session.clientId) {
-            try {
-                // Optimized: Query directly for active package using PackagesService
-                const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
 
-                if (activePackage) {
-                    await this.packagesService.useSession(activePackage.id, tenantId);
-                    this.logger.log(`Decremented session for client ${session.clientId}, package ${activePackage.id}`);
-                } else {
-                    this.logger.warn(`No active package found for client ${session.clientId}`);
-                }
-            } catch (error) {
-                this.logger.error(`Failed to decrement session count: ${error.message}`);
-            }
-        }
 
         return this.sessionRepository.save(session);
     }

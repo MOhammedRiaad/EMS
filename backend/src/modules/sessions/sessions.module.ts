@@ -14,16 +14,19 @@ import { PackagesModule } from '../packages/packages.module';
 
 import { GamificationModule } from '../gamification/gamification.module';
 
+import { SessionParticipant } from './entities/session-participant.entity';
+import { SessionParticipantsService } from './session-participants.service';
+
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Session, Room, Studio, Coach, Tenant]),
+        TypeOrmModule.forFeature([Session, SessionParticipant, Room, Studio, Coach, Tenant]),
         ClientsModule,
         MailerModule,
         PackagesModule,
         GamificationModule,
     ],
     controllers: [SessionsController],
-    providers: [SessionsService],
-    exports: [SessionsService],
+    providers: [SessionsService, SessionParticipantsService],
+    exports: [SessionsService, SessionParticipantsService],
 })
 export class SessionsModule { }

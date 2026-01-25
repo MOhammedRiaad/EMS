@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { authenticatedFetch } from './api';
 
 export interface Client {
     id: string;
@@ -13,124 +13,54 @@ export interface Client {
 
 export const clientsService = {
     async getAll(): Promise<Client[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch clients');
-        return response.json();
+        return authenticatedFetch('/clients');
     },
 
     async create(data: Partial<Client>): Promise<Client> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients`, {
+        return authenticatedFetch('/clients', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) throw new Error('Failed to create client');
-        return response.json();
     },
 
     async createWithUser(data: any): Promise<Client> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/create-with-user`, {
+        return authenticatedFetch('/clients/create-with-user', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to create client');
-        }
-        return response.json();
     },
 
     async update(id: string, data: Partial<Client>): Promise<Client> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/${id}`, {
+        return authenticatedFetch(`/clients/${id}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) throw new Error('Failed to update client');
-        return response.json();
     },
 
     async delete(id: string): Promise<void> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        return authenticatedFetch(`/clients/${id}`, {
+            method: 'DELETE'
         });
-
-        if (!response.ok) throw new Error('Failed to delete client');
     },
 
     async invite(id: string): Promise<void> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/${id}/invite`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        return authenticatedFetch(`/clients/${id}/invite`, {
+            method: 'POST'
         });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to send invitation');
-        }
     },
 
     async getTransactions(id: string): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/${id}/transactions`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        if (!response.ok) throw new Error('Failed to fetch transactions');
-        return response.json();
+        return authenticatedFetch(`/clients/${id}/transactions`);
     },
 
     async adjustBalance(id: string, amount: number, description: string): Promise<void> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/${id}/balance`, {
+        return authenticatedFetch(`/clients/${id}/balance`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ amount, description })
         });
-        if (!response.ok) throw new Error('Failed to adjust balance');
     },
 
     async getWaivers(id: string): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/clients/${id}/waivers`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        if (!response.ok) throw new Error('Failed to fetch waivers');
-        return response.json();
+        return authenticatedFetch(`/clients/${id}/waivers`);
     }
 };

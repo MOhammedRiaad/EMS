@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { authenticatedFetch } from './api';
 
 export interface Session {
     id: string;
@@ -12,20 +12,37 @@ export interface Session {
     programType?: string;
     notes?: string;
     intensityLevel?: number;
-    client?: { firstName: string; lastName: string; avatarUrl?: string };
+    client?: { id: string; firstName: string; lastName: string; avatarUrl?: string };
     coach?: {
         id: string;
         user?: { firstName: string | null; lastName: string | null };
     };
     room?: { name: string };
     studio?: { name: string };
+    type: 'individual' | 'group';
+    capacity: number;
+    participants?: SessionParticipant[];
+}
+
+export interface SessionParticipant {
+    id: string;
+    clientId: string;
+    sessionId: string;
+    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+    joinedAt: string;
+    client?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email?: string;
+    };
 }
 
 export interface CreateSessionInput {
     studioId: string;
     roomId: string;
     coachId: string;
-    clientId: string;
+    clientId?: string; // Optional for group
     startTime: string;
     endTime: string;
     programType?: string;
@@ -34,6 +51,8 @@ export interface CreateSessionInput {
     recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
     recurrenceEndDate?: string;
     recurrenceDays?: number[];
+    type: 'individual' | 'group';
+    capacity: number;
 }
 
 export interface SessionQuery {
@@ -47,7 +66,6 @@ export interface SessionQuery {
 
 export const sessionsService = {
     async getAll(query?: SessionQuery): Promise<Session[]> {
-        const token = localStorage.getItem('token');
         const params = new URLSearchParams();
         if (query) {
             if (query.from) params.append('from', query.from);
@@ -58,85 +76,56 @@ export const sessionsService = {
             if (query.status) params.append('status', query.status);
         }
 
-        const response = await fetch(`${API_URL}/sessions?${params.toString()}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        return authenticatedFetch(`/sessions?${params.toString()}`);
+    },
 
-        if (!response.ok) throw new Error('Failed to fetch sessions');
-        return response.json();
+    async getById(id: string): Promise<Session> {
+        return authenticatedFetch(`/sessions/${id}`);
     },
 
     async create(data: CreateSessionInput): Promise<Session> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/sessions`, {
+        return authenticatedFetch('/sessions', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            // Throw error with conflict details if present
-            const error: any = new Error(errorData.message || 'Failed to create session');
-            if (errorData.conflicts) {
-                error.conflicts = errorData.conflicts;
-            }
-            throw error;
-        }
-        return response.json();
     },
 
     async update(id: string, data: Partial<CreateSessionInput>): Promise<Session> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/sessions/${id}`, {
+        return authenticatedFetch(`/sessions/${id}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const error: any = new Error(errorData.message || 'Failed to update session');
-            if (errorData.conflicts) {
-                error.conflicts = errorData.conflicts;
-            }
-            throw error;
-        }
-        return response.json();
     },
 
     async delete(id: string): Promise<void> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/sessions/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        return authenticatedFetch(`/sessions/${id}`, {
+            method: 'DELETE'
         });
-
-        if (!response.ok) throw new Error('Failed to delete session');
     },
 
     async updateStatus(id: string, status: string, cancelledReason?: string, deductSession?: boolean): Promise<Session> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/sessions/${id}/status`, {
+        return authenticatedFetch(`/sessions/${id}/status`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ status, cancelledReason, deductSession })
         });
+    },
 
-        if (!response.ok) throw new Error('Failed to update session status');
-        return response.json();
+    async addParticipant(sessionId: string, clientId: string): Promise<SessionParticipant> {
+        return authenticatedFetch(`/sessions/${sessionId}/participants/${clientId}`, {
+            method: 'POST'
+        });
+    },
+
+    async removeParticipant(sessionId: string, clientId: string): Promise<void> {
+        return authenticatedFetch(`/sessions/${sessionId}/participants/${clientId}/remove`, {
+            method: 'POST'
+        });
+    },
+
+    async updateParticipantStatus(sessionId: string, clientId: string, status: string): Promise<SessionParticipant> {
+        return authenticatedFetch(`/sessions/${sessionId}/participants/${clientId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
+        });
     }
 };

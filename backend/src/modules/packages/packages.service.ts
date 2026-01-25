@@ -135,6 +135,22 @@ export class PackagesService {
         return this.clientPackageRepo.save(cp);
     }
 
+    async returnSession(id: string, tenantId: string) {
+        const cp = await this.clientPackageRepo.findOne({ where: { id, tenantId } });
+        if (!cp) throw new NotFoundException('Client package not found');
+
+        // If package was depleted, make it active again
+        if (cp.status === ClientPackageStatus.DEPLETED) {
+            cp.status = ClientPackageStatus.ACTIVE;
+        }
+
+        cp.sessionsUsed = Math.max(0, cp.sessionsUsed - 1);
+        cp.sessionsRemaining += 1;
+
+        return this.clientPackageRepo.save(cp);
+    }
+
+
     async renewPackage(id: string, dto: RenewPackageDto, tenantId: string, userId: string) {
         const oldCp = await this.clientPackageRepo.findOne({ where: { id, tenantId }, relations: ['package'] });
         if (!oldCp) throw new NotFoundException('Client package not found');

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { authenticatedFetch } from './api';
 
 export interface Coach {
     id: string;
@@ -68,88 +68,39 @@ export interface CreateCoachInput {
 
 export const coachesService = {
     async getAll(): Promise<CoachDisplay[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/coaches`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch coaches');
-        const coaches: Coach[] = await response.json();
+        const coaches: Coach[] = await authenticatedFetch('/coaches');
         return coaches.map(transformCoachForDisplay);
     },
 
     async getByStudio(studioId: string): Promise<CoachDisplay[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/coaches?studioId=${studioId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch coaches');
-        const coaches: Coach[] = await response.json();
+        const coaches: Coach[] = await authenticatedFetch(`/coaches?studioId=${studioId}`);
         return coaches.map(transformCoachForDisplay);
     },
 
     async create(data: CreateCoachInput): Promise<Coach> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/coaches`, {
+        return authenticatedFetch('/coaches', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) throw new Error('Failed to create coach');
-        return response.json();
     },
 
     async createWithUser(data: any): Promise<Coach> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/coaches/create-with-user`, {
+        return authenticatedFetch('/coaches/create-with-user', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to create coach');
-        }
-        return response.json();
     },
 
     async update(id: string, data: Partial<CreateCoachInput>): Promise<Coach> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/coaches/${id}`, {
+        return authenticatedFetch(`/coaches/${id}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) throw new Error('Failed to update coach');
-        return response.json();
     },
 
     async delete(id: string): Promise<void> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/coaches/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        return authenticatedFetch(`/coaches/${id}`, {
+            method: 'DELETE'
         });
-
-        if (!response.ok) throw new Error('Failed to delete coach');
     }
 };

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Wallet, FileText, Phone, Mail } from 'lucide-react';
 import FinanceTab from '../../components/clients/tabs/FinanceTab';
 import WaiversTab from '../../components/clients/tabs/WaiversTab';
+import ClientParqTab from '../../components/clients/tabs/ClientParqTab';
+import { Activity } from 'lucide-react';
 import { api } from '../../services/api';
 import { getImageUrl } from '../../utils/imageUtils';
 
@@ -38,7 +40,7 @@ const ClientDetailsPage: React.FC = () => {
                         <div className="flex flex-col md:flex-row gap-6 mb-8">
                             <div className="flex-shrink-0">
                                 {client.avatarUrl ? (
-                                    <img src={getImageUrl(client.avatarUrl || undefined)} alt="Avatar" className="w-32 h-32 rounded-full object-cover border-4 border-gray-100 dark:border-gray-700" />
+                                    <img src={getImageUrl(client.avatarUrl) ?? undefined} alt="Avatar" className="w-32 h-32 rounded-full object-cover border-4 border-gray-100 dark:border-gray-700" />
                                 ) : (
                                     <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                                         <User className="w-16 h-16 text-gray-400" />
@@ -105,6 +107,8 @@ const ClientDetailsPage: React.FC = () => {
                 return <FinanceTab />;
             case 'waivers':
                 return <WaiversTab />;
+            case 'parq':
+                return <ClientParqTab clientId={id!} />;
             default:
                 return null;
         }
@@ -128,6 +132,7 @@ const ClientDetailsPage: React.FC = () => {
                         { id: 'overview', label: 'Overview', icon: User },
                         { id: 'finance', label: 'Finance', icon: Wallet },
                         { id: 'waivers', label: 'Waivers', icon: FileText },
+                        { id: 'parq', label: 'PAR-Q', icon: Activity },
                     ].map((tab) => (
                         <button
                             key={tab.id}

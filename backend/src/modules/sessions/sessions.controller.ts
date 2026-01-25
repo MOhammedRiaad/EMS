@@ -7,12 +7,17 @@ import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
+import { SessionParticipantsService } from './session-participants.service';
+
 @ApiTags('sessions')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller('sessions')
 export class SessionsController {
-    constructor(private readonly sessionsService: SessionsService) { }
+    constructor(
+        private readonly sessionsService: SessionsService,
+        private readonly participantsService: SessionParticipantsService
+    ) { }
 
     @Get()
     // Cache disabled to prevent stale data after status updates
@@ -53,5 +58,41 @@ export class SessionsController {
         @TenantId() tenantId: string,
     ) {
         return this.sessionsService.updateStatus(id, tenantId, dto.status, dto.deductSession);
+    }
+
+    // ===== Participant Endpoints =====
+
+    @Post(':id/participants/:clientId')
+    @ApiOperation({ summary: 'Add a client to a group session' })
+    addParticipant(
+        @Param('id') id: string,
+        @Param('clientId') clientId: string,
+        @TenantId() tenantId: string,
+    ) {
+        // Can inject SessionParticipantsService as private property or via constructor
+        // But constructor needs update. 
+        // Better to update constructor.
+        return this.participantsService.addParticipant(id, clientId, tenantId);
+    }
+
+    @Patch(':id/participants/:clientId/status')
+    @ApiOperation({ summary: 'Update participant status' })
+    updateParticipantStatus(
+        @Param('id') id: string,
+        @Param('clientId') clientId: string,
+        @Body('status') status: 'completed' | 'no_show' | 'cancelled',
+        @TenantId() tenantId: string,
+    ) {
+        return this.participantsService.updateStatus(id, clientId, status, tenantId);
+    }
+
+    @Post(':id/participants/:clientId/remove')
+    @ApiOperation({ summary: 'Remove a client from a group session' })
+    removeParticipant(
+        @Param('id') id: string,
+        @Param('clientId') clientId: string,
+        @TenantId() tenantId: string,
+    ) {
+        return this.participantsService.removeParticipant(id, clientId, tenantId);
     }
 }

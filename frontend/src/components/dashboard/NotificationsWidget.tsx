@@ -2,33 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Bell, Calendar, Package, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-interface Notification {
-    id: string;
-    type: 'session_today' | 'session_upcoming' | 'package_expiring' | 'package_low';
-    title: string;
-    message: string;
-    link?: string;
-    priority: 'high' | 'medium' | 'low';
-}
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { dashboardService, type DashboardNotification } from '../../services/dashboard.service';
 
 const NotificationsWidget: React.FC = () => {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     const fetchNotifications = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/notifications/dashboard`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setNotifications(data);
-            }
+            const data = await dashboardService.getNotifications();
+            setNotifications(data);
         } catch (error) {
             console.error('Error fetching notifications:', error);
         } finally {
@@ -43,7 +27,7 @@ const NotificationsWidget: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const getIcon = (type: Notification['type']) => {
+    const getIcon = (type: DashboardNotification['type']) => {
         switch (type) {
             case 'session_today':
             case 'session_upcoming':
@@ -56,7 +40,7 @@ const NotificationsWidget: React.FC = () => {
         }
     };
 
-    const getPriorityColor = (priority: Notification['priority']) => {
+    const getPriorityColor = (priority: DashboardNotification['priority']) => {
         switch (priority) {
             case 'high': return 'var(--color-danger)';
             case 'medium': return 'var(--color-warning)';
@@ -64,7 +48,7 @@ const NotificationsWidget: React.FC = () => {
         }
     };
 
-    const handleClick = (notification: Notification) => {
+    const handleClick = (notification: DashboardNotification) => {
         if (notification.link) {
             navigate(notification.link);
         }

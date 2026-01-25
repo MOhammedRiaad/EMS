@@ -6,15 +6,21 @@ import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import FilterBar from '../../components/common/FilterBar';
 import { type Session } from '../../services/sessions.service';
-import { User } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useSessionsState } from './useSessionsState';
 import SessionForm from './SessionForm';
 import SessionStatusModal from './SessionStatusModal';
+import SessionDetailsModal from './SessionDetailsModal';
+import { User, Users } from 'lucide-react';
 
 const Sessions: React.FC = () => {
     const { canEdit, canDelete } = usePermissions();
     const state = useSessionsState();
+    const [selectedSessionDetails, setSelectedSessionDetails] = React.useState<Session | null>(null);
+
+    const handleSessionRefresh = () => {
+        state.refresh();
+    };
 
     const columns: Column<Session>[] = [
         {
@@ -23,9 +29,9 @@ const Sessions: React.FC = () => {
             render: (session) => {
                 const date = new Date(session.startTime);
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 500 }}>{date.toLocaleDateString()}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                    <div className="flex flex-col">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{date.toLocaleDateString()}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                             {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                     </div>
@@ -34,13 +40,28 @@ const Sessions: React.FC = () => {
         },
         {
             key: 'client',
-            header: 'Client',
-            render: (session) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <User size={14} color="var(--color-text-secondary)" />
-                    <span>{session.client ? `${session.client.firstName} ${session.client.lastName}` : 'Unknown Client'}</span>
-                </div>
-            )
+            header: 'Client / Group',
+            render: (session) => {
+                if (session.type === 'group') {
+                    return (
+                        <div
+                            className="flex items-center gap-2 cursor-pointer text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                            onClick={() => setSelectedSessionDetails(session)}
+                        >
+                            <Users size={14} />
+                            <span className="font-medium">
+                                Group ({session.participants?.length || 0}/{session.capacity || '-'})
+                            </span>
+                        </div>
+                    );
+                }
+                return (
+                    <div className="flex items-center gap-2">
+                        <User size={14} className="text-gray-500 dark:text-gray-400" />
+                        <span className="text-gray-900 dark:text-gray-100">{session.client ? `${session.client.firstName} ${session.client.lastName}` : 'Unknown Client'}</span>
+                    </div>
+                );
+            }
         },
         {
             key: 'coach',
@@ -49,14 +70,14 @@ const Sessions: React.FC = () => {
                 const coachName = session.coach?.user
                     ? `${session.coach.user.firstName || ''} ${session.coach.user.lastName || ''}`
                     : 'Unassigned';
-                return <span style={{ color: 'var(--color-text-secondary)' }}>{coachName}</span>;
+                return <span className="text-gray-600 dark:text-gray-400">{coachName}</span>;
             }
         },
         {
             key: 'room',
             header: 'Room',
             render: (session) => (
-                <span style={{ color: 'var(--color-text-secondary)' }}>
+                <span className="text-gray-600 dark:text-gray-400">
                     {session.room?.name || '-'}
                 </span>
             )
@@ -64,32 +85,53 @@ const Sessions: React.FC = () => {
         {
             key: 'status',
             header: 'Status',
-            render: (session) => (
-                <span style={{
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    backgroundColor: session.status === 'scheduled' ? 'rgba(59, 130, 246, 0.1)' :
-                        session.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)',
-                    color: session.status === 'scheduled' ? '#3b82f6' :
-                        session.status === 'completed' ? '#10b981' : 'var(--color-text-muted)'
-                }}>
-                    {session.status}
-                </span>
-            )
+            render: (session) => {
+                let bgClass = 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400';
+                if (session.status === 'scheduled') bgClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
+                else if (session.status === 'completed') bgClass = 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400';
+                else if (session.status === 'cancelled' || session.status === 'no_show') bgClass = 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+
+                return (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass}`}>
+                        {session.status}
+                    </span>
+                );
+            }
         },
         ...(canEdit || canDelete ? [{
             key: 'actions' as keyof Session,
             header: 'Actions',
             render: (session: Session) => (
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {session.status === 'scheduled' && canEdit && (
+                <div className="flex gap-2 flex-wrap items-center">
+                    {session.status === 'scheduled' && canEdit && session.type !== 'group' && (
                         <>
-                            <button onClick={() => state.handleStatusClick(session, 'completed')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', cursor: 'pointer' }}>Complete</button>
-                            <button onClick={() => state.handleStatusClick(session, 'no_show')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', cursor: 'pointer' }}>No-Show</button>
-                            <button onClick={() => state.handleStatusClick(session, 'cancelled')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', cursor: 'pointer' }}>Cancel</button>
+                            <button
+                                onClick={() => state.handleStatusClick(session, 'completed')}
+                                className="px-2 py-1 text-xs rounded border border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+                            >
+                                Complete
+                            </button>
+                            <button
+                                onClick={() => state.handleStatusClick(session, 'no_show')}
+                                className="px-2 py-1 text-xs rounded border border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-500 hover:bg-amber-500/20 transition-colors"
+                            >
+                                No-Show
+                            </button>
+                            <button
+                                onClick={() => state.handleStatusClick(session, 'cancelled')}
+                                className="px-2 py-1 text-xs rounded border border-red-500 bg-red-500/10 text-red-600 dark:text-red-500 hover:bg-red-500/20 transition-colors"
+                            >
+                                Cancel
+                            </button>
                         </>
+                    )}
+                    {session.type === 'group' && (
+                        <button
+                            onClick={() => setSelectedSessionDetails(session)}
+                            className="px-2 py-1 text-xs rounded border border-blue-500 bg-transparent text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        >
+                            Manage
+                        </button>
                     )}
                     <ActionButtons
                         showEdit={canEdit && session.status === 'scheduled'}
@@ -228,6 +270,14 @@ const Sessions: React.FC = () => {
                 saving={state.saving}
                 onConfirm={state.handleStatusConfirm}
                 onClose={state.closeStatusModal}
+            />
+
+            {/* Session Details Modal (For Group Sessions) */}
+            <SessionDetailsModal
+                isOpen={!!selectedSessionDetails}
+                onClose={() => setSelectedSessionDetails(null)}
+                session={selectedSessionDetails}
+                onSessionUpdated={handleSessionRefresh}
             />
         </div>
     );

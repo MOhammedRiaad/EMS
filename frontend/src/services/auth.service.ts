@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { authenticatedFetch } from './api';
 
 export interface LoginCredentials {
     email: string;
@@ -40,54 +40,24 @@ export interface AuthResponse {
 
 class AuthService {
     async login(credentials: LoginCredentials): Promise<AuthResponse> {
-        const response = await fetch(`${API_URL}/auth/login`, {
+        return authenticatedFetch('/auth/login', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentials),
+            body: JSON.stringify(credentials)
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Login failed');
-        }
-
-        return response.json();
     }
 
     async register(data: RegisterDto): Promise<AuthResponse> {
-        const response = await fetch(`${API_URL}/auth/register`, {
+        return authenticatedFetch('/auth/register', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
+            body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Registration failed');
-        }
-
-        return response.json();
     }
 
     async setupPassword(data: SetupPasswordDto): Promise<AuthResponse> {
-        const response = await fetch(`${API_URL}/auth/setup`, {
+        return authenticatedFetch('/auth/setup', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
+            body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Password setup failed');
-        }
-
-        return response.json();
     }
 }
 

@@ -3,50 +3,25 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Calendar, User, LogOut, Trophy } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
-import WaiverModal from '../compliance/WaiverModal';
-import { waiverService } from '../../services/waiver.service';
+import ComplianceManager from '../compliance/ComplianceManager';
 
 const ClientLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { logout, isAuthenticated } = useAuth();
 
-    const [showWaiverModal, setShowWaiverModal] = React.useState(false);
-
-    React.useEffect(() => {
-        if (!isAuthenticated) {
-            navigate('/login');
-            return;
-        }
-
-        const checkWaiver = async () => {
-            try {
-                const status = await waiverService.checkStatus();
-                if (!status.signed) {
-                    setShowWaiverModal(true);
-                }
-            } catch (error) {
-                console.error('Failed to check waiver status:', error);
-            }
-        };
-
-        checkWaiver();
-    }, [isAuthenticated, navigate]);
+    // Compliance handled by ComplianceManager
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
-    const handleWaiverSigned = () => {
-        setShowWaiverModal(false);
-    };
-
     const isBookingPage = location.pathname === '/client/book';
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 font-sans pb-20 transition-colors duration-200">
-            {showWaiverModal && <WaiverModal onSigned={handleWaiverSigned} />}
+            <ComplianceManager />
 
             {/* Header */}
             <header className="bg-white dark:bg-slate-900 dark:border-slate-800 shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors duration-200">
