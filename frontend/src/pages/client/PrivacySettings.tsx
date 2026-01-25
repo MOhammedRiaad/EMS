@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Shield, Eye, Camera, Activity, ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Eye, Activity, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { clientPortalService } from '../../services/client-portal.service';
 
 interface PrivacySetting {
-    id: string;
+    id: 'leaderboard_visible' | 'activity_feed_visible' | 'profile_visible';
     label: string;
     description: string;
     icon: React.ReactNode;
@@ -12,14 +13,36 @@ interface PrivacySetting {
 
 const PrivacySettings: React.FC = () => {
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     const [settings, setSettings] = useState<PrivacySetting[]>([
-        { id: 'profile_visible', label: 'Profile Visibility', description: 'Allow coaches to see your profile details', icon: <Eye size={20} />, enabled: true },
-        { id: 'show_progress', label: 'Share Progress', description: 'Let coaches view your InBody progress', icon: <Activity size={20} />, enabled: true },
-        { id: 'photo_consent', label: 'Photo Consent', description: 'Allow coaches to take progress photos', icon: <Camera size={20} />, enabled: false },
         { id: 'leaderboard_visible', label: 'Leaderboard Visibility', description: 'Show my name and stats on the leaderboard', icon: <Activity size={20} />, enabled: true },
-        { id: 'activity_feed_visible', label: 'Activity Feed', description: 'Display my achievements in the activity feed', icon: <Activity size={20} />, enabled: true },
+        { id: 'activity_feed_visible', label: 'Activity Feed', description: 'Display my achievements in the activity feed', icon: <Eye size={20} />, enabled: true },
     ]);
+
+    useEffect(() => {
+        loadPreferences();
+    }, []);
+
+    const loadPreferences = async () => {
+        try {
+            setLoading(true);
+            const profile = await clientPortalService.getProfile();
+            // Assuming the backend returns 'privacyPreferences' as a JSON object on the profile
+            const prefs = (profile as any).privacyPreferences || {};
+
+            setSettings(prev => prev.map(s => {
+                if (s.id === 'leaderboard_visible') return { ...s, enabled: prefs.leaderboard_visible ?? true };
+                if (s.id === 'activity_feed_visible') return { ...s, enabled: prefs.activity_feed_visible ?? true };
+                return s;
+            }));
+        } catch (error) {
+            console.error('Failed to load preferences:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const toggleSetting = (id: string) => {
         setSettings(prev => prev.map(s =>
@@ -27,12 +50,35 @@ const PrivacySettings: React.FC = () => {
         ));
     };
 
+    const handleSave = async () => {
+        try {
+            setSaving(true);
+            const leaderboard_visible = settings.find(s => s.id === 'leaderboard_visible')?.enabled;
+            const activity_feed_visible = settings.find(s => s.id === 'activity_feed_visible')?.enabled;
+
+            await clientPortalService.updateProfile({
+                privacyPreferences: {
+                    leaderboard_visible,
+                    activity_feed_visible
+                }
+            });
+            navigate(-1);
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) {
+        return <div className="p-8 text-center">Loading...</div>;
+    }
+
     return (
         <div className="relative min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
             <div className="absolute inset-0 bg-gradient-radial pointer-events-none" />
 
             <div className="relative p-4 pb-24 max-w-lg mx-auto">
-                {/* Header */}
                 <header className="flex items-center gap-4 mb-6 animate-fade-in-up">
                     <button
                         onClick={() => navigate(-1)}
@@ -46,7 +92,6 @@ const PrivacySettings: React.FC = () => {
                     </div>
                 </header>
 
-                {/* Privacy Badge */}
                 <div className="premium-card p-4 mb-6 flex items-center gap-4 animate-fade-in-up">
                     <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/20">
                         <Shield size={24} />
@@ -57,7 +102,6 @@ const PrivacySettings: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Settings List */}
                 <div className="premium-card divide-y divide-gray-100 dark:divide-slate-800 animate-fade-in-up stagger-1">
                     {settings.map((setting) => (
                         <div
@@ -89,7 +133,6 @@ const PrivacySettings: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Data Deletion Section */}
                 <div className="mt-6 premium-card p-5 animate-fade-in-up stagger-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Data Management</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
@@ -105,10 +148,13 @@ const PrivacySettings: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Save Button */}
                 <div className="mt-6 animate-fade-in-up stagger-3">
-                    <button className="btn-gradient w-full py-4 px-6 rounded-xl font-semibold">
-                        Save Settings
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="btn-gradient w-full py-4 px-6 rounded-xl font-semibold disabled:opacity-70"
+                    >
+                        {saving ? 'Saving...' : 'Save Settings'}
                     </button>
                 </div>
             </div>

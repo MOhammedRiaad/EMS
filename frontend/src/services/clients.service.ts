@@ -8,6 +8,7 @@ export interface Client {
     phone: string | null;
     status: string;
     avatarUrl?: string | null;
+    creditBalance?: number;
 }
 
 export const clientsService = {
@@ -96,5 +97,40 @@ export const clientsService = {
             const err = await response.json();
             throw new Error(err.message || 'Failed to send invitation');
         }
+    },
+
+    async getTransactions(id: string): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/${id}/transactions`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch transactions');
+        return response.json();
+    },
+
+    async adjustBalance(id: string, amount: number, description: string): Promise<void> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/${id}/balance`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ amount, description })
+        });
+        if (!response.ok) throw new Error('Failed to adjust balance');
+    },
+
+    async getWaivers(id: string): Promise<any[]> {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/clients/${id}/waivers`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to fetch waivers');
+        return response.json();
     }
 };

@@ -113,6 +113,7 @@ describe('ClientPortalService', () => {
                     useValue: {
                         findAll: jest.fn(),
                         findActive: jest.fn(),
+                        findOne: jest.fn(),
                     },
                 },
                 {
@@ -389,7 +390,7 @@ describe('ClientPortalService', () => {
         });
 
         it('should throw error if client not found', async () => {
-            clientsService.findOne.mockResolvedValue(null);
+            clientsService.findOne.mockResolvedValue(null as any);
 
             await expect(
                 service.getProfile('nonexistent', 'tenant-123')
@@ -419,7 +420,7 @@ describe('ClientPortalService', () => {
         });
 
         it('should throw error if client not found', async () => {
-            clientsService.findOne.mockResolvedValue(null);
+            clientsService.findOne.mockResolvedValue(null as any);
 
             await expect(
                 service.updateProfile('nonexistent', 'tenant-123', updateDto)
@@ -444,7 +445,7 @@ describe('ClientPortalService', () => {
         });
 
         it('should throw error if client not found', async () => {
-            clientsService.findOne.mockResolvedValue(null);
+            clientsService.findOne.mockResolvedValue(null as any);
 
             await expect(
                 service.getCoaches('nonexistent', 'tenant-123')
@@ -482,7 +483,7 @@ describe('ClientPortalService', () => {
         });
 
         it('should throw error if coach not found', async () => {
-            coachesService.findOne.mockResolvedValue(null);
+            coachesService.findOne.mockResolvedValue(null as any);
 
             await expect(
                 service.toggleFavoriteCoach('client-123', 'tenant-123', 'coach-123')

@@ -1,16 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { CreateClientDto, UpdateClientDto } from './dto';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
+import { Transaction, TransactionType, TransactionCategory } from '../packages/entities/transaction.entity';
 
 @Injectable()
 export class ClientsService {
     constructor(
         @InjectRepository(Client)
         private readonly clientRepository: Repository<Client>,
+        @InjectRepository(Transaction)
+        private readonly transactionRepository: Repository<Transaction>,
         private readonly authService: AuthService,
         private readonly mailerService: MailerService,
     ) { }
@@ -30,6 +33,48 @@ export class ClientsService {
         if (!client) {
             throw new NotFoundException(`Client ${id} not found`);
         }
+        return client;
+    }
+
+    async findByUserId(userId: string, tenantId: string): Promise<Client | null> {
+        return this.clientRepository.findOne({
+            where: { userId, tenantId }
+        });
+    }
+
+    async getTransactions(clientId: string, tenantId: string): Promise<Transaction[]> {
+        return this.transactionRepository.find({
+            where: { clientId, tenantId },
+            order: { createdAt: 'DESC' }
+        });
+    }
+
+    async adjustBalance(clientId: string, tenantId: string, amount: number, description: string, userId: string): Promise<Client> {
+        const client = await this.findOne(clientId, tenantId);
+
+        // Update Balance
+        // If amount > 0, we are adding funds (Client pays Studio) -> Credit Increases
+        // If amount < 0, we are removing funds/refunding -> Credit Decreases
+        const newBalance = Number(client.creditBalance || 0) + amount;
+        client.creditBalance = newBalance;
+
+        await this.clientRepository.save(client);
+
+        // Create Transaction
+        const transaction = this.transactionRepository.create({
+            tenantId,
+            clientId: client.id,
+            studioId: undefined, // Optional, maybe allow passing it?
+            type: amount > 0 ? TransactionType.INCOME : TransactionType.REFUND,
+            amount: amount,
+            category: TransactionCategory.MANUAL_ADJUSTMENT,
+            description: description || 'Manual Balance Adjustment',
+            createdBy: userId,
+            runningBalance: newBalance
+        });
+
+        await this.transactionRepository.save(transaction);
+
         return client;
     }
 
@@ -114,6 +159,7 @@ export class ClientsService {
                 firstName: client.firstName,
                 lastName: client.lastName,
                 role: 'client',
+                gender: (client as any).gender || 'other',
             } as any, tenantId);
         }
 

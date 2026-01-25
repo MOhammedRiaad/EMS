@@ -20,7 +20,7 @@ export const dataSourceOptions: DataSourceOptions = {
     password: process.env.POSTGRES_PASSWORD || 'ems_secret',
     database: process.env.POSTGRES_DB || 'ems_studio',
     entities: [join(__dirname, 'modules/**/*.entity{.ts,.js}')],
-    migrations: [join(__dirname, 'migrations/*{.ts,.js}')],
+    migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
     synchronize: false,
     logging: process.env.NODE_ENV === 'development',
 };

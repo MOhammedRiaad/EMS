@@ -4,6 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { TenantGuard } from '../../common/guards';
 import { ClientPortalService } from './client-portal.service';
 import { ClientBookSessionDto } from './dto/client-book-session.dto';
+import { UpdateClientProfileDto } from './dto/update-client-profile.dto';
 
 @ApiTags('client-portal')
 @ApiBearerAuth()
@@ -106,7 +107,7 @@ export class ClientPortalController {
 
     @Patch('profile')
     @ApiOperation({ summary: 'Update client profile' })
-    async updateProfile(@Request() req: any, @Body() dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string }) {
+    async updateProfile(@Request() req: any, @Body() dto: UpdateClientProfileDto) {
         const { clientId, tenantId } = req.user;
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.updateProfile(clientId, tenantId, dto);

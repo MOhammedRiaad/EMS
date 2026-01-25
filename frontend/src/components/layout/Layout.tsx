@@ -14,7 +14,11 @@ import {
     Activity,
     ListPlus,
     Package,
-    Wallet
+    Wallet,
+    ShoppingBag,
+    Tags,
+    CreditCard,
+    FileText
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
@@ -94,9 +98,16 @@ const Layout: React.FC = () => {
         { path: '/admin/settings', label: 'Settings', icon: Settings },
     ];
 
+    const retailItems: MenuItem[] = [
+        { path: '/retail/pos', label: 'Point of Sale', icon: CreditCard },
+        { path: '/retail/products', label: 'Products', icon: Tags },
+        { path: '/retail/inventory', label: 'Inventory', icon: ShoppingBag },
+        { path: '/retail/reports', label: 'Reports', icon: FileText },
+    ];
+
     // Combine all items for search
     const allItems = useMemo(() => {
-        const items = [...coreItems, ...managementItems, ...clientBusinessItems];
+        const items = [...coreItems, ...managementItems, ...clientBusinessItems, ...retailItems];
         if (canSeeAdminMenu) {
             items.push(...analyticsItems, ...administrationItems);
         }
@@ -149,6 +160,13 @@ const Layout: React.FC = () => {
                         id="client-business"
                         title="Client & Business"
                         items={clientBusinessItems}
+                    />
+
+                    {/* Retail */}
+                    <MenuSection
+                        id="retail"
+                        title="Retail"
+                        items={retailItems}
                     />
 
                     {/* Analytics (Admin/Owner only) */}

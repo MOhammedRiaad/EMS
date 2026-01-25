@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import Modal from '../../components/common/Modal';
@@ -16,6 +17,7 @@ import ClientForm from './ClientForm';
 const Clients: React.FC = () => {
     const { canEdit, canDelete } = usePermissions();
     const state = useClientsState();
+    const navigate = useNavigate();
 
     const columns: Column<Client>[] = [
         {
@@ -89,6 +91,24 @@ const Clients: React.FC = () => {
             header: '',
             render: (client: Client) => (
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                        onClick={() => navigate(`/clients/${client.id}`)}
+                        title="View Details"
+                        style={{
+                            padding: '0.375rem 0.5rem',
+                            fontSize: '0.75rem',
+                            borderRadius: 'var(--border-radius-sm)',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--color-bg-primary)',
+                            color: 'var(--color-primary)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>VIEW</span>
+                    </button>
                     <button
                         onClick={() => state.handleToggleActive(client.id, client.status)}
                         style={{

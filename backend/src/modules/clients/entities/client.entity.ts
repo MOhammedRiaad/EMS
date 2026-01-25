@@ -63,6 +63,9 @@ export class Client extends TenantScopedEntityWithUpdate {
     @JoinColumn({ name: 'studio_id' })
     studio: Studio | null;
 
+    @Column({ name: 'credit_balance', type: 'decimal', precision: 10, scale: 2, default: 0.00 })
+    creditBalance: number;
+
     @OneToMany(() => Session, session => session.client)
     sessions: Session[];
 

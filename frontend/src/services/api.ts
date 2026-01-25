@@ -9,7 +9,7 @@ const getHeaders = () => {
 };
 
 export const api = {
-    async get(endpoint: string, params?: Record<string, any>) {
+    async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<{ data: T }> {
         const url = new URL(`${API_URL}${endpoint}`);
         if (params) {
             Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
@@ -24,10 +24,11 @@ export const api = {
             throw { response: { data } };
         }
 
-        return response.json();
+        const data = await response.json();
+        return { data };
     },
 
-    post: async (endpoint: string, body: any) => {
+    async post<T = any>(endpoint: string, body: any): Promise<{ data: T }> {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
             headers: getHeaders(),
@@ -37,11 +38,40 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            // Throw object resembling axios error response
             throw { response: { data } };
         }
 
-        // Return object resembling axios success response
+        return { data };
+    },
+
+    async put<T = any>(endpoint: string, body: any): Promise<{ data: T }> {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw { response: { data } };
+        }
+
+        return { data };
+    },
+
+    async delete<T = any>(endpoint: string): Promise<{ data: T }> {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'DELETE',
+            headers: getHeaders()
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw { response: { data } };
+        }
+
         return { data };
     }
 };

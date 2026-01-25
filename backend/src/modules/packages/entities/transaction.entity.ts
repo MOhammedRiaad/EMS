@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDa
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Studio } from '../../studios/entities/studio.entity';
 import { User } from '../../auth/entities/user.entity';
+import { Client } from '../../clients/entities/client.entity';
 
 export enum TransactionType {
     INCOME = 'income',
@@ -13,6 +14,8 @@ export enum TransactionCategory {
     PACKAGE_SALE = 'package_sale',
     SESSION_FEE = 'session_fee',
     REFUND = 'refund',
+    RETAIL_SALE = 'retail_sale',
+    MANUAL_ADJUSTMENT = 'manual_adjustment',
     OTHER = 'other'
 }
 
@@ -34,6 +37,13 @@ export class Transaction {
     @ManyToOne(() => Studio)
     @JoinColumn({ name: 'studio_id' })
     studio: Studio;
+
+    @Column({ name: 'client_id', nullable: true })
+    clientId: string;
+
+    @ManyToOne(() => Client)
+    @JoinColumn({ name: 'client_id' })
+    client: Client;
 
     @Column({ type: 'varchar', length: 20 })
     type: TransactionType;

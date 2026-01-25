@@ -3,15 +3,20 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ClientsService } from './clients.service';
 import { CreateClientDto, UpdateClientDto } from './dto';
-import { TenantId } from '../../common/decorators';
+import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+
+import { WaiversService } from '../waivers/waivers.service';
 
 @ApiTags('clients')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller('clients')
 export class ClientsController {
-    constructor(private readonly clientsService: ClientsService) { }
+    constructor(
+        private readonly clientsService: ClientsService,
+        private readonly waiversService: WaiversService
+    ) { }
 
     @Get()
     @ApiOperation({ summary: 'List all clients for tenant' })
@@ -23,6 +28,12 @@ export class ClientsController {
     @ApiOperation({ summary: 'Get client by ID' })
     findOne(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.clientsService.findOne(id, tenantId);
+    }
+
+    @Get(':id/waivers')
+    @ApiOperation({ summary: 'Get client signed waivers' })
+    getWaivers(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.waiversService.getSignedWaiversForClient(tenantId, id);
     }
 
     @Post()
@@ -53,5 +64,22 @@ export class ClientsController {
     @ApiOperation({ summary: 'Invite client to portal (create user + email)' })
     invite(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.clientsService.invite(id, tenantId);
+    }
+
+    @Get(':id/transactions')
+    @ApiOperation({ summary: 'Get client transaction history' })
+    getTransactions(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.clientsService.getTransactions(id, tenantId);
+    }
+
+    @Post(':id/balance')
+    @ApiOperation({ summary: 'Adjust client balance (Add/Remove funds)' })
+    adjustBalance(
+        @Param('id') id: string,
+        @Body() body: { amount: number; description: string },
+        @TenantId() tenantId: string,
+        @CurrentUser() user: any
+    ) {
+        return this.clientsService.adjustBalance(id, tenantId, body.amount, body.description, user.id);
     }
 }

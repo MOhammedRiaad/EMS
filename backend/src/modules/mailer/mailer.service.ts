@@ -9,8 +9,8 @@ export class MailerService {
 
     constructor(private configService: ConfigService) {
         this.transporter = nodemailer.createTransport({
-            host: this.configService.get('MAIL_HOST') || 'maildev',
-            port: parseInt(this.configService.get('MAIL_PORT') || '1025'),
+            host: this.configService.get('SMTP_HOST') || this.configService.get('MAIL_HOST') || 'maildev',
+            port: parseInt(this.configService.get('SMTP_PORT') || this.configService.get('MAIL_PORT') || '1025'),
             ignoreTLS: true,
         });
     }

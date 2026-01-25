@@ -23,12 +23,14 @@ import { PackagesModule } from './modules/packages/packages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ClientPortalModule } from './modules/client-portal/client-portal.module';
 import { CoachPortalModule } from './modules/coach-portal/coach-portal.module';
+import { RetailModule } from './modules/retail/retail.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReminderModule } from './modules/reminders/reminder.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { GamificationModule } from './modules/gamification/gamification.module';
+import { WaiversModule } from './modules/waivers/waivers.module';
 
 @Module({
   imports: [
@@ -81,7 +83,7 @@ import { GamificationModule } from './modules/gamification/gamification.module';
         autoLoadEntities: true,
         synchronize: false,
         migrationsRun: true, // Auto-run migrations on startup
-        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],
@@ -110,6 +112,8 @@ import { GamificationModule } from './modules/gamification/gamification.module';
     ReminderModule,
     AnalyticsModule,
     GamificationModule,
+    WaiversModule,
+    RetailModule,
   ],
   controllers: [HealthController],
   providers: [

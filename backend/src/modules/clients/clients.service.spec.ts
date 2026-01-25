@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientsService } from './clients.service';
 import { Client } from './entities/client.entity';
+import { Transaction } from '../packages/entities/transaction.entity';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { NotFoundException } from '@nestjs/common';
@@ -12,6 +13,7 @@ describe('ClientsService', () => {
     let repository: jest.Mocked<Repository<Client>>;
     let authService: jest.Mocked<AuthService>;
     let mailerService: jest.Mocked<MailerService>;
+    let module: TestingModule;
 
     const mockClient = {
         id: 'client-123',
@@ -22,10 +24,37 @@ describe('ClientsService', () => {
         phone: '123-456-7890',
         status: 'active',
         userId: null,
-    } as Client;
+        fullName: 'John Doe',
+        creditBalance: 0,
+        transactions: [],
+        studioId: null,
+        dateOfBirth: null,
+        notes: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        address: null,
+        city: null,
+        state: null,
+        zipCode: null,
+        country: null,
+        gender: null,
+        height: null,
+        weight: null,
+        fitnessGoals: null,
+        healthConditions: null,
+        referralSource: null,
+        profileImage: null,
+        waivers: [],
+        packages: [],
+        reviews: [],
+        favoriteCoaches: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+    } as unknown as Client;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 ClientsService,
                 {
@@ -33,6 +62,14 @@ describe('ClientsService', () => {
                     useValue: {
                         find: jest.fn(),
                         findOne: jest.fn(),
+                        create: jest.fn(),
+                        save: jest.fn(),
+                    },
+                },
+                {
+                    provide: getRepositoryToken(Transaction),
+                    useValue: {
+                        find: jest.fn(),
                         create: jest.fn(),
                         save: jest.fn(),
                     },
@@ -53,6 +90,7 @@ describe('ClientsService', () => {
                 },
             ],
         }).compile();
+        module = moduleRef;
 
         service = module.get<ClientsService>(ClientsService);
         repository = module.get(getRepositoryToken(Client));
@@ -197,7 +235,7 @@ describe('ClientsService', () => {
 
     describe('invite', () => {
         it('should create user and send invitation email', async () => {
-            const clientWithEmail = { ...mockClient, userId: null };
+            const clientWithEmail = { ...mockClient, userId: null } as any;
             repository.findOne.mockResolvedValue(clientWithEmail);
             authService.findByEmail.mockResolvedValue(null);
             authService.createClientUser.mockResolvedValue({ id: 'new-user', email: 'john@example.com' } as any);
@@ -215,7 +253,7 @@ describe('ClientsService', () => {
         });
 
         it('should throw error if client has no email', async () => {
-            repository.findOne.mockResolvedValue({ ...mockClient, email: null });
+            repository.findOne.mockResolvedValue({ ...mockClient, email: null } as any);
 
             await expect(
                 service.invite('client-123', 'tenant-123')
@@ -223,11 +261,47 @@ describe('ClientsService', () => {
         });
 
         it('should throw error if client already has user account', async () => {
-            repository.findOne.mockResolvedValue({ ...mockClient, userId: 'existing-user' });
+            repository.findOne.mockResolvedValue({ ...mockClient, userId: 'existing-user' } as any);
 
             await expect(
                 service.invite('client-123', 'tenant-123')
             ).rejects.toThrow('Client already has a user account linked');
+        });
+    });
+
+    describe('getTransactions', () => {
+        it('should return transactions for client', async () => {
+            const transactionRepo = module.get(getRepositoryToken(Transaction));
+            const mockTx = { id: 'tx-1', amount: 50 } as any;
+            transactionRepo.find.mockResolvedValue([mockTx]);
+
+            const result = await service.getTransactions('client-123', 'tenant-123');
+
+            expect(result).toEqual([mockTx]);
+            expect(transactionRepo.find).toHaveBeenCalledWith({
+                where: { clientId: 'client-123', tenantId: 'tenant-123' },
+                order: { createdAt: 'DESC' }
+            });
+        });
+    });
+
+    describe('adjustBalance', () => {
+        it('should update balance and create transaction', async () => {
+            const transactionRepo = module.get(getRepositoryToken(Transaction));
+            repository.findOne.mockResolvedValue({ ...mockClient, creditBalance: 100 } as any);
+            repository.save.mockResolvedValue({ ...mockClient, creditBalance: 150 } as any);
+            transactionRepo.create.mockReturnValue({ id: 'new-tx' } as any);
+            transactionRepo.save.mockResolvedValue({ id: 'new-tx' } as any);
+
+            const result = await service.adjustBalance('client-123', 'tenant-123', 50, 'Top up', 'user-admin');
+
+            expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({ creditBalance: 150 }));
+            expect(transactionRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+                amount: 50,
+                clientId: 'client-123',
+                type: 'income',
+                runningBalance: 150
+            }));
         });
     });
 });

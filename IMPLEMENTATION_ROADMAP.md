@@ -105,6 +105,8 @@
 - [x] Health goal tracking (Target weight, sessions, etc.)
 - [x] Achievement badges (Automated logic)
 - [x] Social Leaderboard & Activity Feed (Privacy-aware)
+- [x] **Client Finance**: Transaction History & Balance Management
+- [x] **Client Waivers**: View Signed Waivers
 
 #### 2.3 Internationalization (Arabic + English) ⭐
 - [ ] Backend i18n for emails/notifications
@@ -123,8 +125,28 @@
 
 #### 2.5 Booking Improvements (Advanced) ⏳
 - [x] Favorite Coach (Completed)
-- [ ] Recurring Bookings logic
+- [x] Recurring Bookings logic
 - [ ] Bulk session management
+
+#### 2.6 Group Sessions & Shared Resources (New)
+- [ ] **Schema Update**: Support multiple clients per coach/room (1:N)
+- [ ] **Capacity Management**: Enforce Room/Device capacity limits > 1
+- [ ] **Group Booking UI**: Admin ability to book multiple clients into one slot
+- [ ] **Duo/Group Classes**: "Join Session" functionality for clients
+- [ ] **Utilization Analytics**: Update logic to track capacity % (not just binary occupied/free)
+
+#### 2.7 Retail & Inventory (New - Market Gap) 🛒
+- [x] **Product Catalog**: Create products (Water, Shakes, Suits) with prices/stock
+- [x] **Point of Sale (POS)**: "Cart" functionality for Admins to sell items
+- [x] **Inventory Tracking**: Stock deductions and simple restocking logs
+- [x] **On-Account Charging**: "Put on Tab" functionality for clients
+- [x] **Sales Reporting**: Separate Service Revenue vs. Product Revenue (POS Report)
+
+#### 2.8 Legal & Compliance (Critical) ⚖️
+- [x] **Digital Waivers**: Flexible HTML contracts signature capture
+- [x] **Signature Storage**: Secure storage of client signatures
+- [ ] **PAR-Q Forms**: Medical readiness questionnaire on onboarding
+- [ ] **Terms Acceptance**: Versioned Terms of Service tracking
 
 ---
 
@@ -161,7 +183,7 @@
 
 ---
 
-### Phase 4 - Growth & Integrations 🌐
+### Phase 4 - Growth, Marketing & Integrations 🌐
 
 **Priority**: MEDIUM  
 **Timeline**: 3-4 weeks
@@ -172,18 +194,31 @@
 - [ ] Calendar sync for coaches
 - [ ] Auto-add sessions to client calendars
 
-#### 4.2 Notification Enhancements
+#### 4.2 Marketing Automation & Lead CRM (Expanded) ⭐
+- [ ] **Lead Pipeline Board**: Kanban view (New -> Contacted -> Trial -> Converted)
+- [ ] **Lead Source Tracking**: Attribution (Facebook, Walk-in, Referral)
+- [ ] **"Smart Triggers" Engine**: (Inactive Client, Birthday, Low Balance)
+- [ ] **Automated Email/SMS Drip Campaigns**: Onboarding flows
+- [ ] **Push Notifications for PWA**: Re-engagement
+
+
+#### 4.3 Notification Enhancements
 - [ ] SMS notifications (Twilio)
 - [ ] In-app notification center
 - [ ] Notification preferences management
 - [ ] Notification templates
 
-#### 4.3 Advanced Search
+#### 4.4 Growth Tools (New)
+- [ ] Referral Program ("Give $20, Get $20" logic)
+- [ ] Guest/Family Account Linking (Shared Credits)
+- [ ] First-class ClassPass/Aggregator API support
+
+#### 4.5 Advanced Search
 - [ ] Full-text search for clients/coaches
 - [ ] Fuzzy matching support
 - [ ] Search filters
 
-#### 4.4 Audit Logging
+#### 4.6 Audit Logging
 - [ ] Track all critical entity changes
 - [ ] Queryable audit trail
 - [ ] Compliance reporting
@@ -194,6 +229,11 @@
 
 **Priority**: LOW  
 **Timeline**: TBD
+
+#### Revenue & Subscriptions (Strategic Pivot)
+- [ ] **Automated Subscription Billing** (Stripe/Adyen) - *Required for "Unlimited" memberships*
+- [ ] Auto-renewal logic & Dunning management
+- [ ] Membership freezing/pausing
 
 #### Mobile App
 - [ ] React Native client portal
@@ -289,14 +329,15 @@
 
 ## 📝 Progress Tracking
 
-### Current Sprint: Phase 2.5 ⏳
+### Current Sprint: Phase 2.7 & 2.8 ⏳
 
-**Progress**: 85% of Phase 2 Complete ✅
+**Progress**: 90% of Phase 2 Complete ✅
 - ✅ **2.1 Advanced Analytics**: 14 endpoints + Dashboard
 - ✅ **2.2 Enhanced Client Portal**: Gamification, Social, Goals
-- ⏳ **2.5 Booking Improvements**: Favorite Coach implementation starting
+- ✅ **2.8 Legal & Compliance**: Digital Waivers & Signatures implemented
+- ⏳ **2.7 Retail & Inventory**: POS & Products system starting
 
-**Status**: In Progress (January 22, 2026)
+**Status**: In Progress (January 23, 2026)
 
 ### Completed Milestones
 - ✅ Project foundation complete

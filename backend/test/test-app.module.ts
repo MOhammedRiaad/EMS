@@ -20,6 +20,12 @@ import { WaitingListEntry } from '../src/modules/waiting-list/entities/waiting-l
 import { Package } from '../src/modules/packages/entities/package.entity';
 import { ClientPackage } from '../src/modules/packages/entities/client-package.entity';
 import { Transaction } from '../src/modules/packages/entities/transaction.entity';
+import { Product } from '../src/modules/retail/entities/product.entity';
+import { ProductStock } from '../src/modules/retail/entities/product-stock.entity';
+import { Sale } from '../src/modules/retail/entities/sale.entity';
+import { SaleItem } from '../src/modules/retail/entities/sale-item.entity';
+import { Waiver } from '../src/modules/waivers/entities/waiver.entity';
+import { ClientWaiver } from '../src/modules/waivers/entities/client-waiver.entity';
 
 // Feature Modules
 import { AuthModule } from '../src/modules/auth/auth.module';
@@ -38,11 +44,15 @@ import { ReviewsModule } from '../src/modules/reviews/reviews.module';
 import { DashboardModule } from '../src/modules/dashboard/dashboard.module';
 import { ClientPortalModule } from '../src/modules/client-portal/client-portal.module';
 import { CoachPortalModule } from '../src/modules/coach-portal/coach-portal.module';
+import { RetailModule } from '../src/modules/retail/retail.module';
+import { WaiversModule } from '../src/modules/waivers/waivers.module';
 
 const ALL_ENTITIES = [
     User, Tenant, Studio, Room, Coach, Client, Session,
     EmsDevice, ClientSessionReview, InBodyScan, WaitingListEntry,
     Package, ClientPackage, Transaction,
+    Product, ProductStock, Sale, SaleItem,
+    Waiver, ClientWaiver,
 ];
 
 @Module({
@@ -94,6 +104,8 @@ const ALL_ENTITIES = [
         DashboardModule,
         ClientPortalModule,
         CoachPortalModule,
+        RetailModule,
+        WaiversModule,
     ],
     controllers: [HealthController],
 })

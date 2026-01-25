@@ -5,6 +5,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import TenantOnboarding from './pages/onboarding/TenantOnboarding';
 import Clients from './pages/clients/Clients';
+import ClientDetailsPage from './pages/clients/ClientDetailsPage';
 import Coaches from './pages/coaches/Coaches';
 import CreateCoach from './pages/coaches/CreateCoach';
 import Sessions from './pages/sessions/Sessions';
@@ -21,6 +22,10 @@ import AdminCashFlow from './pages/admin/AdminCashFlow';
 import AdminSettings from './pages/admin/AdminSettings';
 import Analytics from './pages/admin/Analytics';
 import Reviews from './pages/admin/Reviews';
+import ProductListPage from './pages/admin/retail/ProductListPage';
+import InventoryPage from './pages/admin/retail/InventoryPage';
+import POSPage from './pages/admin/retail/POSPage';
+import RetailReportsPage from './pages/admin/retail/RetailReportsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { MenuPreferencesProvider } from './contexts/MenuPreferencesContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -92,8 +97,14 @@ function App() {
                   <Route path="sessions" element={<Sessions />} />
 
                   <Route path="clients" element={<Clients />} />
+                  <Route path="clients/:id" element={<ClientDetailsPage />} />
                   <Route path="coaches" element={<Coaches />} />
                   <Route path="coaches/create" element={<CreateCoach />} />
+
+                  <Route path="retail/products" element={<ProductListPage />} />
+                  <Route path="retail/inventory" element={<InventoryPage />} />
+                  <Route path="retail/pos" element={<POSPage />} />
+                  <Route path="retail/reports" element={<RetailReportsPage />} />
 
                   <Route path="studios" element={<Studios />} />
                   <Route path="rooms" element={<Rooms />} />

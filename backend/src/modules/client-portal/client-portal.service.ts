@@ -218,7 +218,9 @@ export class ClientPortalService {
             phone: client.phone,
             avatarUrl: client.avatarUrl,
             memberSince: client.createdAt,
-            gender: client.user?.gender || (client as any).gender
+            gender: client.user?.gender || (client as any).gender,
+            privacyPreferences: client.privacyPreferences,
+            consentFlags: client.consentFlags,
         };
     }
 
@@ -232,7 +234,7 @@ export class ClientPortalService {
         return this.coachesService.findActive(tenantId, clientGender);
     }
 
-    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string }) {
+    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string; privacyPreferences?: any; consentFlags?: any }) {
         const client = await this.clientsService.findOne(clientId, tenantId, ['user']);
 
         if (!client) {
@@ -245,6 +247,8 @@ export class ClientPortalService {
         if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
         if (dto.phone !== undefined) updateData.phone = dto.phone;
         if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+        if ((dto as any).privacyPreferences !== undefined) updateData.privacyPreferences = (dto as any).privacyPreferences;
+        if ((dto as any).consentFlags !== undefined) updateData.consentFlags = (dto as any).consentFlags;
 
         let clientUpdated = client;
         if (Object.keys(updateData).length > 0) {
@@ -265,7 +269,9 @@ export class ClientPortalService {
             email: clientUpdated.email,
             phone: clientUpdated.phone,
             avatarUrl: clientUpdated.avatarUrl,
-            gender: updatedGender
+            gender: updatedGender,
+            privacyPreferences: clientUpdated.privacyPreferences,
+            consentFlags: clientUpdated.consentFlags,
         };
     }
 
@@ -293,6 +299,7 @@ export class ClientPortalService {
         }
 
         // Use the remove method to delete the entry
+        await this.waitingListService.remove(entryId, tenantId);
         return { message: 'Waiting list entry cancelled successfully' };
     }
 

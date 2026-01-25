@@ -114,69 +114,84 @@ class AnalyticsService {
 
     // Revenue
     async getRevenueSummary(): Promise<RevenueSummary> {
-        return api.get('/analytics/revenue/summary');
+        const response = await api.get<RevenueSummary>('/analytics/revenue/summary');
+        return response.data;
     }
 
     async getRevenueByPeriod(params?: DateRangeQuery): Promise<RevenueByPeriod[]> {
-        return api.get(`/analytics/revenue/by-period${this.buildQuery(params)}`);
+        const response = await api.get<RevenueByPeriod[]>(`/analytics/revenue/by-period${this.buildQuery(params)}`);
+        return response.data;
     }
 
     async getRevenueByPackage(params?: DateRangeQuery): Promise<RevenueByPackage[]> {
-        return api.get(`/analytics/revenue/by-package${this.buildQuery(params)}`);
+        const response = await api.get<RevenueByPackage[]>(`/analytics/revenue/by-package${this.buildQuery(params)}`);
+        return response.data;
     }
 
     // Clients
     async getClientSummary(): Promise<ClientSummary> {
-        return api.get('/analytics/clients/summary');
+        const response = await api.get<ClientSummary>('/analytics/clients/summary');
+        return response.data;
     }
 
     async getClientAcquisition(params?: DateRangeQuery): Promise<ClientAcquisition[]> {
-        return api.get(`/analytics/clients/acquisition${this.buildQuery(params)}`);
+        const response = await api.get<ClientAcquisition[]>(`/analytics/clients/acquisition${this.buildQuery(params)}`);
+        return response.data;
     }
 
     async getClientRetention(): Promise<ClientRetention> {
-        return api.get('/analytics/clients/retention');
+        const response = await api.get<ClientRetention>('/analytics/clients/retention');
+        return response.data;
     }
 
     // Coaches
     async getCoachPerformance(params?: DateRangeQuery): Promise<CoachPerformance[]> {
-        return api.get(`/analytics/coaches/performance${this.buildQuery(params)}`);
+        const response = await api.get<CoachPerformance[]>(`/analytics/coaches/performance${this.buildQuery(params)}`);
+        return response.data;
     }
 
     async getCoachRatings(): Promise<CoachRating[]> {
-        return api.get('/analytics/coaches/ratings');
+        const response = await api.get<CoachRating[]>('/analytics/coaches/ratings');
+        return response.data;
     }
 
     // Operations
     async getRoomUtilization(params?: DateRangeQuery): Promise<Utilization[]> {
-        return api.get(`/analytics/operations/room-utilization${this.buildQuery(params)}`);
+        const response = await api.get<Utilization[]>(`/analytics/operations/room-utilization${this.buildQuery(params)}`);
+        return response.data;
     }
 
     async getDeviceUtilization(params?: DateRangeQuery): Promise<Utilization[]> {
-        return api.get(`/analytics/operations/device-utilization${this.buildQuery(params)}`);
+        const response = await api.get<Utilization[]>(`/analytics/operations/device-utilization${this.buildQuery(params)}`);
+        return response.data;
     }
 
     async getPeakHours(params?: DateRangeQuery): Promise<PeakHour[]> {
-        return api.get(`/analytics/operations/peak-hours${this.buildQuery(params)}`);
+        const response = await api.get<PeakHour[]>(`/analytics/operations/peak-hours${this.buildQuery(params)}`);
+        return response.data;
     }
 
     // Sessions
     async getSessionStats(params?: DateRangeQuery): Promise<SessionStats> {
-        return api.get(`/analytics/sessions/stats${this.buildQuery(params)}`);
+        const response = await api.get<SessionStats>(`/analytics/sessions/stats${this.buildQuery(params)}`);
+        return response.data;
     }
 
     // Financial
     async getCashFlow(params?: DateRangeQuery): Promise<CashFlow[]> {
-        return api.get(`/analytics/financial/cash-flow${this.buildQuery(params)}`);
+        const response = await api.get<CashFlow[]>(`/analytics/financial/cash-flow${this.buildQuery(params)}`);
+        return response.data;
     }
 
     async getOutstandingPayments(): Promise<OutstandingPayment[]> {
-        return api.get('/analytics/financial/outstanding');
+        const response = await api.get<OutstandingPayment[]>('/analytics/financial/outstanding');
+        return response.data;
     }
 
     // Waiting List
     async getWaitingListStats(params?: DateRangeQuery): Promise<WaitingListStats> {
-        return api.get(`/analytics/waiting-list/stats${this.buildQuery(params)}`);
+        const response = await api.get<WaitingListStats>(`/analytics/waiting-list/stats${this.buildQuery(params)}`);
+        return response.data;
     }
 }
 

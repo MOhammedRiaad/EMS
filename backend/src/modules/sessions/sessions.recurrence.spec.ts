@@ -45,7 +45,7 @@ describe('SessionsService - Recurrence', () => {
                 { provide: getRepositoryToken(Tenant), useValue: { findOne: jest.fn() } },
                 { provide: MailerService, useValue: { sendMail: jest.fn() } },
                 { provide: ClientsService, useValue: { findOne: jest.fn() } },
-                { provide: PackagesService, useValue: { getActivePackageForClient: jest.fn(), getClientPackages: jest.fn(), useSession: jest.fn() } },
+                { provide: PackagesService, useValue: { getActivePackageForClient: jest.fn(), getClientPackages: jest.fn().mockResolvedValue([]), useSession: jest.fn() } },
                 { provide: GamificationService, useValue: { checkAndUnlockAchievements: jest.fn(), getClientAchievements: jest.fn(), getClientGoals: jest.fn() } },
             ],
         }).compile();
