@@ -8,7 +8,7 @@ import ComplianceManager from '../compliance/ComplianceManager';
 const ClientLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { logout, isAuthenticated } = useAuth();
+    const { logout, isAuthenticated, tenant } = useAuth();
 
     // Compliance handled by ComplianceManager
 
@@ -25,7 +25,19 @@ const ClientLayout: React.FC = () => {
 
             {/* Header */}
             <header className="bg-white dark:bg-slate-900 dark:border-slate-800 shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors duration-200">
-                <div className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">EMS Studio</div>
+                <div className="flex items-center gap-2">
+                    {tenant?.settings?.branding?.logoUrl ? (
+                        <img
+                            src={tenant.settings.branding.logoUrl}
+                            alt={tenant.name}
+                            className="h-8 w-auto object-contain"
+                        />
+                    ) : (
+                        <div className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            {tenant?.name || 'EMS Studio'}
+                        </div>
+                    )}
+                </div>
                 <div className="flex items-center gap-4">
                     <ThemeToggle />
                     <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors">

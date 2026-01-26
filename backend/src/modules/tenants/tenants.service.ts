@@ -61,6 +61,17 @@ export class TenantsService {
 
         Object.assign(tenant, dto);
 
+        // Merge branding into settings if provided
+        if (dto.branding) {
+            tenant.settings = {
+                ...(tenant.settings || {}),
+                branding: {
+                    ...(tenant.settings?.branding || {}),
+                    ...dto.branding
+                }
+            };
+        }
+
         // Check if all required fields are now filled to set isComplete
         if (tenant.address && tenant.phone && tenant.city && tenant.state && tenant.zipCode) {
             tenant.isComplete = true;

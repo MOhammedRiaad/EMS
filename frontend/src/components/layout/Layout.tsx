@@ -18,7 +18,8 @@ import {
     ShoppingBag,
     Tags,
     CreditCard,
-    FileText
+    FileText,
+    Palette
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
@@ -96,6 +97,7 @@ const Layout: React.FC = () => {
     const administrationItems: MenuItem[] = [
         { path: '/admin/users', label: 'User Management', icon: UserCog },
         { path: '/admin/settings', label: 'Settings', icon: Settings },
+        { path: '/admin/branding', label: 'Branding', icon: Palette },
     ];
 
     const retailItems: MenuItem[] = [
@@ -123,7 +125,15 @@ const Layout: React.FC = () => {
         <div className="container">
             <aside className="sidebar">
                 <div className="logo-area">
-                    <span className="logo-text">{tenant?.name || 'EMS Studio'}</span>
+                    {tenant?.settings?.branding?.logoUrl ? (
+                        <img
+                            src={tenant.settings.branding.logoUrl}
+                            alt={tenant.name || 'Logo'}
+                            style={{ maxHeight: '40px', maxWidth: '100%', objectFit: 'contain' }}
+                        />
+                    ) : (
+                        <span className="logo-text">{tenant?.name || 'EMS Studio'}</span>
+                    )}
                 </div>
 
                 {/* Menu Search */}

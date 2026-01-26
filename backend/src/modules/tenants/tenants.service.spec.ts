@@ -174,5 +174,29 @@ describe('TenantsService', () => {
                 expect.objectContaining({ isComplete: true })
             );
         });
+
+        it('should merge branding settings', async () => {
+            const tenantWithSettings = { ...mockTenant, settings: { existing: true } };
+            repository.findOne.mockResolvedValue(tenantWithSettings);
+            repository.save.mockImplementation(async (t) => t as Tenant);
+
+            const brandingUpdate = {
+                logoUrl: 'https://example.com/logo.png',
+                primaryColor: '#000000',
+            };
+
+            await service.update('tenant-123', {
+                branding: brandingUpdate
+            });
+
+            expect(repository.save).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    settings: {
+                        existing: true,
+                        branding: brandingUpdate
+                    }
+                })
+            );
+        });
     });
 });

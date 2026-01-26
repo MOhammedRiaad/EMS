@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterce
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { SessionsService } from './sessions.service';
-import { CreateSessionDto, SessionQueryDto, UpdateSessionStatusDto, UpdateSessionDto } from './dto';
+import { CreateSessionDto, SessionQueryDto, UpdateSessionStatusDto, UpdateSessionDto, BulkCreateSessionDto } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
@@ -20,13 +20,16 @@ export class SessionsController {
     ) { }
 
     @Get()
-    // Cache disabled to prevent stale data after status updates
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(60000) // 1 minute
     @ApiOperation({ summary: 'List sessions with filters' })
     findAll(@Query() query: SessionQueryDto, @TenantId() tenantId: string) {
         return this.sessionsService.findAll(tenantId, query);
     }
 
     @Get(':id')
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(60000) // 1 minute
     @ApiOperation({ summary: 'Get session by ID' })
     findOne(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.sessionsService.findOne(id, tenantId);
@@ -42,6 +45,12 @@ export class SessionsController {
     @ApiOperation({ summary: 'Check for scheduling conflicts without creating' })
     checkConflicts(@Body() dto: CreateSessionDto, @TenantId() tenantId: string) {
         return this.sessionsService.checkConflicts(dto, tenantId);
+    }
+
+    @Post('bulk')
+    @ApiOperation({ summary: 'Bulk create sessions' })
+    createBulk(@Body() dto: BulkCreateSessionDto, @TenantId() tenantId: string) {
+        return this.sessionsService.createBulk(dto, tenantId);
     }
 
     @Patch(':id')

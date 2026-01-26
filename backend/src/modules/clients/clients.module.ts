@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Client } from './entities/client.entity';
+import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
 import { ClientsController } from './clients.controller';
 import { ClientsService } from './clients.service';
 import { AuthModule } from '../auth/auth.module';
@@ -11,7 +12,7 @@ import { WaiversModule } from '../waivers/waivers.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Client, Transaction]),
+        TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto]),
         AuthModule,
         MailerModule,
         forwardRef(() => WaiversModule)

@@ -6,6 +6,8 @@ import { CreateClientDto, UpdateClientDto } from './dto';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { Transaction, TransactionType, TransactionCategory } from '../packages/entities/transaction.entity';
+import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
+import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 
 @Injectable()
 export class ClientsService {
@@ -14,6 +16,8 @@ export class ClientsService {
         private readonly clientRepository: Repository<Client>,
         @InjectRepository(Transaction)
         private readonly transactionRepository: Repository<Transaction>,
+        @InjectRepository(ClientProgressPhoto)
+        private readonly photoRepository: Repository<ClientProgressPhoto>,
         private readonly authService: AuthService,
         private readonly mailerService: MailerService,
     ) { }
@@ -183,5 +187,39 @@ export class ClientsService {
         const inviteLink = `${frontendUrl}/auth/setup?token=${token}`;
 
         await this.mailerService.sendClientInvitation(client.email, inviteLink);
+    }
+
+    async addProgressPhoto(clientId: string, dto: CreateProgressPhotoDto, tenantId: string): Promise<ClientProgressPhoto> {
+        const client = await this.findOne(clientId, tenantId);
+
+        const photo = this.photoRepository.create({
+            ...dto,
+            clientId: client.id,
+            tenantId
+        });
+
+        return this.photoRepository.save(photo);
+    }
+
+    async getProgressPhotos(clientId: string, tenantId: string): Promise<ClientProgressPhoto[]> {
+        // Ensure client exists and belongs to tenant
+        await this.findOne(clientId, tenantId);
+
+        return this.photoRepository.find({
+            where: { clientId, tenantId },
+            order: { takenAt: 'DESC' }
+        });
+    }
+
+    async deleteProgressPhoto(clientId: string, photoId: string, tenantId: string): Promise<void> {
+        const photo = await this.photoRepository.findOne({
+            where: { id: photoId, clientId, tenantId }
+        });
+
+        if (!photo) {
+            throw new NotFoundException('Progress photo not found');
+        }
+
+        await this.photoRepository.remove(photo);
     }
 }

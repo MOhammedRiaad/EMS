@@ -351,7 +351,7 @@ export class AuthService {
         return { message: 'Password reset successfully' };
     }
 
-    private generateTokens(user: User, tenant?: { id: string; name: string; isComplete: boolean }) {
+    private generateTokens(user: User, tenant?: { id: string; name: string; isComplete: boolean; settings?: any }) {
         const payload: JwtPayload = {
             sub: user.id,
             tenantId: user.tenantId,
@@ -375,6 +375,7 @@ export class AuthService {
                 id: tenant.id,
                 name: tenant.name,
                 isComplete: tenant.isComplete,
+                settings: tenant.settings,
             } : undefined,
         };
     }

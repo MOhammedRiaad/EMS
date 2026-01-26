@@ -101,6 +101,23 @@ export const api = {
         return { data };
     },
 
+    async patch<T = any>(endpoint: string, body: any): Promise<{ data: T }> {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            method: 'PATCH',
+            headers: getHeaders(),
+            body: JSON.stringify(body)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const message = formatErrorMessage(data);
+            throw new ApiError(message, response.status, data.error, data.conflicts);
+        }
+
+        return { data };
+    },
+
     async delete<T = any>(endpoint: string): Promise<{ data: T }> {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'DELETE',

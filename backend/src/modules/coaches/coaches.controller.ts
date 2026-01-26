@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CoachesService } from './coaches.service';
@@ -14,6 +15,8 @@ export class CoachesController {
     constructor(private readonly coachesService: CoachesService) { }
 
     @Get()
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(300000) // 5 minutes
     @ApiOperation({ summary: 'List all coaches or by studio' })
     @ApiQuery({ name: 'studioId', required: false })
     findAll(@Query('studioId') studioId: string, @TenantId() tenantId: string) {
@@ -24,6 +27,8 @@ export class CoachesController {
     }
 
     @Get(':id')
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(300000) // 5 minutes
     @ApiOperation({ summary: 'Get a coach by ID' })
     findOne(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.coachesService.findOne(id, tenantId);

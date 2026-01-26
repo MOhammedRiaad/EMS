@@ -9,6 +9,35 @@ export interface Client {
     status: string;
     avatarUrl?: string | null;
     creditBalance?: number;
+    healthNotes?: string;
+    notes?: string;
+    healthGoals?: Array<{
+        id: string;
+        goal: string;
+        targetDate?: string;
+        completed: boolean;
+    }>;
+    medicalHistory?: {
+        allergies: string[];
+        injuries: string[];
+        conditions: string[];
+        custom?: any;
+    };
+}
+
+export interface ClientProgressPhoto {
+    id: string;
+    clientId: string;
+    photoUrl: string;
+    takenAt: string;
+    notes?: string;
+    type?: 'front' | 'back' | 'side' | 'other';
+}
+
+export interface CreateProgressPhotoDto {
+    photoUrl: string;
+    notes?: string;
+    type?: 'front' | 'back' | 'side' | 'other';
 }
 
 export const clientsService = {
@@ -62,5 +91,22 @@ export const clientsService = {
 
     async getWaivers(id: string): Promise<any[]> {
         return authenticatedFetch(`/clients/${id}/waivers`);
+    },
+
+    async addPhoto(id: string, data: CreateProgressPhotoDto): Promise<ClientProgressPhoto> {
+        return authenticatedFetch(`/clients/${id}/photos`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async getPhotos(id: string): Promise<ClientProgressPhoto[]> {
+        return authenticatedFetch(`/clients/${id}/photos`);
+    },
+
+    async deletePhoto(id: string, photoId: string): Promise<void> {
+        return authenticatedFetch(`/clients/${id}/photos/${photoId}`, {
+            method: 'DELETE'
+        });
     }
 };

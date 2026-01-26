@@ -13,6 +13,14 @@ interface Tenant {
     id: string;
     name: string;
     isComplete: boolean;
+    settings?: {
+        branding?: {
+            logoUrl?: string;
+            primaryColor?: string;
+            secondaryColor?: string;
+        };
+        [key: string]: any;
+    };
 }
 
 interface AuthContextType {

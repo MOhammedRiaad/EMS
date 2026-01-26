@@ -7,7 +7,7 @@ import { ThemeToggle } from '../common/ThemeToggle';
 const CoachLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { logout, isAuthenticated } = useAuth();
+    const { logout, isAuthenticated, tenant } = useAuth();
 
     React.useEffect(() => {
         if (!isAuthenticated) navigate('/login');
@@ -25,10 +25,20 @@ const CoachLayout: React.FC = () => {
             {/* Header */}
             <header className="bg-white dark:bg-slate-900 dark:border-slate-800 shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-40 transition-colors duration-200">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                        C
+                    {tenant?.settings?.branding?.logoUrl ? (
+                        <img
+                            src={tenant.settings.branding.logoUrl}
+                            alt={tenant.name}
+                            className="h-8 w-auto object-contain"
+                        />
+                    ) : (
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                            {tenant?.name?.charAt(0) || 'C'}
+                        </div>
+                    )}
+                    <div className="text-lg font-bold text-gray-900 tracking-tight">
+                        {tenant?.name || 'Coach Portal'}
                     </div>
-                    <div className="text-lg font-bold text-gray-900 tracking-tight">Coach Portal</div>
                 </div>
                 <div className="flex items-center gap-4">
                     <ThemeToggle />

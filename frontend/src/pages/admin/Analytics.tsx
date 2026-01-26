@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DollarSign, Users, UserCheck, Calendar, TrendingUp, BarChart3, Clock } from 'lucide-react';
+import { DollarSign, Users, UserCheck, Calendar, TrendingUp, BarChart3, Clock, Hourglass, Wallet, AlertCircle, Download } from 'lucide-react';
 import {
     MetricCard,
     DateRangeFilter,
@@ -15,10 +15,13 @@ import {
     type ClientRetention,
     type CoachPerformance,
     type SessionStats,
+    type CashFlow,
+    type OutstandingPayment,
+    type WaitingListStats,
     type Utilization,
 } from '../../services/analytics.service';
 
-type TabType = 'overview' | 'revenue' | 'clients' | 'operations';
+type TabType = 'overview' | 'revenue' | 'clients' | 'operations' | 'financial' | 'waiting-list';
 
 const Analytics: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -33,6 +36,9 @@ const Analytics: React.FC = () => {
     const [coachPerformance, setCoachPerformance] = useState<CoachPerformance[]>([]);
     const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
     const [roomUtilization, setRoomUtilization] = useState<Utilization[]>([]);
+    const [waitingListStats, setWaitingListStats] = useState<WaitingListStats | null>(null);
+    const [cashFlow, setCashFlow] = useState<CashFlow[]>([]);
+    const [outstandingPayments, setOutstandingPayments] = useState<OutstandingPayment[]>([]);
 
     useEffect(() => {
         fetchData();
@@ -58,6 +64,9 @@ const Analytics: React.FC = () => {
                 analyticsService.getCoachPerformance(params),
                 analyticsService.getSessionStats(params),
                 analyticsService.getRoomUtilization(params),
+                analyticsService.getWaitingListStats(params),
+                analyticsService.getCashFlow(params),
+                analyticsService.getOutstandingPayments(),
             ]);
 
             const [
@@ -68,6 +77,9 @@ const Analytics: React.FC = () => {
                 coachesResult,
                 sessionsResult,
                 roomsResult,
+                waitingListResult,
+                cashFlowResult,
+                outstandingResult,
             ] = results;
 
             if (revenueResult.status === 'fulfilled') setRevenueSummary(revenueResult.value);
@@ -90,6 +102,10 @@ const Analytics: React.FC = () => {
                 setRoomUtilization([]);
             }
 
+            if (waitingListResult.status === 'fulfilled') setWaitingListStats(waitingListResult.value);
+            if (cashFlowResult.status === 'fulfilled') setCashFlow(cashFlowResult.value);
+            if (outstandingResult.status === 'fulfilled') setOutstandingPayments(outstandingResult.value);
+
         } catch (error) {
             console.error('Unexpected error fetching analytics:', error);
         } finally {
@@ -97,10 +113,70 @@ const Analytics: React.FC = () => {
         }
     };
 
+    const downloadCSV = (data: any[], filename: string) => {
+        if (!data || data.length === 0) return;
+
+        const headers = Object.keys(data[0]);
+        const csvContent = [
+            headers.join(','),
+            ...data.map(row => headers.map(header => {
+                const val = row[header];
+                return typeof val === 'string' ? `"${val}"` : val;
+            }).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
+    const handleExport = () => {
+        const timestamp = new Date().toISOString().split('T')[0];
+
+        switch (activeTab) {
+            case 'revenue':
+                downloadCSV(revenueByPeriod, `revenue_${timestamp}.csv`);
+                break;
+            case 'clients':
+                const clientData = clientSummary ? [{
+                    ...clientSummary,
+                    retentionRate: clientRetention?.retentionRate,
+                    retained: clientRetention?.retained
+                }] : [];
+                downloadCSV(clientData, `clients_${timestamp}.csv`);
+                break;
+            case 'operations':
+                downloadCSV(roomUtilization, `room_utilization_${timestamp}.csv`);
+                break;
+            case 'financial':
+                downloadCSV(outstandingPayments, `outstanding_payments_${timestamp}.csv`);
+                break;
+            case 'waiting-list':
+                if (waitingListStats) {
+                    downloadCSV([waitingListStats], `waiting_list_${timestamp}.csv`);
+                }
+                break;
+            default:
+                if (revenueSummary) {
+                    downloadCSV([revenueSummary], `overview_${timestamp}.csv`);
+                }
+        }
+    };
+
     const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
         { id: 'overview', label: 'Overview', icon: <BarChart3 size={16} /> },
         { id: 'revenue', label: 'Revenue', icon: <DollarSign size={16} /> },
+        { id: 'financial', label: 'Financial', icon: <Wallet size={16} /> },
         { id: 'clients', label: 'Clients', icon: <Users size={16} /> },
+        { id: 'waiting-list', label: 'Waiting List', icon: <Hourglass size={16} /> },
         { id: 'operations', label: 'Operations', icon: <Clock size={16} /> },
     ];
 
@@ -133,7 +209,28 @@ const Analytics: React.FC = () => {
                         Track performance and insights
                     </p>
                 </div>
-                <DateRangeFilter value={dateRange} onChange={setDateRange} />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                        onClick={handleExport}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1rem',
+                            backgroundColor: 'var(--color-bg-secondary)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '6px',
+                            color: 'var(--color-text-primary)',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                        }}
+                    >
+                        <Download size={16} />
+                        Export
+                    </button>
+                    <DateRangeFilter value={dateRange} onChange={setDateRange} />
+                </div>
             </div>
 
             {/* Tabs */}
@@ -353,6 +450,111 @@ const Analytics: React.FC = () => {
                     </div>
 
                     <CoachPerformanceChart data={coachPerformance} height={350} />
+                </>
+            )}
+
+            {activeTab === 'financial' && (
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <MetricCard
+                            title="Total Outstanding"
+                            value={`€${outstandingPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}`}
+                            subtitle={`${outstandingPayments.length} pending payments`}
+                            icon={<AlertCircle size={18} color="#ef4444" />}
+                        />
+                        <MetricCard
+                            title="Cash Flow (Period)"
+                            value={`€${cashFlow.reduce((sum, c) => sum + c.amount, 0).toLocaleString()}`}
+                            icon={<Wallet size={18} color="var(--color-primary)" />}
+                        />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                        {/* Reuse RevenueChart for Cash Flow by mapping data */}
+                        <div style={{ padding: '1rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Cash Flow Trend</h3>
+                            <RevenueChart
+                                data={cashFlow.map(c => ({ period: c.period, revenue: c.amount, count: 0 }))}
+                                height={300}
+                            />
+                        </div>
+
+                        {outstandingPayments.length > 0 && (
+                            <div
+                                style={{
+                                    backgroundColor: 'var(--color-bg-secondary)',
+                                    borderRadius: 'var(--border-radius-lg)',
+                                    border: '1px solid var(--border-color)',
+                                    padding: '1.5rem',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Outstanding Payments</h3>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                                                <th style={{ padding: '0.75rem 0', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Client</th>
+                                                <th style={{ padding: '0.75rem 0', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Package</th>
+                                                <th style={{ padding: '0.75rem 0', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Date</th>
+                                                <th style={{ padding: '0.75rem 0', fontWeight: 600, color: 'var(--color-text-secondary)', textAlign: 'right' }}>Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {outstandingPayments.map((payment) => (
+                                                <tr key={payment.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '0.75rem 0' }}>{payment.clientName}</td>
+                                                    <td style={{ padding: '0.75rem 0' }}>{payment.packageName}</td>
+                                                    <td style={{ padding: '0.75rem 0' }}>{new Date(payment.purchaseDate).toLocaleDateString()}</td>
+                                                    <td style={{ padding: '0.75rem 0', textAlign: 'right', fontWeight: 500 }}>€{payment.amount}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {activeTab === 'waiting-list' && (
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <MetricCard
+                            title="Total Entries"
+                            value={waitingListStats?.total ?? 0}
+                            icon={<Hourglass size={18} color="var(--color-primary)" />}
+                        />
+                        <MetricCard
+                            title="Converted"
+                            value={waitingListStats?.converted ?? 0}
+                            icon={<UserCheck size={18} color="#10b981" />}
+                        />
+                        <MetricCard
+                            title="Pending"
+                            value={waitingListStats?.pending ?? 0}
+                            icon={<Clock size={18} color="#f59e0b" />}
+                        />
+                        <MetricCard
+                            title="Conversion Rate"
+                            value={`${waitingListStats?.conversionRate ?? 0}%`}
+                            icon={<TrendingUp size={18} color="#3b82f6" />}
+                        />
+                    </div>
+
+                    <div
+                        style={{
+                            backgroundColor: 'var(--color-bg-secondary)',
+                            borderRadius: 'var(--border-radius-lg)',
+                            border: '1px solid var(--border-color)',
+                            padding: '1.5rem',
+                            textAlign: 'center',
+                            color: 'var(--color-text-secondary)'
+                        }}
+                    >
+                        <p>Detailed waiting list management can be found in the Waiting List module.</p>
+                    </div>
                 </>
             )}
         </div>

@@ -448,4 +448,61 @@ describe('SessionsService', () => {
             expect(sessionRepository.save).toHaveBeenCalled();
         });
     });
+
+    describe('createBulk', () => {
+        const bulkDto = {
+            sessions: [
+                {
+                    studioId: 'studio-123',
+                    roomId: 'room-123',
+                    coachId: 'coach-123',
+                    clientId: 'client-123',
+                    startTime: '2026-01-27T10:00:00Z',
+                    endTime: '2026-01-27T10:20:00Z',
+                },
+                {
+                    studioId: 'studio-123',
+                    roomId: 'room-123',
+                    coachId: 'coach-123',
+                    clientId: 'client-456',
+                    startTime: '2026-01-27T10:30:00Z',
+                    endTime: '2026-01-27T10:50:00Z',
+                }
+            ]
+        };
+
+        beforeEach(() => {
+            roomRepository.findOne.mockResolvedValue(mockRoom);
+            studioRepository.findOne.mockResolvedValue(mockStudio);
+            coachRepository.findOne.mockResolvedValue(mockCoach);
+            packagesService.getActivePackageForClient.mockResolvedValue(mockActivePackage as any);
+            packagesService.getClientPackages.mockResolvedValue([mockActivePackage] as any);
+            sessionRepository.count.mockResolvedValue(0);
+            sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);
+            sessionRepository.create.mockReturnValue(mockSession);
+            sessionRepository.save.mockResolvedValue(mockSession);
+            clientsService.findOne.mockResolvedValue({ email: 'test@example.com', firstName: 'Jane' } as any);
+        });
+
+        it('should create multiple sessions successfully', async () => {
+            const result = await service.createBulk(bulkDto, 'tenant-123');
+
+            expect(result.created).toBe(2);
+            expect(result.errors).toHaveLength(0);
+            expect(sessionRepository.create).toHaveBeenCalledTimes(2);
+        });
+
+        it('should handle partial failures', async () => {
+            // Mock create to fail for the second session
+            jest.spyOn(service, 'create')
+                .mockResolvedValueOnce(mockSession)
+                .mockRejectedValueOnce(new Error('Scheduling conflict'));
+
+            const result = await service.createBulk(bulkDto, 'tenant-123');
+
+            expect(result.created).toBe(1);
+            expect(result.errors).toHaveLength(1);
+            expect(result.errors[0].error).toBe('Scheduling conflict');
+        });
+    });
 });

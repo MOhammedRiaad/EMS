@@ -26,6 +26,7 @@ import ProductListPage from './pages/admin/retail/ProductListPage';
 import InventoryPage from './pages/admin/retail/InventoryPage';
 import POSPage from './pages/admin/retail/POSPage';
 import RetailReportsPage from './pages/admin/retail/RetailReportsPage';
+import BrandSettings from './pages/admin/BrandSettings';
 import { AuthProvider } from './contexts/AuthContext';
 import { MenuPreferencesProvider } from './contexts/MenuPreferencesContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -121,6 +122,7 @@ function App() {
                   <Route path="admin/packages" element={<AdminPackages />} />
                   <Route path="admin/cash-flow" element={<AdminCashFlow />} />
                   <Route path="admin/settings" element={<AdminSettings />} />
+                  <Route path="admin/branding" element={<BrandSettings />} />
                   <Route path="analytics" element={<Analytics />} />
                 </Route>
               </Route>

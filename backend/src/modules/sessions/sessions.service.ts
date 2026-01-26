@@ -6,7 +6,7 @@ import { Room } from '../rooms/entities/room.entity';
 import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { CreateSessionDto, SessionQueryDto, UpdateSessionDto } from './dto';
+import { CreateSessionDto, SessionQueryDto, UpdateSessionDto, BulkCreateSessionDto } from './dto';
 import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
@@ -162,6 +162,26 @@ export class SessionsService {
         }
 
         return savedSession;
+    }
+
+    async createBulk(bulkDto: BulkCreateSessionDto, tenantId: string): Promise<{ created: number, errors: any[] }> {
+        const results = { created: 0, errors: [] as any[] };
+
+        for (const [index, dto] of bulkDto.sessions.entries()) {
+            try {
+                await this.create(dto, tenantId);
+                results.created++;
+            } catch (error) {
+                this.logger.error(`Failed to create session at index ${index} in bulk operation`, error);
+                results.errors.push({
+                    index,
+                    startTime: dto.startTime,
+                    error: error.message
+                });
+            }
+        }
+
+        return results;
     }
 
     private async generateRecurringSessions(parentSession: Session, dto: CreateSessionDto, tenantId: string): Promise<void> {

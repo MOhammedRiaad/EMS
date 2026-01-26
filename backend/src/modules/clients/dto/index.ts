@@ -48,6 +48,14 @@ export class CreateClientDto {
     @IsString()
     avatarUrl?: string;
 
+    @ApiPropertyOptional()
+    @IsOptional()
+    healthGoals?: any[];
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    medicalHistory?: any;
+
     @ApiPropertyOptional({ enum: ['active', 'inactive', 'suspended'] })
     @IsOptional()
     @IsEnum(['active', 'inactive', 'suspended'])
@@ -97,6 +105,19 @@ export class UpdateClientDto {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    avatarUrl?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    healthGoals?: any[];
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    medicalHistory?: any;
 
     @ApiPropertyOptional({ enum: ['active', 'inactive', 'suspended'] })
     @IsOptional()

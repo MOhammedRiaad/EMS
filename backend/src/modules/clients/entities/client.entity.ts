@@ -49,6 +49,22 @@ export class Client extends TenantScopedEntityWithUpdate {
     @Column({ name: 'health_notes', type: 'text', nullable: true })
     healthNotes: string | null;
 
+    @Column({ name: 'health_goals', type: 'jsonb', default: [] })
+    healthGoals: Array<{
+        id: string;
+        goal: string;
+        targetDate?: string;
+        completed: boolean;
+    }>;
+
+    @Column({ name: 'medical_history', type: 'jsonb', default: { allergies: [], injuries: [], conditions: [] } })
+    medicalHistory: {
+        allergies: string[];
+        injuries: string[];
+        conditions: string[];
+        custom?: any;
+    };
+
     @Column({ type: 'text', nullable: true })
     notes: string | null;
 

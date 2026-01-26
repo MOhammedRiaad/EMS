@@ -3,8 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Wallet, FileText, Phone, Mail } from 'lucide-react';
 import FinanceTab from '../../components/clients/tabs/FinanceTab';
 import WaiversTab from '../../components/clients/tabs/WaiversTab';
+
 import ClientParqTab from '../../components/clients/tabs/ClientParqTab';
-import { Activity } from 'lucide-react';
+import HealthAndProgressTab from '../../components/clients/tabs/HealthAndProgressTab';
+import { Activity, Heart } from 'lucide-react';
+import { clientsService } from '../../services/clients.service';
 import { api } from '../../services/api';
 import { getImageUrl } from '../../utils/imageUtils';
 
@@ -109,6 +112,8 @@ const ClientDetailsPage: React.FC = () => {
                 return <WaiversTab />;
             case 'parq':
                 return <ClientParqTab clientId={id!} />;
+            case 'health':
+                return <HealthAndProgressTab client={client} onUpdate={async (data) => { await clientsService.update(id!, data); }} />;
             default:
                 return null;
         }
@@ -133,6 +138,7 @@ const ClientDetailsPage: React.FC = () => {
                         { id: 'finance', label: 'Finance', icon: Wallet },
                         { id: 'waivers', label: 'Waivers', icon: FileText },
                         { id: 'parq', label: 'PAR-Q', icon: Activity },
+                        { id: 'health', label: 'Health & Progress', icon: Heart },
                     ].map((tab) => (
                         <button
                             key={tab.id}

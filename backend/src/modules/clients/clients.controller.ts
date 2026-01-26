@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ClientsService } from './clients.service';
 import { CreateClientDto, UpdateClientDto } from './dto';
+import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 
@@ -81,5 +82,31 @@ export class ClientsController {
         @CurrentUser() user: any
     ) {
         return this.clientsService.adjustBalance(id, tenantId, body.amount, body.description, user.id);
+    }
+
+    @Post(':id/photos')
+    @ApiOperation({ summary: 'Add progress photo' })
+    addPhoto(
+        @Param('id') id: string,
+        @Body() dto: CreateProgressPhotoDto,
+        @TenantId() tenantId: string
+    ) {
+        return this.clientsService.addProgressPhoto(id, dto, tenantId);
+    }
+
+    @Get(':id/photos')
+    @ApiOperation({ summary: 'Get client progress photos' })
+    getPhotos(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.clientsService.getProgressPhotos(id, tenantId);
+    }
+
+    @Delete(':id/photos/:photoId')
+    @ApiOperation({ summary: 'Delete progress photo' })
+    deletePhoto(
+        @Param('id') id: string,
+        @Param('photoId') photoId: string,
+        @TenantId() tenantId: string
+    ) {
+        return this.clientsService.deleteProgressPhoto(id, photoId, tenantId);
     }
 }

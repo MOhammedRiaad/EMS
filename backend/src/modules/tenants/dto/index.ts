@@ -15,6 +15,24 @@ export class CreateTenantDto {
     slug?: string;
 }
 
+
+export class TenantBrandingDto {
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    logoUrl?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    primaryColor?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsString()
+    secondaryColor?: string;
+}
+
 export class UpdateTenantDto {
     @ApiPropertyOptional()
     @IsOptional()
@@ -55,4 +73,9 @@ export class UpdateTenantDto {
     @ApiPropertyOptional()
     @IsOptional()
     settings?: Record<string, any>;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    branding?: TenantBrandingDto;
 }
+

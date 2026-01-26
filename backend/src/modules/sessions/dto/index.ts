@@ -145,3 +145,12 @@ export class UpdateSessionStatusDto {
 }
 
 export class UpdateSessionDto extends PartialType(CreateSessionDto) { }
+
+export class BulkCreateSessionDto {
+    @ApiProperty({ type: [CreateSessionDto] })
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateSessionDto)
+    sessions: CreateSessionDto[];
+}
+

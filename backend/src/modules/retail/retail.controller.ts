@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Request, Query, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ProductsService } from './products.service';
@@ -28,12 +29,16 @@ export class RetailController {
     }
 
     @Get('products')
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(300000) // 5 minutes (catalog changes infrequently)
     @ApiOperation({ summary: 'List all products' })
     findAllProducts(@Request() req: any) {
         return this.productsService.findAll(req.user.tenantId);
     }
 
     @Get('products/:id')
+    @UseInterceptors(CacheInterceptor)
+    @CacheTTL(300000) // 5 minutes
     @ApiOperation({ summary: 'Get a product by ID' })
     findOneProduct(@Request() req: any, @Param('id') id: string) {
         return this.productsService.findOne(req.user.tenantId, id);
