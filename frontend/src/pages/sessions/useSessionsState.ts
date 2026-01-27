@@ -251,16 +251,29 @@ export function useSessionsState() {
             const start = new Date(formData.startTime);
             const end = new Date(start.getTime() + formData.duration * 60000);
 
-            await sessionsService.update(selectedSession.id, {
-                studioId: formData.studioId,
-                roomId: formData.roomId,
-                clientId: formData.clientId || undefined,
-                coachId: formData.coachId,
-                startTime: start.toISOString(),
-                endTime: end.toISOString(),
-                emsDeviceId: formData.emsDeviceId || undefined,
-                notes: formData.notes || undefined
-            });
+            if ((selectedSession as any).applyToSeries) {
+                await sessionsService.updateSeries(selectedSession.id, {
+                    studioId: formData.studioId,
+                    roomId: formData.roomId,
+                    clientId: formData.clientId || undefined,
+                    coachId: formData.coachId,
+                    startTime: start.toISOString(),
+                    endTime: end.toISOString(),
+                    emsDeviceId: formData.emsDeviceId || undefined,
+                    notes: formData.notes || undefined
+                });
+            } else {
+                await sessionsService.update(selectedSession.id, {
+                    studioId: formData.studioId,
+                    roomId: formData.roomId,
+                    clientId: formData.clientId || undefined,
+                    coachId: formData.coachId,
+                    startTime: start.toISOString(),
+                    endTime: end.toISOString(),
+                    emsDeviceId: formData.emsDeviceId || undefined,
+                    notes: formData.notes || undefined
+                });
+            }
 
             setIsEditModalOpen(false);
             setSelectedSession(null);
@@ -278,8 +291,11 @@ export function useSessionsState() {
         }
     }, [formData, selectedSession, resetForm, fetchData]);
 
+    const [deleteSeries, setDeleteSeries] = useState(false);
+
     const handleDeleteClick = useCallback((session: Session) => {
         setSelectedSession(session);
+        setDeleteSeries(false);
         setIsDeleteDialogOpen(true);
     }, []);
 
@@ -287,7 +303,11 @@ export function useSessionsState() {
         if (!selectedSession) return;
         setSaving(true);
         try {
-            await sessionsService.delete(selectedSession.id);
+            if (deleteSeries) {
+                await sessionsService.deleteSeries(selectedSession.id);
+            } else {
+                await sessionsService.delete(selectedSession.id);
+            }
             setIsDeleteDialogOpen(false);
             setSelectedSession(null);
             fetchData();
@@ -296,7 +316,7 @@ export function useSessionsState() {
         } finally {
             setSaving(false);
         }
-    }, [selectedSession, fetchData]);
+    }, [selectedSession, deleteSeries, fetchData]);
 
     const handleStatusClick = useCallback((session: Session, action: 'completed' | 'no_show' | 'cancelled') => {
         setSelectedSession(session);
@@ -387,6 +407,8 @@ export function useSessionsState() {
         isStatusModalOpen,
         selectedSession,
         setSelectedSession,
+        deleteSeries,
+        setDeleteSeries,
 
         // Status change state
         statusAction,

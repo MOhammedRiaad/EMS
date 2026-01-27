@@ -105,6 +105,66 @@ export const BookSessionModal: React.FC<BookSessionModalProps> = ({
                     </div>
                 </div>
 
+                {/* Recurrence */}
+                <div style={{ border: '1px solid var(--border-color)', padding: '1rem', borderRadius: 'var(--border-radius-md)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: bookingData.recurrencePattern ? '1rem' : 0 }}>
+                        <span style={{ fontWeight: 500 }}>Repeat Session</span>
+                        <input
+                            type="checkbox"
+                            checked={!!bookingData.recurrencePattern}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    setBookingData(prev => ({
+                                        ...prev,
+                                        recurrencePattern: 'weekly',
+                                        // Default to 1 month from now
+                                        recurrenceEndDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
+                                    }));
+                                } else {
+                                    setBookingData(prev => ({
+                                        ...prev,
+                                        recurrencePattern: undefined,
+                                        recurrenceEndDate: undefined
+                                    }));
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {bookingData.recurrencePattern && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label style={labelStyle}>Repeats</label>
+                                <select
+                                    value={bookingData.recurrencePattern}
+                                    onChange={(e) => setBookingData(prev => ({
+                                        ...prev,
+                                        recurrencePattern: e.target.value as any
+                                    }))}
+                                    style={inputStyle}
+                                >
+                                    <option value="weekly">Weekly</option>
+                                    <option value="biweekly">Bi-Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={labelStyle}>End Date</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={bookingData.recurrenceEndDate || ''}
+                                    onChange={(e) => setBookingData(prev => ({
+                                        ...prev,
+                                        recurrenceEndDate: e.target.value
+                                    }))}
+                                    style={inputStyle}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Coach */}
                 <div>
                     <label style={labelStyle}>Coach</label>

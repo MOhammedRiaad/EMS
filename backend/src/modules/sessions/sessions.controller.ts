@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { SessionsService } from './sessions.service';
@@ -57,6 +57,18 @@ export class SessionsController {
     @ApiOperation({ summary: 'Update a session' })
     update(@Param('id') id: string, @Body() dto: UpdateSessionDto, @TenantId() tenantId: string) {
         return this.sessionsService.update(id, dto, tenantId);
+    }
+
+    @Patch(':id/series')
+    @ApiOperation({ summary: 'Update a session series' })
+    updateSeries(@Param('id') id: string, @Body() dto: UpdateSessionDto, @TenantId() tenantId: string) {
+        return this.sessionsService.updateSeries(id, dto, tenantId);
+    }
+
+    @Delete(':id/series')
+    @ApiOperation({ summary: 'Delete a session series' })
+    deleteSeries(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.sessionsService.deleteSeries(id, tenantId);
     }
 
     @Patch(':id/status')

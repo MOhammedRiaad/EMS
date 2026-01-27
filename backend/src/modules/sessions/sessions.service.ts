@@ -52,7 +52,8 @@ export class SessionsService {
             .leftJoinAndSelect('coach.user', 'coachUser')
             .leftJoinAndSelect('s.client', 'client')
             .leftJoinAndSelect('s.review', 'review')
-            .leftJoinAndSelect('s.participants', 'participants');
+            .leftJoinAndSelect('s.participants', 'participants')
+            .leftJoinAndSelect('participants.client', 'participantClient');
 
         if (query.studioId) {
             qb.andWhere('s.studio_id = :studioId', { studioId: query.studioId });
@@ -969,6 +970,161 @@ export class SessionsService {
 
 
         return this.sessionRepository.save(session);
+    }
+
+    async updateSeries(id: string, dto: UpdateSessionDto, tenantId: string): Promise<void> {
+        const targetSession = await this.findOne(id, tenantId);
+
+        // Determine the series parent
+        const parentId = targetSession.isRecurringParent ? targetSession.id : targetSession.parentSessionId;
+
+        if (!parentId) {
+            throw new BadRequestException('This session is not part of a recurring series');
+        }
+
+        // Find all sessions in the series starting from this session (this and future)
+        const sessionsToUpdate = await this.sessionRepository.createQueryBuilder('s')
+            .where('s.tenant_id = :tenantId', { tenantId })
+            .andWhere('(s.id = :parentId OR s.parent_session_id = :parentId)', { parentId })
+            .andWhere('s.start_time >= :startTime', { startTime: targetSession.startTime })
+            .andWhere('s.status != :cancelled', { cancelled: 'cancelled' }) // Do not resurrect cancelled sessions
+            .orderBy('s.start_time', 'ASC')
+            .getMany();
+
+        if (sessionsToUpdate.length === 0) {
+            return;
+        }
+
+        // Validate Package Limits if client is involved
+        // We are updating existing sessions, so count shouldn't increase, 
+        // BUT if we are shifting dates, we must check expiry.
+        if (targetSession.clientId) {
+            const activePackage = await this.packagesService.getActivePackageForClient(targetSession.clientId, tenantId);
+
+            if (activePackage && activePackage.expiryDate) {
+                const expiry = new Date(activePackage.expiryDate);
+                // Check if any updated session would move beyond expiry?
+                // We need to calculate new times first.
+            }
+        }
+
+        const updates: Partial<Session>[] = [];
+
+        // Calculate time shift if time is changed
+        let timeShiftMs = 0;
+        if (dto.startTime) {
+            const newStart = new Date(dto.startTime);
+            const oldStart = new Date(targetSession.startTime);
+            // We only care about the TIME of day change usually, but standard updateSeries might imply shifting everything by delta?
+            // Or setting all to the same Time of Day?
+            // "Edit Series" usually means "Change 10am to 11am for all".
+            // Let's assume we align all sessions to the NEW Time of Day of the target session.
+
+            // Actually, simplest is calculating the delta between target's OLD start and NEW start, and applying that to all.
+            timeShiftMs = newStart.getTime() - oldStart.getTime();
+        }
+
+        for (const session of sessionsToUpdate) {
+            // Prepare update object
+            const update: Partial<Session> = { id: session.id };
+            let shouldUpdate = false;
+
+            // Update simple fields
+            if (dto.coachId && dto.coachId !== session.coachId) {
+                update.coachId = dto.coachId;
+                shouldUpdate = true;
+            }
+            if (dto.roomId && dto.roomId !== session.roomId) {
+                update.roomId = dto.roomId;
+                shouldUpdate = true;
+            }
+            if (dto.notes !== undefined) {
+                update.notes = dto.notes;
+                shouldUpdate = true;
+            }
+            if (dto.emsDeviceId !== undefined) {
+                update.emsDeviceId = dto.emsDeviceId;
+                shouldUpdate = true;
+            }
+
+            // Update Time if changed
+            if (timeShiftMs !== 0) {
+                const newStart = new Date(session.startTime.getTime() + timeShiftMs);
+                const newEnd = new Date(session.endTime.getTime() + timeShiftMs);
+
+                update.startTime = newStart;
+                update.endTime = newEnd;
+                shouldUpdate = true;
+
+                // Validate Expiry
+                if (targetSession.clientId) {
+                    const activePackage = await this.packagesService.getClientPackages(targetSession.clientId, tenantId).then(pkgs => pkgs.find(p => p.status === 'active'));
+                    if (activePackage && activePackage.expiryDate) {
+                        if (newStart > new Date(activePackage.expiryDate)) {
+                            throw new BadRequestException(`Updating series would move session on ${newStart.toDateString()} beyond package expiry (${new Date(activePackage.expiryDate).toDateString()})`);
+                        }
+                    }
+                }
+
+                // Validate Conflicts for EACH session
+                // We can't check conflicts in bulk easily without a dedicated method or loop
+                // This might be slow for long series, but safe.
+                const conflictCheckDto: CreateSessionDto = {
+                    studioId: dto.studioId || session.studioId,
+                    roomId: update.roomId || session.roomId,
+                    coachId: update.coachId || session.coachId,
+                    startTime: newStart.toISOString(),
+                    endTime: newEnd.toISOString(),
+                    clientId: session.clientId || undefined,
+                    // ...
+                } as any;
+
+                const conflict = await this.checkConflicts(conflictCheckDto, tenantId, session.id);
+                if (conflict.hasConflicts) {
+                    throw new BadRequestException(`Update causes conflict on ${newStart.toDateString()}: ${conflict.conflicts[0].message}`);
+                }
+            }
+
+            if (shouldUpdate) {
+                updates.push(update);
+            }
+        }
+
+        if (updates.length > 0) {
+            // Save one by one or bulk? TypeORM allows save array.
+            await this.sessionRepository.save(updates);
+        }
+    }
+
+    async deleteSeries(id: string, tenantId: string): Promise<void> {
+        const targetSession = await this.findOne(id, tenantId);
+
+        const parentId = targetSession.isRecurringParent ? targetSession.id : targetSession.parentSessionId;
+        if (!parentId) {
+            throw new BadRequestException('This session is not part of a recurring series');
+        }
+
+        // Find all sessions in the series (this and future)
+        const sessionsToDelete = await this.sessionRepository.createQueryBuilder('s')
+            .where('s.tenant_id = :tenantId', { tenantId })
+            .andWhere('(s.id = :parentId OR s.parent_session_id = :parentId)', { parentId })
+            .andWhere('s.start_time >= :startTime', { startTime: targetSession.startTime })
+            .getMany();
+
+        // We should "Cancel" them or "Delete" them?
+        // If they are scheduled, hard delete is often cleaner for "Oh I made a mistake".
+        // If they are historical, we keep them.
+        // The query filters `startTime >= targetSession.startTime`, so effectively future.
+        // Existing logic for 'cancelled' sessions might be preferred if we want audit.
+        // But map says "Delete Series".
+        // Let's Soft Delete (Cancel) them to be safe and maintain history if needed, 
+        // OR hard delete if status is 'scheduled'.
+
+        // Strategy: Use remove() for hard delete of scheduled future sessions.
+
+        await this.sessionRepository.remove(sessionsToDelete);
+
+        this.logger.log(`Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`);
     }
     async getAvailableSlots(tenantId: string, studioId: string, dateStr: string, coachId?: string): Promise<{ time: string, status: 'available' | 'full' }[]> {
         const date = new Date(dateStr);

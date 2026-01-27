@@ -245,4 +245,68 @@ describe('Sessions E2E Tests', () => {
             expect(response.body.status).toBe('completed');
         });
     });
+
+    describe('Recurrence', () => {
+        let parentSessionId: string;
+
+        it('should create a recurring session', async () => {
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            nextWeek.setHours(10, 0, 0, 0);
+
+            // Ensure not weekend
+            while (nextWeek.getDay() === 0 || nextWeek.getDay() === 6) {
+                nextWeek.setDate(nextWeek.getDate() + 1);
+            }
+
+            const endDate = new Date(nextWeek);
+            endDate.setDate(endDate.getDate() + 14); // 2 more weeks
+
+            const response = await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId,
+                    roomId,
+                    coachId,
+                    clientId,
+                    startTime: nextWeek.toISOString(),
+                    endTime: new Date(nextWeek.getTime() + 20 * 60000).toISOString(),
+                    recurrencePattern: 'weekly',
+                    recurrenceEndDate: endDate.toISOString().split('T')[0] // YYYY-MM-DD
+                })
+                .expect(201);
+
+            expect(response.body).toHaveProperty('id');
+            expect(response.body.isRecurringParent).toBe(true); // Or however backend indicates it. 
+            // Actually implementation creates session and generates futures. 
+            // The response itself is the FIRST session.
+            parentSessionId = response.body.id;
+        });
+
+        it('should update series', async () => {
+            const response = await request(app.getHttpServer())
+                .patch(`/sessions/${parentSessionId}/series`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    notes: 'Updated series notes'
+                })
+                .expect(200);
+
+            // Should return something indicating success? Void?
+        });
+
+        it('should delete series', async () => {
+            await request(app.getHttpServer())
+                .delete(`/sessions/${parentSessionId}/series`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            // Verify parent is gone
+            await request(app.getHttpServer())
+                .get(`/sessions/${parentSessionId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(404);
+        });
+    });
 });

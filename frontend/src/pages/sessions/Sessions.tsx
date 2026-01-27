@@ -1,22 +1,34 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import DataTable, { type Column } from '../../components/common/DataTable';
-import Modal from '../../components/common/Modal';
 import ActionButtons from '../../components/common/ActionButtons';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import FilterBar from '../../components/common/FilterBar';
 import { type Session } from '../../services/sessions.service';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useSessionsState } from './useSessionsState';
-import SessionForm from './SessionForm';
 import SessionStatusModal from './SessionStatusModal';
 import SessionDetailsModal from './SessionDetailsModal';
 import { User, Users } from 'lucide-react';
 
 const Sessions: React.FC = () => {
+    const navigate = useNavigate();
     const { canEdit, canDelete } = usePermissions();
     const state = useSessionsState();
     const [selectedSessionDetails, setSelectedSessionDetails] = React.useState<Session | null>(null);
+    const [activeTab, setActiveTab] = React.useState<'upcoming' | 'history'>('upcoming');
+
+    const filteredByTab = React.useMemo(() => {
+        return state.filteredSessions.filter(session => {
+            const isFinished = ['completed', 'cancelled', 'no_show'].includes(session.status);
+            if (activeTab === 'upcoming') {
+                return !isFinished;
+            } else {
+                return isFinished;
+            }
+        });
+    }, [state.filteredSessions, activeTab]);
 
     const handleSessionRefresh = () => {
         state.refresh();
@@ -136,7 +148,7 @@ const Sessions: React.FC = () => {
                     <ActionButtons
                         showEdit={canEdit && session.status === 'scheduled'}
                         showDelete={canDelete}
-                        onEdit={() => state.handleEdit(session)}
+                        onEdit={() => navigate(`/sessions/${session.id}/edit`)}
                         onDelete={() => state.handleDeleteClick(session)}
                     />
                 </div>
@@ -150,7 +162,7 @@ const Sessions: React.FC = () => {
                 title="Sessions"
                 description="Manage training sessions"
                 actionLabel="Schedule Session"
-                onAction={() => state.setIsCreateModalOpen(true)}
+                onAction={() => navigate('/sessions/new')}
             />
 
             <FilterBar
@@ -195,56 +207,35 @@ const Sessions: React.FC = () => {
                 onClearAll={state.handleClearFilters}
             />
 
+            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+                <button
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'upcoming'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                    onClick={() => setActiveTab('upcoming')}
+                >
+                    Upcoming
+                </button>
+                <button
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`}
+                    onClick={() => setActiveTab('history')}
+                >
+                    History
+                </button>
+            </div>
+
             <DataTable
                 key={state.refreshKey}
                 columns={columns}
-                data={state.filteredSessions}
+                data={filteredByTab}
                 isLoading={state.loading}
             />
 
-            {/* Create Modal */}
-            <Modal
-                isOpen={state.isCreateModalOpen}
-                onClose={() => { state.setIsCreateModalOpen(false); state.resetForm(); }}
-                title="Schedule Session"
-            >
-                <SessionForm
-                    formData={state.formData}
-                    setFormData={state.setFormData}
-                    clients={state.clients}
-                    coaches={state.coaches}
-                    studios={state.studios}
-                    rooms={state.rooms}
-                    devices={state.devices}
-                    error={state.error}
-                    saving={state.saving}
-                    isEdit={false}
-                    onSubmit={state.handleCreate}
-                    onCancel={() => { state.setIsCreateModalOpen(false); state.resetForm(); }}
-                />
-            </Modal>
-
-            {/* Edit Modal */}
-            <Modal
-                isOpen={state.isEditModalOpen}
-                onClose={() => { state.setIsEditModalOpen(false); state.resetForm(); }}
-                title="Reschedule Session"
-            >
-                <SessionForm
-                    formData={state.formData}
-                    setFormData={state.setFormData}
-                    clients={state.clients}
-                    coaches={state.coaches}
-                    studios={state.studios}
-                    rooms={state.rooms}
-                    devices={state.devices}
-                    error={state.error}
-                    saving={state.saving}
-                    isEdit={true}
-                    onSubmit={state.handleUpdate}
-                    onCancel={() => { state.setIsEditModalOpen(false); state.resetForm(); }}
-                />
-            </Modal>
+            {/* Note: Create/Edit Modals moved to separate pages */}
 
             {/* Delete Confirm Dialog */}
             <ConfirmDialog
@@ -252,7 +243,22 @@ const Sessions: React.FC = () => {
                 onClose={() => { state.setIsDeleteDialogOpen(false); state.setSelectedSession(null); }}
                 onConfirm={state.handleDeleteConfirm}
                 title="Cancel Session"
-                message="Are you sure you want to cancel this session? This action cannot be undone."
+                message={
+                    <div className="flex flex-col gap-3">
+                        <p>Are you sure you want to cancel this session? This action cannot be undone.</p>
+                        {state.selectedSession && (state.selectedSession.isRecurringParent || state.selectedSession.parentSessionId) && (
+                            <label className="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                                <input
+                                    type="checkbox"
+                                    checked={state.deleteSeries}
+                                    onChange={(e) => state.setDeleteSeries(e.target.checked)}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium">Cancel entire series (future sessions)</span>
+                            </label>
+                        )}
+                    </div>
+                }
                 confirmLabel="Cancel Session"
                 isDestructive
                 loading={state.saving}

@@ -12,6 +12,9 @@ export interface BookingData {
     coachId: string;
     roomId: string;
     programType: string;
+    recurrencePattern?: 'weekly' | 'biweekly' | 'monthly';
+    recurrenceEndDate?: string;
+    recurrenceDays?: number[];
 }
 
 const initialFormData: CreateWaitingListEntryDto = {
@@ -194,7 +197,12 @@ export function useWaitingListState() {
                 roomId: bookingData.roomId,
                 startTime: new Date(bookingData.startTime).toISOString(),
                 endTime: new Date(bookingData.endTime).toISOString(),
-                programType: bookingData.programType
+                programType: bookingData.programType,
+                recurrencePattern: bookingData.recurrencePattern,
+                recurrenceEndDate: bookingData.recurrenceEndDate,
+                recurrenceDays: bookingData.recurrenceDays,
+                type: 'individual',
+                capacity: 1
             });
 
             await waitingListService.markAsBooked(selectedEntry.id);

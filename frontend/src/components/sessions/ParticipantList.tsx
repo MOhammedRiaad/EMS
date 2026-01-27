@@ -7,9 +7,10 @@ interface ParticipantListProps {
     onUpdateStatus: (clientId: string, status: string) => Promise<void>;
     onRemove: (clientId: string) => Promise<void>;
     canEdit: boolean;
+    hideHeader?: boolean;
 }
 
-const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onUpdateStatus, onRemove, canEdit }) => {
+const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onUpdateStatus, onRemove, canEdit, hideHeader }) => {
     const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
 
     const handleStatusChange = async (participant: SessionParticipant, newStatus: string) => {
@@ -56,7 +57,9 @@ const ParticipantList: React.FC<ParticipantListProps> = ({ participants, onUpdat
 
     return (
         <div className="mt-4">
-            <h4 className="text-base font-semibold mb-2 text-gray-900 dark:text-gray-100">Participants ({participants.length})</h4>
+            {!hideHeader && (
+                <h4 className="text-base font-semibold mb-2 text-gray-900 dark:text-gray-100">Participants ({participants.length})</h4>
+            )}
             <div className="flex flex-col gap-2">
                 {participants.map(p => (
                     <div key={p.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 transition-colors">

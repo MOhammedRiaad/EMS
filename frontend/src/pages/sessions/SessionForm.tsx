@@ -232,7 +232,27 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                 <RecurrenceSection formData={formData} setFormData={setFormData} inputClass={inputClass} />
             )}
 
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2 mt-4 items-center">
+                {isEdit && (formData as any).isRecurring && (
+                    <label className="flex items-center gap-2 mr-auto cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                        <input
+                            type="checkbox"
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            onChange={(e) => {
+                                // We need a way to pass this back up. 
+                                // HACK: MutatingselectedSession in parent? No.
+                                // Passed via setFormData? formData doesn't have applyToSeries.
+                                // Let's add it to formData? Or use a separate prop?
+                                // SessionFormProps doesn't have a way to set "applyToSeries".
+                                // Quick fix: Add it to formData as 'any' or update interface.
+                                // Better: Update SessionFormData interface in useSessionsState.
+                                setFormData(prev => ({ ...prev, applyToSeries: e.target.checked } as any));
+                            }}
+                        />
+                        <span>Apply to entire series (future sessions)</span>
+                    </label>
+                )}
+
                 <button
                     type="button"
                     onClick={onCancel}

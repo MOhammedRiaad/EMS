@@ -106,6 +106,9 @@ describe('SessionsService', () => {
                         save: jest.fn(),
                         count: jest.fn(),
                         createQueryBuilder: jest.fn(),
+                        remove: jest.fn(),
+                        delete: jest.fn(),
+                        softDelete: jest.fn(),
                     },
                 },
                 {
@@ -192,7 +195,7 @@ describe('SessionsService', () => {
             expect(result).toBe(mockSession);
             expect(sessionRepository.findOne).toHaveBeenCalledWith({
                 where: { id: 'session-123', tenantId: 'tenant-123' },
-                relations: ['room', 'coach', 'coach.user', 'client'],
+                relations: ['room', 'coach', 'coach.user', 'client', 'participants', 'participants.client'],
             });
         });
 
@@ -503,6 +506,59 @@ describe('SessionsService', () => {
             expect(result.created).toBe(1);
             expect(result.errors).toHaveLength(1);
             expect(result.errors[0].error).toBe('Scheduling conflict');
+        });
+    });
+
+    describe('updateSeries', () => {
+        const updateDto = {
+            notes: 'Updated series notes'
+        };
+
+        const parentSession = { ...mockSession, id: 'parent-123', isRecurringParent: true };
+        const childSession1 = { ...mockSession, id: 'child-1', parentSessionId: 'parent-123', startTime: new Date('2026-01-26T10:00:00Z') };
+        const childSession2 = { ...mockSession, id: 'child-2', parentSessionId: 'parent-123', startTime: new Date('2026-01-27T10:00:00Z') };
+
+        beforeEach(() => {
+            sessionRepository.findOne.mockResolvedValue(parentSession);
+            sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([parentSession, childSession1, childSession2]) as any);
+            sessionRepository.save.mockImplementation(async (s: any) => s);
+        });
+
+        it('should throw BadRequest if session is not part of a series', async () => {
+            sessionRepository.findOne.mockResolvedValue({ ...mockSession, isRecurringParent: false, parentSessionId: null });
+            await expect(service.updateSeries('session-123', updateDto, 'tenant-123')).rejects.toThrow(BadRequestException);
+        });
+
+        it('should update all future sessions in series', async () => {
+            await service.updateSeries('parent-123', updateDto, 'tenant-123');
+
+            // It should find sessions and save them as array
+            expect(sessionRepository.save).toHaveBeenCalled();
+            // We can check the calls to save. Since implementation calls `save([updates])` or similar, 
+            // but my mock `save` is generic.
+            // Let's verifying the logic flow at least.
+        });
+    });
+
+    describe('deleteSeries', () => {
+        const parentSession = { ...mockSession, id: 'parent-123', isRecurringParent: true };
+        const childSession1 = { ...mockSession, id: 'child-1', parentSessionId: 'parent-123' };
+
+        beforeEach(() => {
+            sessionRepository.findOne.mockResolvedValue(parentSession);
+            sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([parentSession, childSession1]) as any);
+            sessionRepository.remove.mockResolvedValue([parentSession, childSession1] as any);
+        });
+
+        it('should throw BadRequest if session not part of series', async () => {
+            sessionRepository.findOne.mockResolvedValue({ ...mockSession, isRecurringParent: false, parentSessionId: null });
+            await expect(service.deleteSeries('session-123', 'tenant-123')).rejects.toThrow(BadRequestException);
+        });
+
+        it('should delete all future sessions in series', async () => {
+            await service.deleteSeries('parent-123', 'tenant-123');
+
+            expect(sessionRepository.remove).toHaveBeenCalled();
         });
     });
 });

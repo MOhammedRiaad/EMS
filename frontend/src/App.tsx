@@ -9,6 +9,7 @@ import ClientDetailsPage from './pages/clients/ClientDetailsPage';
 import Coaches from './pages/coaches/Coaches';
 import CreateCoach from './pages/coaches/CreateCoach';
 import Sessions from './pages/sessions/Sessions';
+import SessionCreatePage from './pages/sessions/SessionCreatePage';
 import Studios from './pages/studios/Studios';
 import Rooms from './pages/rooms/Rooms';
 import Devices from './pages/devices/Devices';
@@ -96,6 +97,8 @@ function App() {
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="sessions" element={<Sessions />} />
+                  <Route path="sessions/new" element={<SessionCreatePage />} />
+                  <Route path="sessions/:id/edit" element={<SessionCreatePage />} />
 
                   <Route path="clients" element={<Clients />} />
                   <Route path="clients/:id" element={<ClientDetailsPage />} />

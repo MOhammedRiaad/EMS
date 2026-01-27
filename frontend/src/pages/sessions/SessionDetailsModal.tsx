@@ -3,7 +3,7 @@ import Modal from '../../components/common/Modal';
 import { sessionsService, type Session } from '../../services/sessions.service';
 import ParticipantList from '../../components/sessions/ParticipantList';
 import AddParticipantModal from '../../components/sessions/AddParticipantModal';
-import { Users, Clock, MapPin, User, Loader2 } from 'lucide-react';
+import { Users, Clock, MapPin, User, Loader2, CheckCircle, XCircle, Monitor } from 'lucide-react';
 
 interface SessionDetailsModalProps {
     isOpen: boolean;
@@ -72,97 +72,162 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
         }
     };
 
+    const handleAction = async (action: 'completed' | 'cancelled') => {
+        if (!currentSession) return;
+        if (!window.confirm(`Are you sure you want to mark this session as ${action}?`)) return;
+
+        setLoading(true);
+        try {
+            await sessionsService.updateStatus(currentSession.id, action);
+            await loadSessionDetails(currentSession.id);
+            onSessionUpdated();
+            if (action === 'cancelled') onClose(); // Close on cancel? Or stay? Stay to see status.
+        } catch (err) {
+            console.error(err);
+            alert(`Failed to mark session as ${action}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (!session) return null;
 
     const displaySession = currentSession || session;
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title="Session Details">
-                <div className="p-6 min-w-[500px]">
-                    {loading && !currentSession ? (
-                        <div className="flex justify-center p-8">
-                            <Loader2 className="animate-spin text-blue-500" size={32} />
-                        </div>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div className="flex items-start gap-2">
-                                    <Clock size={16} className="text-gray-500 dark:text-gray-400 mt-1" />
-                                    <div className="text-sm">
-                                        <div className="font-medium text-gray-900 dark:text-gray-100">
-                                            {new Date(displaySession.startTime).toLocaleDateString()}
-                                        </div>
-                                        <div className="text-gray-500 dark:text-gray-400">
-                                            {new Date(displaySession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
-                                            {new Date(displaySession.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <Modal isOpen={isOpen} onClose={onClose} title="Session Details" maxWidth="max-w-2xl">
+                <div className="flex flex-col h-full">
+                    <div className="min-w-[600px]">
+                        {loading && !currentSession ? (
+                            <div className="flex justify-center p-8">
+                                <Loader2 className="animate-spin text-blue-500" size={32} />
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Header Info */}
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                                            {displaySession.type === 'group' ? 'Group Session' : 'Individual Session'}
+                                        </h3>
+                                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                            <span className="capitalize px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium">
+                                                {displaySession.status}
+                                            </span>
+                                            <span>•</span>
+                                            <span>{displaySession.participants?.length || 0} Participants</span>
                                         </div>
                                     </div>
+                                    {displaySession.status === 'scheduled' && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleAction('completed')}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors"
+                                            >
+                                                <CheckCircle size={16} />
+                                                Complete
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction('cancelled')}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition-colors"
+                                            >
+                                                <XCircle size={16} />
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-start gap-2">
-                                    <MapPin size={16} className="text-gray-500 dark:text-gray-400 mt-1" />
-                                    <div className="text-sm">
-                                        <div className="font-medium text-gray-900 dark:text-gray-100">{displaySession.studio?.name}</div>
-                                        <div className="text-gray-500 dark:text-gray-400">{displaySession.room?.name}</div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <div className="space-y-1">
+                                        <div className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Time</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+                                            <Clock size={16} className="text-blue-500 shrink-0" />
+                                            <span className="whitespace-nowrap">
+                                                {new Date(displaySession.startTime).toLocaleDateString()}
+                                            </span>
+                                            <span className="text-gray-400 hidden sm:inline">|</span>
+                                            <span className="whitespace-nowrap">
+                                                {new Date(displaySession.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(displaySession.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <User size={16} className="text-gray-500 dark:text-gray-400 mt-1" />
-                                    <div className="text-sm">
-                                        <div className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Coach</div>
-                                        <div className="font-medium text-gray-900 dark:text-gray-100">
+                                    <div className="space-y-1">
+                                        <div className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Location</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <MapPin size={16} className="text-blue-500" />
+                                            <span>{displaySession.studio?.name}</span>
+                                            <span className="text-gray-400">/</span>
+                                            <span>{displaySession.room?.name}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Coach</div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            <User size={16} className="text-blue-500" />
                                             {displaySession.coach?.user ? `${displaySession.coach.user.firstName} ${displaySession.coach.user.lastName}` : 'Unassigned'}
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <Users size={16} className="text-gray-500 dark:text-gray-400 mt-1" />
-                                    <div className="text-sm">
-                                        <div className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Type</div>
-                                        <div className="font-medium text-gray-900 dark:text-gray-100 capitalize">
-                                            {displaySession.type}
-                                            {displaySession.type === 'group' && ` (${displaySession.participants?.length || 0}/${displaySession.capacity || '-'})`}
+                                    <div className="space-y-1">
+                                        <div className="text-xs text-gray-500 uppercase font-semibold tracking-wide">
+                                            {displaySession.type === 'group' ? 'Capacity' : 'Client'}
+                                        </div>
+                                        <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                            {displaySession.type === 'group' ? (
+                                                <>
+                                                    <Users size={16} className="text-blue-500" />
+                                                    {displaySession.participants?.length || 0} / {displaySession.capacity || '-'}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <User size={16} className="text-blue-500" />
+                                                    {displaySession.client ? `${displaySession.client.firstName} ${displaySession.client.lastName}` : 'Unknown Client'}
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                                {displaySession.type === 'group' ? (
-                                    <>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Participants</h3>
-                                            <button
-                                                onClick={() => setIsAddModalOpen(true)}
-                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                disabled={!!(displaySession.participants && displaySession.capacity && displaySession.participants.length >= displaySession.capacity)}
-                                            >
-                                                Add Participant
-                                            </button>
-                                        </div>
-                                        <ParticipantList
-                                            participants={displaySession.participants || []}
-                                            onRemove={handleRemoveParticipant}
-                                            onUpdateStatus={handleUpdateStatus}
-                                            canEdit={true}
-                                        />
-                                    </>
-                                ) : (
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">Client</h3>
-                                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300">
-                                                <User size={18} />
+                                    {displaySession.programType && (
+                                        <div className="space-y-1">
+                                            <div className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Program</div>
+                                            <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                                <Monitor size={16} className="text-blue-500" />
+                                                <span className="capitalize">{displaySession.programType.replace(/_/g, ' ')}</span>
                                             </div>
-                                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                                                {displaySession.client ? `${displaySession.client.firstName} ${displaySession.client.lastName}` : 'Unknown'}
-                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Participants Section (Group Only) */}
+                                {displaySession.type === 'group' && (
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-gray-900 dark:text-gray-100">Participants</h4>
+                                            {displaySession.status === 'scheduled' && (
+                                                <button
+                                                    onClick={() => setIsAddModalOpen(true)}
+                                                    disabled={!!(displaySession.participants && displaySession.capacity && displaySession.participants.length >= displaySession.capacity)}
+                                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    + Add Participant
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                            <ParticipantList
+                                                participants={displaySession.participants || []}
+                                                onRemove={handleRemoveParticipant}
+                                                onUpdateStatus={handleUpdateStatus}
+                                                canEdit={displaySession.status === 'scheduled'}
+                                                hideHeader={true}
+                                            />
                                         </div>
                                     </div>
                                 )}
                             </div>
-                        </>
-                    )}
+                        )}
+                    </div>
                 </div>
             </Modal>
 

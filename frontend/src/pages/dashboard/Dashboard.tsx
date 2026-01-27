@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { dashboardService, type DashboardStats } from '../../services/dashboard.service';
 import { sessionsService, type Session } from '../../services/sessions.service';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, UserCheck, DollarSign, Clock, MapPin, Monitor } from 'lucide-react';
-import Modal from '../../components/common/Modal';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, DollarSign, UserCheck, MapPin } from 'lucide-react';
 import NotificationsWidget from '../../components/dashboard/NotificationsWidget';
+import SessionDetailsModal from '../sessions/SessionDetailsModal';
 
 const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -179,7 +179,11 @@ const Dashboard: React.FC = () => {
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', marginBottom: '2px' }}>
                                                 <Users size={14} color="var(--color-text-secondary)" />
-                                                <span style={{ fontWeight: 500 }}>{session.client?.firstName} {session.client?.lastName}</span>
+                                                <span style={{ fontWeight: 500 }}>
+                                                    {session.type === 'group'
+                                                        ? `Group Session (${session.participants?.length || 0})`
+                                                        : `${session.client?.firstName} ${session.client?.lastName}`}
+                                                </span>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
                                                 <MapPin size={12} />
@@ -243,7 +247,9 @@ const Dashboard: React.FC = () => {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                                                 <Users size={12} color="var(--color-text-secondary)" />
                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {session.client?.firstName} {session.client?.lastName}
+                                                    {session.type === 'group'
+                                                        ? `Group (${session.participants?.length || 0})`
+                                                        : `${session.client?.firstName} ${session.client?.lastName}`}
                                                 </span>
                                             </div>
                                         </div>
@@ -255,51 +261,15 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Session Detail Modal */}
-                <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Session Details">
-                    {selectedSession && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.25rem 0.5rem', borderRadius: '999px', backgroundColor: getSessionColor(selectedSession.status, true), color: getSessionColor(selectedSession.status) }}>
-                                    {selectedSession.status.replace('_', ' ').toUpperCase()}
-                                </span>
-                                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                    {new Date(selectedSession.startTime).toLocaleDateString()}
-                                </span>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <DetailItem icon={<Clock size={16} />} label="Time" value={`${formatTime(selectedSession.startTime)} - ${formatTime(selectedSession.endTime)}`} />
-                                <DetailItem icon={<MapPin size={16} />} label="Room" value={selectedSession.room?.name} />
-
-                                <DetailItem icon={<Users size={16} />} label="Client" value={`${selectedSession.client?.firstName} ${selectedSession.client?.lastName}`} />
-                                <DetailItem icon={<UserCheck size={16} />} label="Coach" value={`${selectedSession.coach?.user?.firstName || 'Unknown'} ${selectedSession.coach?.user?.lastName || 'Coach'}`} />
-
-                                <DetailItem icon={<Monitor size={16} />} label="Program" value={selectedSession.programType || '-'} />
-                                {/* Note: emsDeviceId logic assumes generic name if not populated, but session entity has ID. To show Label we might need to populate it. Leaving as is for now. */}
-                            </div>
-
-                            {selectedSession.notes && (
-                                <div style={{ marginTop: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>Notes</label>
-                                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '6px', fontSize: '0.875rem' }}>{selectedSession.notes}</div>
-                                </div>
-                            )}
-
-                            {/* Actions */}
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                                <button
-                                    onClick={() => {
-                                        // Implement cancel/complete logic if needed or just close
-                                        setIsDetailModalOpen(false);
-                                    }}
-                                    style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', cursor: 'pointer' }}
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </Modal>
+                <SessionDetailsModal
+                    isOpen={isDetailModalOpen}
+                    onClose={() => setIsDetailModalOpen(false)}
+                    session={selectedSession}
+                    onSessionUpdated={() => {
+                        fetchData();
+                        setIsDetailModalOpen(false);
+                    }}
+                />
             </div>
 
             {/* Notifications Widget */}
@@ -317,15 +287,6 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
             <h3 style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>{title}</h3>
             <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{value}</p>
         </div>
-    </div>
-);
-
-const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value?: string }> = ({ icon, label, value }) => (
-    <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', color: 'var(--color-text-secondary)', fontSize: '0.75rem' }}>
-            {icon} {label}
-        </div>
-        <div style={{ fontWeight: 500 }}>{value || '-'}</div>
     </div>
 );
 

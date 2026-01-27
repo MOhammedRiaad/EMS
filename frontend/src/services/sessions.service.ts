@@ -22,6 +22,10 @@ export interface Session {
     type: 'individual' | 'group';
     capacity: number;
     participants?: SessionParticipant[];
+    recurrencePattern?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'variable' | null;
+    recurrenceEndDate?: string;
+    parentSessionId?: string | null;
+    isRecurringParent?: boolean;
 }
 
 export interface SessionParticipant {
@@ -97,8 +101,21 @@ export const sessionsService = {
         });
     },
 
+    async updateSeries(id: string, data: Partial<CreateSessionInput>): Promise<void> {
+        return authenticatedFetch(`/sessions/${id}/series`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        });
+    },
+
     async delete(id: string): Promise<void> {
         return authenticatedFetch(`/sessions/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async deleteSeries(id: string): Promise<void> {
+        return authenticatedFetch(`/sessions/${id}/series`, {
             method: 'DELETE'
         });
     },

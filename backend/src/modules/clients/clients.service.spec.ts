@@ -24,7 +24,9 @@ describe('ClientsService', () => {
         phone: '123-456-7890',
         status: 'active',
         userId: null,
-        fullName: 'John Doe',
+        get fullName(): string {
+            return `${this.firstName} ${this.lastName}`;
+        },
         creditBalance: 0,
         transactions: [],
         studioId: null,
@@ -72,6 +74,16 @@ describe('ClientsService', () => {
                         find: jest.fn(),
                         create: jest.fn(),
                         save: jest.fn(),
+                    },
+                },
+                {
+                    provide: getRepositoryToken(require('./entities/client-progress-photo.entity').ClientProgressPhoto),
+                    useValue: {
+                        find: jest.fn(),
+                        create: jest.fn(),
+                        save: jest.fn(),
+                        findOne: jest.fn(),
+                        remove: jest.fn(),
                     },
                 },
                 {
@@ -204,7 +216,7 @@ describe('ClientsService', () => {
 
         it('should update client', async () => {
             repository.findOne.mockResolvedValue(mockClient);
-            repository.save.mockResolvedValue({ ...mockClient, ...updateDto });
+            repository.save.mockResolvedValue({ ...mockClient, ...updateDto, fullName: 'John Doe' });
 
             const result = await service.update('client-123', updateDto, 'tenant-123');
 
