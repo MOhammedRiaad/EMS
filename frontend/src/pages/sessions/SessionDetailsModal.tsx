@@ -3,7 +3,9 @@ import Modal from '../../components/common/Modal';
 import { sessionsService, type Session } from '../../services/sessions.service';
 import ParticipantList from '../../components/sessions/ParticipantList';
 import AddParticipantModal from '../../components/sessions/AddParticipantModal';
-import { Users, Clock, MapPin, User, Loader2, CheckCircle, XCircle, Monitor } from 'lucide-react';
+import { Users, Clock, MapPin, User, Loader2, CheckCircle, XCircle, Monitor, Calendar } from 'lucide-react';
+import { saveAs } from 'file-saver';
+import { api } from '../../services/api';
 
 interface SessionDetailsModalProps {
     isOpen: boolean;
@@ -90,6 +92,19 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
         }
     };
 
+    const handleDownloadIcs = async () => {
+        if (!currentSession) return;
+        try {
+            const response = await api.get(`/calendar/session/${currentSession.id}.ics`, {
+                responseType: 'blob'
+            });
+            saveAs(response.data, 'session.ics');
+        } catch (err) {
+            console.error('Failed to download calendar file', err);
+            alert('Failed to download calendar file');
+        }
+    };
+
     if (!session) return null;
 
     const displaySession = currentSession || session;
@@ -121,6 +136,14 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                     </div>
                                     {displaySession.status === 'scheduled' && (
                                         <div className="flex gap-2">
+                                            <button
+                                                onClick={handleDownloadIcs}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 rounded-md text-sm font-medium transition-colors"
+                                                title="Add to Calendar"
+                                            >
+                                                <Calendar size={16} />
+                                                <span className="hidden sm:inline">Add to Calendar</span>
+                                            </button>
                                             <button
                                                 onClick={() => handleAction('completed')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors"

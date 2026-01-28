@@ -4,6 +4,7 @@ import { sessionsService, type Session } from '../../services/sessions.service';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, DollarSign, UserCheck, MapPin } from 'lucide-react';
 import NotificationsWidget from '../../components/dashboard/NotificationsWidget';
+import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
 import SessionDetailsModal from '../sessions/SessionDetailsModal';
 
 const Dashboard: React.FC = () => {
@@ -258,6 +259,13 @@ const Dashboard: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+
+
+                {/* Sidebar Widgets */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <NotificationsWidget />
+                    <CalendarSyncWidget />
                 </div>
 
                 {/* Session Detail Modal */}

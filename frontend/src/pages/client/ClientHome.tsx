@@ -10,6 +10,7 @@ import {
     FloatingBookButton
 } from './ClientHomeComponents';
 import { ActivityFeed } from '../../components/client/social/ActivityFeed';
+import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
 
 const ClientHome = () => {
     const { user } = useAuth();
@@ -84,6 +85,7 @@ const ClientHome = () => {
 
                     {/* Sidebar Column */}
                     <div className="space-y-6">
+                        <CalendarSyncWidget />
                         <div className="sticky top-6">
                             <ActivityFeed />
                         </div>

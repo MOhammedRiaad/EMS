@@ -67,6 +67,10 @@ export class User extends TenantScopedEntityWithUpdate {
     @Column({ name: 'password_reset_expires', type: 'timestamptz', nullable: true })
     passwordResetExpires: Date | null;
 
+    @Column({ name: 'calendar_token', type: 'varchar', length: 64, nullable: true, select: false })
+    @Exclude()
+    calendarToken: string | null;
+
     @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
     lastLoginAt: Date | null;
 

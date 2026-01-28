@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { coachPortalService, type CoachSession, type CoachDashboardStats } from '../../services/coach-portal.service';
 import { Calendar, ChevronRight, ChevronDown, CheckCircle, XCircle, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
 
 const CoachHome = () => {
     const [stats, setStats] = useState<CoachDashboardStats | null>(null);
@@ -103,6 +104,9 @@ const CoachHome = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Calendar Sync */}
+            <CalendarSyncWidget />
 
             {/* Upcoming Schedule */}
             <div>

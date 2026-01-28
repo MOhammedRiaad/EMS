@@ -33,6 +33,7 @@ import { GamificationModule } from './modules/gamification/gamification.module';
 import { WaiversModule } from './modules/waivers/waivers.module';
 import { TermsModule } from './modules/terms/terms.module';
 import { ParqModule } from './modules/parq/parq.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 @Module({
   imports: [
@@ -118,6 +119,7 @@ import { ParqModule } from './modules/parq/parq.module';
     ParqModule,
     TermsModule,
     RetailModule,
+    CalendarModule,
   ],
   controllers: [HealthController],
   providers: [
