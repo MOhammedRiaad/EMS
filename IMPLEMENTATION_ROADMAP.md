@@ -180,11 +180,11 @@
 **Priority**: MEDIUM  
 **Timeline**: 3-4 weeks
 
-#### 4.1 Calendar Integration (Nice to Have)
-- [ ] Google Calendar integration
-- [ ] iCal export for sessions
-- [ ] Calendar sync for coaches
-- [ ] Auto-add sessions to client calendars
+#### 4.1 Calendar Integration (Nice to Have) ✅
+- [x] Google Calendar integration (Done via iCal)
+- [x] iCal export for sessions
+- [x] Calendar sync for coaches
+- [x] Auto-add sessions to client calendars (via iCal feed)
 
 #### 4.2 Marketing Automation & Lead CRM (Expanded) ⭐
 - [ ] **Lead Pipeline Board**: Kanban view (New -> Contacted -> Trial -> Converted)

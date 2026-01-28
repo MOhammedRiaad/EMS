@@ -1,0 +1,54 @@
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+
+export enum AutomationTriggerType {
+    NEW_LEAD = 'new_lead',
+    INACTIVE_CLIENT = 'inactive_client', // e.g., no session in X days
+    BIRTHDAY = 'birthday',
+    SESSION_COMPLETED = 'session_completed',
+    LEAD_STATUS_CHANGED = 'lead_status_changed'
+}
+
+export enum AutomationActionType {
+    SEND_EMAIL = 'send_email',
+    SEND_SMS = 'send_sms',
+    CREATE_TASK = 'create_task',
+    UPDATE_STATUS = 'update_status'
+}
+
+@Entity('automation_rules')
+export class AutomationRule {
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
+
+    @Column()
+    name: string;
+
+    @Column({
+        type: 'enum',
+        enum: AutomationTriggerType
+    })
+    triggerType: AutomationTriggerType;
+
+    // JSON column to store trigger conditions (e.g., { daysSinceLastSession: 30 })
+    @Column({ type: 'jsonb', nullable: true })
+    conditions: any;
+
+    @Column({
+        type: 'enum',
+        enum: AutomationActionType
+    })
+    actionType: AutomationActionType;
+
+    // JSON column to store action details (e.g., { templateId: 'welcome_email', subject: 'Hi' })
+    @Column({ type: 'jsonb' })
+    actionPayload: any;
+
+    @Column({ default: true })
+    isActive: boolean;
+
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
+
+    @UpdateDateColumn({ name: 'updated_at' })
+    updatedAt: Date;
+}

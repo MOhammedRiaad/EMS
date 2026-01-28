@@ -50,7 +50,11 @@ export const api = {
     async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<{ data: T }> {
         const url = new URL(`${API_URL}${endpoint}`);
         if (params) {
-            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            Object.keys(params).forEach(key => {
+                if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+                    url.searchParams.append(key, params[key]);
+                }
+            });
         }
 
         const response = await fetch(url.toString(), {

@@ -34,6 +34,8 @@ import { WaiversModule } from './modules/waivers/waivers.module';
 import { TermsModule } from './modules/terms/terms.module';
 import { ParqModule } from './modules/parq/parq.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { MarketingModule } from './modules/marketing/marketing.module';
 
 @Module({
   imports: [
@@ -120,6 +122,8 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     TermsModule,
     RetailModule,
     CalendarModule,
+    LeadsModule,
+    MarketingModule,
   ],
   controllers: [HealthController],
   providers: [

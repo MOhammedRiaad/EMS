@@ -28,6 +28,11 @@ import InventoryPage from './pages/admin/retail/InventoryPage';
 import POSPage from './pages/admin/retail/POSPage';
 import RetailReportsPage from './pages/admin/retail/RetailReportsPage';
 import BrandSettings from './pages/admin/BrandSettings';
+import MarketingDashboard from './pages/admin/marketing/MarketingDashboard';
+import LeadKanbanBoard from './pages/admin/marketing/leads/LeadKanbanBoard';
+import LeadListView from './pages/admin/marketing/leads/LeadListView';
+import AutomationList from './pages/admin/marketing/automations/AutomationList';
+import MarketingReports from './pages/admin/marketing/reports/MarketingReports';
 import { AuthProvider } from './contexts/AuthContext';
 import { MenuPreferencesProvider } from './contexts/MenuPreferencesContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -127,6 +132,15 @@ function App() {
                   <Route path="admin/settings" element={<AdminSettings />} />
                   <Route path="admin/branding" element={<BrandSettings />} />
                   <Route path="analytics" element={<Analytics />} />
+
+                  {/* Marketing Routes */}
+                  <Route path="admin/marketing" element={<MarketingDashboard />}>
+                    <Route index element={<Navigate to="leads" replace />} />
+                    <Route path="leads" element={<LeadKanbanBoard />} />
+                    <Route path="leads/list" element={<LeadListView />} />
+                    <Route path="automations" element={<AutomationList />} />
+                    <Route path="reports" element={<MarketingReports />} />
+                  </Route>
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

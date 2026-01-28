@@ -19,7 +19,8 @@ import {
     Tags,
     CreditCard,
     FileText,
-    Palette
+    Palette,
+    Target
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
@@ -107,11 +108,15 @@ const Layout: React.FC = () => {
         { path: '/retail/reports', label: 'Reports', icon: FileText },
     ];
 
+    const marketingItems: MenuItem[] = [
+        { path: '/admin/marketing', label: 'Marketing & Leads', icon: Target },
+    ];
+
     // Combine all items for search
     const allItems = useMemo(() => {
         const items = [...coreItems, ...managementItems, ...clientBusinessItems, ...retailItems];
         if (canSeeAdminMenu) {
-            items.push(...analyticsItems, ...administrationItems);
+            items.push(...marketingItems, ...analyticsItems, ...administrationItems);
         }
         return items;
     }, [canSeeAdminMenu]);
@@ -178,6 +183,15 @@ const Layout: React.FC = () => {
                         title="Retail"
                         items={retailItems}
                     />
+
+                    {/* Marketing (Admin/Owner only) */}
+                    {canSeeAdminMenu && (
+                        <MenuSection
+                            id="marketing"
+                            title="Marketing"
+                            items={marketingItems}
+                        />
+                    )}
 
                     {/* Analytics (Admin/Owner only) */}
                     {canSeeAdminMenu && (
