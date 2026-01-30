@@ -160,7 +160,9 @@ const AutomationList: React.FC = () => {
                                     <div className="flex justify-between items-center text-sm mb-4">
                                         <span className="text-muted-foreground">Action:</span>
                                         <span className="font-medium px-2 py-0.5 bg-secondary text-secondary-foreground rounded text-xs">
-                                            {rule.actionType.replace('_', ' ')}
+                                            {rule.actions && rule.actions.length > 1
+                                                ? `Sequence (${rule.actions.length} steps)`
+                                                : (rule.actions && rule.actions.length === 1 ? rule.actions[0].type : rule.actionType || 'Unknown').replace('_', ' ')}
                                         </span>
                                     </div>
 

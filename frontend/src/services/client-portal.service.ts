@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { authenticatedFetch } from './api';
 
 export interface ClientDashboardData {
     nextSession: any;
@@ -14,230 +14,170 @@ export interface ClientProfile {
     avatarUrl: string | null;
     memberSince: string;
     gender?: 'male' | 'female' | 'other' | 'pnts';
+    healthGoals?: Array<{ id: string; goal: string; completed: boolean; targetDate?: string }>;
+    medicalHistory?: { allergies: string[]; injuries: string[]; conditions: string[]; custom?: any };
+    healthNotes?: string;
+    isTwoFactorEnabled?: boolean;
 }
 
 export const clientPortalService = {
     async getDashboard(): Promise<ClientDashboardData> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/dashboard`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch dashboard');
-        return response.json();
+        return authenticatedFetch('/client-portal/dashboard');
     },
 
     async getSessions(params?: any): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const url = new URL(`${API_URL}/client-portal/sessions`);
-        if (params) {
-            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-        }
-
-        const response = await fetch(url.toString(), {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch sessions');
-        return response.json();
+        const query = params ? '?' + new URLSearchParams(params).toString() : '';
+        return authenticatedFetch(`/client-portal/sessions${query}`);
     },
 
 
 
     async getAvailableSlots(date: string, studioId?: string, coachId?: string): Promise<{ time: string; status: 'available' | 'full' }[]> {
-        const token = localStorage.getItem('token');
         const params = new URLSearchParams({ date });
         if (studioId) params.append('studioId', studioId);
         if (coachId) params.append('coachId', coachId);
 
-        const response = await fetch(`${API_URL}/client-portal/slots?${params.toString()}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch slots');
-        return response.json();
+        return authenticatedFetch(`/client-portal/slots?${params.toString()}`);
     },
 
     async getCoaches(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/coaches`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch coaches');
-        return response.json();
+        return authenticatedFetch('/client-portal/coaches');
     },
 
     async joinWaitingList(data: { studioId?: string; preferredDate: string; preferredTimeSlot: string; notes?: string }): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/waiting-list`, {
+        return authenticatedFetch('/client-portal/waiting-list', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to join waiting list');
-        }
-        return response.json();
     },
 
     async bookSession(data: any): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/sessions`, {
+        return authenticatedFetch('/client-portal/sessions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to book session');
-        }
-        return response.json();
     },
 
     async validateRecurrence(data: any): Promise<{ validSessions: string[], conflicts: Array<{ date: string, conflict: string }> }> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/sessions/validate`, {
+        return authenticatedFetch('/client-portal/sessions/validate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to validate recurrence');
-        }
-        return response.json();
     },
 
     async cancelSession(id: string, reason?: string): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/sessions/${id}/cancel`, {
+        return authenticatedFetch(`/client-portal/sessions/${id}/cancel`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ reason })
         });
-        if (!response.ok) throw new Error('Failed to cancel session');
-        return response.json();
     },
 
     async createReview(data: { sessionId: string; rating: number; comments: string }): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/reviews`, {
+        return authenticatedFetch('/reviews', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to submit review');
-        }
-        return response.json();
     },
 
     async getProfile(): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch profile');
-        return response.json();
+        return authenticatedFetch('/client-portal/profile');
     },
 
-    async updateProfile(data: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: 'male' | 'female' | 'other' | 'pnts' }): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/profile`, {
+    async updateProfile(data: {
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+        avatarUrl?: string;
+        gender?: 'male' | 'female' | 'other' | 'pnts';
+        healthGoals?: Array<{ id: string; goal: string; completed: boolean; targetDate?: string }>;
+        medicalHistory?: { allergies: string[]; injuries: string[]; conditions: string[]; custom?: any };
+        healthNotes?: string;
+    }): Promise<any> {
+        return authenticatedFetch('/client-portal/profile', {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to update profile');
-        }
-        return response.json();
     },
 
     async getMyWaitingList(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/waiting-list`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch waiting list');
-        return response.json();
+        return authenticatedFetch('/client-portal/waiting-list');
     },
 
     async cancelWaitingListEntry(id: string): Promise<void> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/waiting-list/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        return authenticatedFetch(`/client-portal/waiting-list/${id}`, {
+            method: 'DELETE'
         });
-        if (!response.ok) throw new Error('Failed to cancel waiting list entry');
     },
 
     async getAchievements(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/gamification/achievements`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch achievements');
-        return response.json();
+        return authenticatedFetch('/gamification/achievements');
     },
 
     async getGoals(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/gamification/goals`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch goals');
-        return response.json();
+        return authenticatedFetch('/gamification/goals');
     },
 
     async setGoal(data: { goalType: string; targetValue: number; deadline?: string; notes?: string }): Promise<any> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/gamification/goals`, {
+        return authenticatedFetch('/gamification/goals', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(data)
         });
-        if (!response.ok) throw new Error('Failed to set goal');
-        return response.json();
     },
 
     async getLeaderboard(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/gamification/leaderboard`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch leaderboard');
-        return response.json();
+        return authenticatedFetch('/gamification/leaderboard');
     },
 
     async getActivityFeed(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/gamification/feed`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch activity feed');
-        return response.json();
+        return authenticatedFetch('/gamification/feed');
     },
 
     async toggleFavoriteCoach(coachId: string): Promise<{ favorited: boolean }> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/favorite-coaches/${coachId}`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
+        return authenticatedFetch(`/client-portal/favorite-coaches/${coachId}`, {
+            method: 'POST'
         });
-        if (!response.ok) throw new Error('Failed to toggle favorite coach');
-        return response.json();
     },
 
     async getFavoriteCoaches(): Promise<any[]> {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/client-portal/favorite-coaches`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+        return authenticatedFetch('/client-portal/favorite-coaches');
+    },
+
+    async getProgressPhotos(): Promise<any[]> {
+        return authenticatedFetch('/client-portal/progress-photos');
+    },
+
+    async addProgressPhoto(data: { photoUrl: string; notes?: string; type?: 'front' | 'back' | 'side' | 'other'; takenAt?: Date }): Promise<any> {
+        return authenticatedFetch('/client-portal/progress-photos', {
+            method: 'POST',
+            body: JSON.stringify(data)
         });
-        if (!response.ok) throw new Error('Failed to fetch favorite coaches');
+    },
+
+    async deleteProgressPhoto(id: string): Promise<any> {
+        return authenticatedFetch(`/client-portal/progress-photos/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async uploadProgressPhoto(file: File): Promise<{ url: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const token = localStorage.getItem('token');
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+        const response = await fetch(`${API_URL}/storage/upload`, {
+            method: 'POST',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
         return response.json();
     }
 };

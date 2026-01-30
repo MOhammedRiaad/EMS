@@ -101,8 +101,9 @@ export function useCoachesState() {
 
     const fetchData = useCallback(async () => {
         try {
+            setLoading(true);
             const [coachesData, studiosData] = await Promise.all([
-                coachesService.getAll(),
+                coachesService.getAll(searchQuery),
                 studiosService.getAll()
             ]);
             setCoaches(coachesData);
@@ -112,30 +113,25 @@ export function useCoachesState() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [searchQuery]);
 
+    // Debounce fetch
     useEffect(() => {
-        fetchData();
+        const timer = setTimeout(() => {
+            fetchData();
+        }, 500);
+        return () => clearTimeout(timer);
     }, [fetchData]);
 
-    // Filtered coaches
+    // Filtered coaches (local filters only)
     const filteredCoaches = useMemo(() => {
         return coaches.filter(coach => {
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                const matchesName = `${coach.firstName} ${coach.lastName}`.toLowerCase().includes(query);
-                const matchesEmail = coach.email?.toLowerCase().includes(query) || false;
-                const matchesSpecializations = coach.specializations?.some(s =>
-                    s.toLowerCase().includes(query)
-                ) || false;
-                if (!matchesName && !matchesEmail && !matchesSpecializations) return false;
-            }
             if (filters.studioId !== 'all' && coach.studioId !== filters.studioId) return false;
             if (filters.activeStatus === 'active' && !coach.active) return false;
             if (filters.activeStatus === 'inactive' && coach.active) return false;
             return true;
         });
-    }, [coaches, searchQuery, filters]);
+    }, [coaches, filters]);
 
     // Handlers
     const resetForm = useCallback(() => {

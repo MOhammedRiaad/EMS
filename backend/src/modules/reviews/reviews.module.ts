@@ -4,10 +4,12 @@ import { ReviewsController } from './reviews.controller';
 import { ReviewsService } from './reviews.service';
 import { ClientSessionReview } from './entities/review.entity';
 import { Session } from '../sessions/entities/session.entity';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([ClientSessionReview, Session]),
+        AuditModule,
     ],
     controllers: [ReviewsController],
     providers: [ReviewsService],

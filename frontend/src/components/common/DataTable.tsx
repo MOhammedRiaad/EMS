@@ -13,9 +13,10 @@ interface DataTableProps<T> {
     data: T[];
     onRowClick?: (item: T) => void;
     isLoading?: boolean;
+    emptyMessage?: string;
 }
 
-const DataTable = <T extends { id: string | number }>({ columns, data, onRowClick, isLoading }: DataTableProps<T>) => {
+const DataTable = <T extends { id: string | number }>({ columns, data, onRowClick, isLoading, emptyMessage }: DataTableProps<T>) => {
     if (isLoading) {
         return <div className="table-loading">Loading data...</div>;
     }
@@ -34,7 +35,7 @@ const DataTable = <T extends { id: string | number }>({ columns, data, onRowClic
                     {data.length === 0 ? (
                         <tr>
                             <td colSpan={columns.length} className="table-empty">
-                                No data available
+                                {emptyMessage || 'No data available'}
                             </td>
                         </tr>
                     ) : (

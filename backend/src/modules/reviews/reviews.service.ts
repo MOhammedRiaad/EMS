@@ -4,6 +4,7 @@ import { Repository, MoreThanOrEqual } from 'typeorm';
 import { ClientSessionReview } from './entities/review.entity';
 import { CreateReviewDto, ReviewQueryDto } from './dto';
 import { Session } from '../sessions/entities/session.entity';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class ReviewsService {
@@ -12,6 +13,7 @@ export class ReviewsService {
         private readonly reviewRepository: Repository<ClientSessionReview>,
         @InjectRepository(Session)
         private readonly sessionRepository: Repository<Session>,
+        private readonly auditService: AuditService,
     ) { }
 
     async create(dto: CreateReviewDto, tenantId: string, clientId: string): Promise<ClientSessionReview> {
@@ -50,7 +52,18 @@ export class ReviewsService {
             coachId: session.coachId,
         });
 
-        return this.reviewRepository.save(review);
+        const savedReview = await this.reviewRepository.save(review);
+
+        await this.auditService.log(
+            tenantId,
+            'CREATE_REVIEW',
+            'Review',
+            savedReview.id,
+            clientId,
+            { sessionId: dto.sessionId, rating: dto.rating }
+        );
+
+        return savedReview;
     }
 
     async findBySession(sessionId: string, tenantId: string): Promise<ClientSessionReview | null> {

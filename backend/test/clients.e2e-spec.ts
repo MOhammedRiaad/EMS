@@ -129,4 +129,33 @@ describe('ClientsModule (e2e)', () => {
             });
     });
 
+    it('/clients (GET) - with search query', async () => {
+        // Create another client to distinguish
+        await request(app.getHttpServer())
+            .post('/clients')
+            .set('Authorization', `Bearer ${jwtToken}`)
+            .send({
+                firstName: 'Alice',
+                lastName: 'Searchable',
+                email: 'alice@example.com',
+            })
+            .expect(201);
+
+        await request(app.getHttpServer())
+            .get('/clients?search=Alice')
+            .set('Authorization', `Bearer ${jwtToken}`)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.length).toBe(1);
+                expect(res.body[0].firstName).toBe('Alice');
+            });
+
+        await request(app.getHttpServer())
+            .get('/clients?search=nomatch')
+            .set('Authorization', `Bearer ${jwtToken}`)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.length).toBe(0);
+            });
+    });
 });

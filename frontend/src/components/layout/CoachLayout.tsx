@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar, Users, LogOut } from 'lucide-react';
+import { Home, Calendar, Users, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { AnnouncementModal } from '../notifications/AnnouncementModal';
 
 const CoachLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -41,12 +43,15 @@ const CoachLayout: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
+                    <NotificationCenter />
                     <ThemeToggle />
                     <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors">
                         <LogOut size={20} />
                     </button>
                 </div>
             </header>
+
+            <AnnouncementModal />
 
             <main className="p-4">
                 <Outlet />
@@ -67,6 +72,11 @@ const CoachLayout: React.FC = () => {
                     <NavLink to="/coach/clients" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
                         <Users size={24} />
                         <span className="text-[10px] font-medium">Clients</span>
+                    </NavLink>
+
+                    <NavLink to="/coach/settings" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                        <Settings size={24} />
+                        <span className="text-[10px] font-medium">Settings</span>
                     </NavLink>
                 </nav>
             )}

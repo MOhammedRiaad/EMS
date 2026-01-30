@@ -26,6 +26,7 @@ describe('SessionParticipantsService', () => {
 
     const mockPackagesService = {
         getActivePackageForClient: jest.fn(),
+        findBestPackageForSession: jest.fn(),
         useSession: jest.fn(),
         returnSession: jest.fn(),
     };
@@ -57,7 +58,7 @@ describe('SessionParticipantsService', () => {
 
             mockSessionRepo.findOne.mockResolvedValue(session);
             mockParticipantRepo.findOne.mockResolvedValue(null); // Not joined yet
-            mockPackagesService.getActivePackageForClient.mockResolvedValue(activePackage);
+            mockPackagesService.findBestPackageForSession.mockResolvedValue(activePackage);
             mockParticipantRepo.create.mockReturnValue({ sessionId: 's1', clientId: 'c1', status: 'scheduled' });
             mockParticipantRepo.save.mockResolvedValue({ sessionId: 's1', clientId: 'c1', status: 'scheduled' });
 
@@ -85,39 +86,49 @@ describe('SessionParticipantsService', () => {
             const session = { id: 's1', type: 'group', capacity: 10, participants: [], tenantId: 't1' };
             mockSessionRepo.findOne.mockResolvedValue(session);
             mockParticipantRepo.findOne.mockResolvedValue(null);
-            mockPackagesService.getActivePackageForClient.mockResolvedValue(null);
+            mockPackagesService.findBestPackageForSession.mockResolvedValue(null);
 
             await expect(service.addParticipant('s1', 'c1', 't1')).rejects.toThrow(BadRequestException);
         });
     });
 
     describe('updateStatus', () => {
-        it('should deduct session when status changes to completed', async () => {
-            const participant = { sessionId: 's1', clientId: 'c1', status: 'scheduled', tenantId: 't1' };
+        it('should NOT deduct session when status changes from scheduled to completed', async () => {
+            const participant = { sessionId: 's1', clientId: 'c1', status: 'scheduled', tenantId: 't1', clientPackageId: 'p1' };
             const activePackage = { id: 'p1' };
 
             mockParticipantRepo.findOne.mockResolvedValue(participant);
-            mockPackagesService.getActivePackageForClient.mockResolvedValue(activePackage);
+            mockPackagesService.findBestPackageForSession.mockResolvedValue(activePackage);
             mockParticipantRepo.save.mockImplementation(p => Promise.resolve(p));
 
             await service.updateStatus('s1', 'c1', 'completed', 't1');
 
-            expect(mockPackagesService.useSession).toHaveBeenCalledWith('p1', 't1');
+            expect(mockPackagesService.useSession).not.toHaveBeenCalled();
             expect(participant.status).toBe('completed');
         });
 
         it('should refund session when status changes from completed to cancelled', async () => {
-            const participant = { sessionId: 's1', clientId: 'c1', status: 'completed', tenantId: 't1' };
-            const activePackage = { id: 'p1' };
+            const participant = { sessionId: 's1', clientId: 'c1', status: 'completed', tenantId: 't1', clientPackageId: 'p1' };
 
             mockParticipantRepo.findOne.mockResolvedValue(participant);
-            mockPackagesService.getActivePackageForClient.mockResolvedValue(activePackage);
             mockParticipantRepo.save.mockImplementation(p => Promise.resolve(p));
 
             await service.updateStatus('s1', 'c1', 'cancelled', 't1');
 
             expect(mockPackagesService.returnSession).toHaveBeenCalledWith('p1', 't1');
             expect(participant.status).toBe('cancelled');
+        });
+
+        it('should deduct session when status changes from cancelled to scheduled', async () => {
+            const participant = { sessionId: 's1', clientId: 'c1', status: 'cancelled', tenantId: 't1', clientPackageId: 'p1' };
+
+            mockParticipantRepo.findOne.mockResolvedValue(participant);
+            mockParticipantRepo.save.mockImplementation(p => Promise.resolve(p));
+
+            await service.updateStatus('s1', 'c1', 'scheduled', 't1');
+
+            expect(mockPackagesService.useSession).toHaveBeenCalledWith('p1', 't1');
+            expect(participant.status).toBe('scheduled');
         });
     });
 });

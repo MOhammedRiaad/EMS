@@ -48,4 +48,21 @@ export class MailerService {
         `;
         return this.sendMail(email, subject, text, html);
     }
+
+    async sendPasswordReset(email: string, resetLink: string) {
+        const subject = 'Reset Your Password - EMS Studio';
+        const text = `You requested a password reset. Please click the link below to reset your password: ${resetLink}. This link is valid for 1 hour.`;
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Password Reset Request</h2>
+                <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
+                <p>Click the button below to reset your password:</p>
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+                </p>
+                <p style="color: #666; font-size: 14px;">This link expires in 1 hour.<br>Or copy and paste this link:<br>${resetLink}</p>
+            </div>
+        `;
+        return this.sendMail(email, subject, text, html);
+    }
 }

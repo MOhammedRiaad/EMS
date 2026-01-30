@@ -65,7 +65,7 @@ export const ActivityFeed = () => {
                 <Clock size={18} className="text-blue-500" />
                 Studio Activity
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {items.map((item) => (
                     <div key={`${item.type}-${item.id}`} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex gap-3 items-start animate-fade-in-up relative">
                         <div className="flex-shrink-0 relative">

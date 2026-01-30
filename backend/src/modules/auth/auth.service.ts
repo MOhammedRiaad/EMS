@@ -10,6 +10,7 @@ import { User } from './entities/user.entity';
 import { LoginDto, RegisterTenantOwnerDto, CreateUserDto, SetupPasswordDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { TenantsService } from '../tenants/tenants.service';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,7 @@ export class AuthService {
         private readonly userRepository: Repository<User>,
         private readonly jwtService: JwtService,
         private readonly tenantsService: TenantsService,
+        private readonly mailerService: MailerService,
     ) { }
 
     // Public registration - creates new Tenant + Tenant Owner
@@ -258,8 +260,14 @@ export class AuthService {
         return { secret, qrCode };
     }
 
-    async enableTwoFactor(user: User, token: string) {
-        if (!user.twoFactorSecret) {
+    async enableTwoFactor(currentUser: User, token: string) {
+        // Fetch user with secret (hidden by default)
+        const user = await this.userRepository.createQueryBuilder('user')
+            .addSelect('user.twoFactorSecret')
+            .where('user.id = :id', { id: currentUser.id })
+            .getOne();
+
+        if (!user || !user.twoFactorSecret) {
             throw new UnauthorizedException('2FA setup not initiated');
         }
 
@@ -278,8 +286,26 @@ export class AuthService {
         return { message: '2FA enabled successfully' };
     }
 
-    async verifyTwoFactorLogin(userId: string, token: string) {
+    async disableTwoFactor(userId: string) {
         const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        user.isTwoFactorEnabled = false;
+        user.twoFactorSecret = null; // Optional: clear secret or keep it for easy re-enable? Security-wise clearing is better.
+        await this.userRepository.save(user);
+
+        return { message: '2FA disabled successfully' };
+    }
+
+    async verifyTwoFactorLogin(userId: string, token: string) {
+        const user = await this.userRepository.createQueryBuilder('user')
+            .addSelect('user.twoFactorSecret')
+            .leftJoinAndSelect('user.client', 'client')
+            .where('user.id = :id', { id: userId })
+            .getOne();
+
         if (!user || !user.twoFactorSecret) {
             throw new UnauthorizedException('Invalid user or 2FA not set up');
         }
@@ -313,10 +339,13 @@ export class AuthService {
         user.passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
         await this.userRepository.save(user);
 
-        // TODO: Send email
-        console.log(`Password reset token method: URL/reset-password?token=${resetToken}&email=${email}`);
+        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+        await this.mailerService.sendPasswordReset(email, resetLink);
 
-        return { message: 'If email exists, reset instructions sent.', debugToken: resetToken };
+        console.log(`Password reset token generated for ${email}`);
+
+        // In production, don't return the token. For dev, maybe kept for convenience, but better to rely on email.
+        return { message: 'If email exists, reset instructions sent.' };
     }
 
     async resetPassword(email: string, token: string, newPassword: string) {

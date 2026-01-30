@@ -6,6 +6,8 @@ import { ClientPackage, ClientPackageStatus } from './entities/client-package.en
 import { Transaction, TransactionType, TransactionCategory } from './entities/transaction.entity';
 import { CreatePackageDto, UpdatePackageDto, AssignPackageDto, RenewPackageDto, CreateTransactionDto } from './dto';
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class PackagesService {
     constructor(
@@ -15,6 +17,7 @@ export class PackagesService {
         private clientPackageRepo: Repository<ClientPackage>,
         @InjectRepository(Transaction)
         private transactionRepo: Repository<Transaction>,
+        private readonly auditService: AuditService,
     ) { }
 
     // ===== PACKAGES =====
@@ -26,7 +29,16 @@ export class PackagesService {
 
     async createPackage(dto: CreatePackageDto, tenantId: string) {
         const pkg = this.packageRepo.create({ ...dto, tenantId });
-        return this.packageRepo.save(pkg);
+        const saved = await this.packageRepo.save(pkg);
+        await this.auditService.log(
+            tenantId,
+            'CREATE_PACKAGE',
+            'Package',
+            saved.id,
+            'API_USER',
+            { name: dto.name, price: dto.price }
+        );
+        return saved;
     }
 
     async updatePackage(id: string, dto: UpdatePackageDto, tenantId: string) {
@@ -40,7 +52,17 @@ export class PackagesService {
         if (!pkg) throw new NotFoundException('Package not found');
 
         Object.assign(pkg, dto);
-        return this.packageRepo.save(pkg);
+        const saved = await this.packageRepo.save(pkg);
+
+        await this.auditService.log(
+            tenantId,
+            'UPDATE_PACKAGE',
+            'Package',
+            saved.id,
+            'API_USER',
+            { changes: dto }
+        );
+        return saved;
     }
 
     async archivePackage(id: string, tenantId: string) {
@@ -72,7 +94,6 @@ export class PackagesService {
 
         const saved = await this.clientPackageRepo.save(clientPackage);
 
-        // Create income transaction
         await this.createTransaction({
             studioId: undefined,
             type: TransactionType.INCOME,
@@ -82,6 +103,15 @@ export class PackagesService {
             referenceType: 'client_package',
             referenceId: saved.id,
         }, tenantId, userId);
+
+        await this.auditService.log(
+            tenantId,
+            'ASSIGN_PACKAGE',
+            'ClientPackage',
+            saved.id,
+            userId,
+            { clientId: dto.clientId, packageId: dto.packageId, price: pkg.price }
+        );
 
         return saved;
     }
@@ -102,6 +132,20 @@ export class PackagesService {
                 status: ClientPackageStatus.ACTIVE
             }
         });
+    }
+
+    async findBestPackageForSession(clientId: string, tenantId: string): Promise<ClientPackage | null> {
+        // Find all active packages with remaining sessions
+        const packages = await this.clientPackageRepo.createQueryBuilder('cp')
+            .where('cp.clientId = :clientId', { clientId })
+            .andWhere('cp.tenantId = :tenantId', { tenantId })
+            .andWhere('cp.status = :status', { status: ClientPackageStatus.ACTIVE })
+            .andWhere('cp.sessionsRemaining > 0')
+            .andWhere('cp.expiryDate > :now', { now: new Date() })
+            .orderBy('cp.expiryDate', 'ASC')
+            .getMany();
+
+        return packages.length > 0 ? packages[0] : null;
     }
 
     async getExpiringPackages(tenantId: string, daysAhead = 7) {

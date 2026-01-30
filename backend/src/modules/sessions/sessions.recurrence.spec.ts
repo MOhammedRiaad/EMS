@@ -47,6 +47,13 @@ describe('SessionsService - Recurrence', () => {
                 { provide: ClientsService, useValue: { findOne: jest.fn() } },
                 { provide: PackagesService, useValue: { getActivePackageForClient: jest.fn(), getClientPackages: jest.fn().mockResolvedValue([]), useSession: jest.fn() } },
                 { provide: GamificationService, useValue: { checkAndUnlockAchievements: jest.fn(), getClientAchievements: jest.fn(), getClientGoals: jest.fn() } },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+                    },
+                },
             ],
         }).compile();
 

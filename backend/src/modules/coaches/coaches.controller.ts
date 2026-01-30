@@ -19,11 +19,12 @@ export class CoachesController {
     @CacheTTL(300000) // 5 minutes
     @ApiOperation({ summary: 'List all coaches or by studio' })
     @ApiQuery({ name: 'studioId', required: false })
-    findAll(@Query('studioId') studioId: string, @TenantId() tenantId: string) {
+    @ApiQuery({ name: 'search', required: false })
+    findAll(@Query('studioId') studioId: string, @Query('search') search: string, @TenantId() tenantId: string) {
         if (studioId) {
             return this.coachesService.findByStudio(studioId, tenantId);
         }
-        return this.coachesService.findAll(tenantId);
+        return this.coachesService.findAll(tenantId, search);
     }
 
     @Get(':id')

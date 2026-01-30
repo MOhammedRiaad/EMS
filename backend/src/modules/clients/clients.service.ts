@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Brackets } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { CreateClientDto, UpdateClientDto } from './dto';
 import { AuthService } from '../auth/auth.service';
@@ -8,6 +8,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { Transaction, TransactionType, TransactionCategory } from '../packages/entities/transaction.entity';
 import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class ClientsService {
@@ -20,13 +21,26 @@ export class ClientsService {
         private readonly photoRepository: Repository<ClientProgressPhoto>,
         private readonly authService: AuthService,
         private readonly mailerService: MailerService,
+        private readonly auditService: AuditService,
     ) { }
 
-    async findAll(tenantId: string): Promise<Client[]> {
-        return this.clientRepository.find({
-            where: { tenantId, status: 'active' },
-            order: { lastName: 'ASC', firstName: 'ASC' },
-        });
+    async findAll(tenantId: string, search?: string): Promise<Client[]> {
+        const query = this.clientRepository.createQueryBuilder('client')
+            .where('client.tenantId = :tenantId', { tenantId })
+            .andWhere('client.status = :status', { status: 'active' });
+
+        if (search) {
+            query.andWhere(new Brackets(qb => {
+                qb.where('client.firstName ILIKE :search', { search: `%${search}%` })
+                    .orWhere('client.lastName ILIKE :search', { search: `%${search}%` })
+                    .orWhere('client.email ILIKE :search', { search: `%${search}%` });
+            }));
+        }
+
+        query.orderBy('client.lastName', 'ASC')
+            .addOrderBy('client.firstName', 'ASC');
+
+        return query.getMany();
     }
 
     async findOne(id: string, tenantId: string, relations: string[] = []): Promise<Client> {
@@ -79,6 +93,15 @@ export class ClientsService {
 
         await this.transactionRepository.save(transaction);
 
+        await this.auditService.log(
+            tenantId,
+            'MANUAL_BALANCE_ADJUSTMENT',
+            'Client',
+            clientId,
+            userId,
+            { amount, description, newBalance }
+        );
+
         return client;
     }
 
@@ -124,8 +147,26 @@ export class ClientsService {
 
     async update(id: string, dto: UpdateClientDto, tenantId: string): Promise<Client> {
         const client = await this.findOne(id, tenantId);
+
+        // Calculate diff before update
+        const updatedClient = { ...client, ...dto };
+        const { changes } = this.auditService.calculateDiff(client, updatedClient);
+
         Object.assign(client, dto);
-        return this.clientRepository.save(client);
+        const saved = await this.clientRepository.save(client);
+
+        if (Object.keys(changes).length > 0) {
+            await this.auditService.log(
+                tenantId,
+                'UPDATE_CLIENT',
+                'Client',
+                client.id,
+                'API_USER', // TODO: Pass actual user ID
+                { changes }
+            );
+        }
+
+        return saved;
     }
 
     async remove(id: string, tenantId: string): Promise<void> {

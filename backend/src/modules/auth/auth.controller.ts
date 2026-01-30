@@ -60,6 +60,14 @@ export class AuthController {
         return this.authService.enableTwoFactor(req.user, dto.token);
     }
 
+    @Post('2fa/disable')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Disable 2FA' })
+    async disableTwoFactor(@Request() req: any) {
+        return this.authService.disableTwoFactor(req.user.userId || req.user.id);
+    }
+
     @Post('2fa/authenticate')
     @ApiOperation({ summary: 'Complete login with 2FA token' })
     async verifyTwoFactor(@Body() dto: VerifyTwoFactorDto) {

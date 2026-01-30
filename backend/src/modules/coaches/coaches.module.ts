@@ -4,11 +4,14 @@ import { Coach } from './entities/coach.entity';
 import { CoachesController } from './coaches.controller';
 import { CoachesService } from './coaches.service';
 import { AuthModule } from '../auth/auth.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Coach]),
-        AuthModule
+        TypeOrmModule.forFeature([Coach]),
+        AuthModule,
+        AuditModule
     ],
     controllers: [CoachesController],
     providers: [CoachesService],

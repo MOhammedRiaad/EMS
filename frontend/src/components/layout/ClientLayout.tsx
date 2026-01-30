@@ -4,6 +4,8 @@ import { Home, Calendar, User, LogOut, Trophy } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
 import ComplianceManager from '../compliance/ComplianceManager';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { AnnouncementModal } from '../notifications/AnnouncementModal';
 
 const ClientLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -39,12 +41,15 @@ const ClientLayout: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center gap-4">
+                    <NotificationCenter />
                     <ThemeToggle />
                     <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition-colors">
                         <LogOut size={20} />
                     </button>
                 </div>
             </header>
+
+            <AnnouncementModal />
 
             <main>
                 <Outlet />

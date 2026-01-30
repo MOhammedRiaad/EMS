@@ -53,33 +53,31 @@ export function useClientsState() {
 
     const fetchClients = useCallback(async () => {
         try {
-            const data = await clientsService.getAll();
+            setLoading(true);
+            const data = await clientsService.getAll(searchQuery);
             setClients(data);
         } catch (error) {
             console.error('Failed to fetch clients', error);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [searchQuery]);
 
+    // Debounce fetch
     useEffect(() => {
-        fetchClients();
+        const timer = setTimeout(() => {
+            fetchClients();
+        }, 500);
+        return () => clearTimeout(timer);
     }, [fetchClients]);
 
-    // Filtered clients
+    // Filtered clients (local filters only)
     const filteredClients = useMemo(() => {
         return clients.filter(client => {
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                const matchesName = `${client.firstName} ${client.lastName}`.toLowerCase().includes(query);
-                const matchesEmail = client.email?.toLowerCase().includes(query) || false;
-                const matchesPhone = client.phone?.toLowerCase().includes(query) || false;
-                if (!matchesName && !matchesEmail && !matchesPhone) return false;
-            }
             if (filters.status !== 'all' && client.status !== filters.status) return false;
             return true;
         });
-    }, [clients, searchQuery, filters]);
+    }, [clients, filters]);
 
     // Handlers
     const resetForm = useCallback(() => {

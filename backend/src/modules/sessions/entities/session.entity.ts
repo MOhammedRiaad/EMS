@@ -6,6 +6,7 @@ import { Coach } from '../../coaches/entities/coach.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientSessionReview } from '../../reviews/entities/review.entity';
 import { SessionParticipant } from './session-participant.entity';
+import { ClientPackage } from '../../packages/entities/client-package.entity';
 
 export type SessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
@@ -104,4 +105,11 @@ export class Session extends TenantScopedEntityWithUpdate {
 
     @OneToOne(() => ClientSessionReview, review => review.session)
     review: ClientSessionReview;
+
+    @Column({ name: 'client_package_id', type: 'uuid', nullable: true })
+    clientPackageId: string | null;
+
+    @ManyToOne(() => ClientPackage, { onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'client_package_id' })
+    clientPackage: ClientPackage;
 }

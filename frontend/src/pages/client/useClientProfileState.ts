@@ -117,6 +117,7 @@ export function useClientProfileState() {
         handleImageUpload,
         handleEditClick,
         handleUpdateProfile,
-        handleSignOut
+        handleSignOut,
+        refreshProfile: loadData
     };
 }

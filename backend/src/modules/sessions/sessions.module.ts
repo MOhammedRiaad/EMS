@@ -11,6 +11,7 @@ import { SessionsService } from './sessions.service';
 import { ClientsModule } from '../clients/clients.module';
 import { MailerModule } from '../mailer/mailer.module';
 import { PackagesModule } from '../packages/packages.module';
+import { AuditModule } from '../audit/audit.module';
 
 import { GamificationModule } from '../gamification/gamification.module';
 
@@ -23,7 +24,9 @@ import { SessionParticipantsService } from './session-participants.service';
         ClientsModule,
         MailerModule,
         PackagesModule,
+        PackagesModule,
         GamificationModule,
+        AuditModule,
     ],
     controllers: [SessionsController],
     providers: [SessionsService, SessionParticipantsService],

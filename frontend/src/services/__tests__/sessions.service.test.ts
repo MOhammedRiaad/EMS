@@ -81,6 +81,8 @@ describe('SessionsService', () => {
                 clientId: 'client-1',
                 startTime: '2025-01-22T10:00:00Z',
                 endTime: '2025-01-22T11:00:00Z',
+                type: 'individual',
+                capacity: 1
             });
 
             expect(result).toEqual(newSession);
@@ -114,6 +116,8 @@ describe('SessionsService', () => {
                     clientId: 'client-1',
                     startTime: '2025-01-22T10:00:00Z',
                     endTime: '2025-01-22T11:00:00Z',
+                    type: 'individual',
+                    capacity: 1
                 });
                 expect.fail('Should have thrown');
             } catch (error: any) {

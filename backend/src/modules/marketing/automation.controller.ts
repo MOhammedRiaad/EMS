@@ -12,6 +12,11 @@ export class AutomationController {
         return this.automationService.create(createDto);
     }
 
+    @Get('executions')
+    findAllExecutions() {
+        return this.automationService.findAllExecutions();
+    }
+
     @Get()
     findAll() {
         return this.automationService.findAll();

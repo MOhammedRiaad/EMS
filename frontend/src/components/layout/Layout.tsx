@@ -20,12 +20,15 @@ import {
     CreditCard,
     FileText,
     Palette,
-    Target
+    Target,
+    Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
 import { ThemeToggle } from '../common/ThemeToggle';
 import MenuSection, { type MenuItem } from './MenuSection';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { AnnouncementModal } from '../notifications/AnnouncementModal';
 import { MenuSearch } from './MenuSearch';
 import { Breadcrumbs } from './Breadcrumbs';
 import './Layout.css';
@@ -99,6 +102,8 @@ const Layout: React.FC = () => {
         { path: '/admin/users', label: 'User Management', icon: UserCog },
         { path: '/admin/settings', label: 'Settings', icon: Settings },
         { path: '/admin/branding', label: 'Branding', icon: Palette },
+        { path: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+        { path: '/admin/audit-logs', label: 'Audit Logs', icon: FileText },
     ];
 
     const retailItems: MenuItem[] = [
@@ -240,7 +245,8 @@ const Layout: React.FC = () => {
                         </div>
                     </div>
 
-                    <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <NotificationCenter />
                         <ThemeToggle />
                     </div>
                 </header>
@@ -249,6 +255,7 @@ const Layout: React.FC = () => {
                     <Outlet />
                 </div>
             </main>
+            <AnnouncementModal />
         </div>
     );
 };

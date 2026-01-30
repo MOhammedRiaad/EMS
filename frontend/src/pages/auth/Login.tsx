@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import '../../styles/variables.css';
 
+import TwoFactorVerify from '../../components/auth/TwoFactorVerify';
+
 const Login: React.FC = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -13,32 +15,71 @@ const Login: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // 2FA State
+    const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+    const [tempUserId, setTempUserId] = useState<string | null>(null);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setLoading(true);
 
         try {
-            const data = await authService.login({ email, password });
-            login(data.accessToken, data.user, data.tenant);
-            // Check if tenant owner needs to complete onboarding
-            if (data.user.role === 'tenant_owner' && data.tenant && !data.tenant.isComplete) {
-                navigate('/onboarding');
-            } else if (data.user.role === 'client') {
-                navigate('/client/home');
+            const data: any = await authService.login({ email, password });
+
+            if (data.requiresTwoFactor) {
+                setTempUserId(data.userId);
+                setRequiresTwoFactor(true);
+                setLoading(false);
+                return;
             }
-            else if (data.user.role === 'coach') {
-                navigate('/coach/home');
-            }
-            else {
-                navigate('/');
-            }
+
+            handleLoginSuccess(data);
         } catch (err: any) {
             setError(err.message);
-        } finally {
             setLoading(false);
         }
     };
+
+    const handleLoginSuccess = (data: any) => {
+        login(data.accessToken, data.user, data.tenant);
+
+        if (data.user.role === 'tenant_owner' && data.tenant && !data.tenant.isComplete) {
+            navigate('/onboarding');
+        } else if (data.user.role === 'client') {
+            navigate('/client/home');
+        } else if (data.user.role === 'coach') {
+            navigate('/coach/home');
+        } else {
+            navigate('/');
+        }
+    };
+
+    const handleTwoFactorSuccess = (data: any) => {
+        handleLoginSuccess(data);
+    };
+
+    if (requiresTwoFactor && tempUserId) {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'var(--color-bg-primary)',
+                padding: '1rem'
+            }}>
+                <TwoFactorVerify
+                    userId={tempUserId}
+                    onSuccess={handleTwoFactorSuccess}
+                    onCancel={() => {
+                        setRequiresTwoFactor(false);
+                        setTempUserId(null);
+                    }}
+                />
+            </div>
+        );
+    }
 
     return (
         <div style={{

@@ -3,6 +3,7 @@ import { Settings, Save, AlertCircle } from 'lucide-react';
 import { tenantService } from '../../services/tenant.service';
 import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
+import TwoFactorSetup from '../../components/auth/TwoFactorSetup';
 
 const AdminSettings: React.FC = () => {
     const { user } = useAuth();
@@ -13,14 +14,28 @@ const AdminSettings: React.FC = () => {
 
     const [cancellationWindow, setCancellationWindow] = useState<number>(48);
 
+    // New Settings State
+    const [enforce2FA, setEnforce2FA] = useState(false);
+    const [language, setLanguage] = useState('en');
+    const [timezone, setTimezone] = useState('UTC');
+    const [reviewFilter, setReviewFilter] = useState<'all' | 'positive'>('all');
+
+    const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
+
     useEffect(() => {
         const fetchSettings = async () => {
             if (!user?.tenantId) return;
             try {
                 const tenant = await tenantService.get(user.tenantId);
                 const settings = tenant.settings || {};
-                // Default to 48 hours if not set
+
+                // Load settings with defaults
                 setCancellationWindow(settings.cancellationWindowHours ?? 48);
+                setEnforce2FA(settings.security?.enforce2FA ?? false);
+                setLanguage(settings.localization?.language ?? 'en');
+                setTimezone(settings.localization?.timezone ?? 'UTC');
+                setReviewFilter(settings.notifications?.reviewFilter ?? 'all');
+
             } catch (err) {
                 console.error('Failed to fetch settings', err);
                 setError('Failed to load settings. Please try again.');
@@ -47,7 +62,20 @@ const AdminSettings: React.FC = () => {
 
             const updatedSettings = {
                 ...currentSettings,
-                cancellationWindowHours: Number(cancellationWindow)
+                cancellationWindowHours: Number(cancellationWindow),
+                security: {
+                    ...currentSettings.security,
+                    enforce2FA
+                },
+                localization: {
+                    ...currentSettings.localization,
+                    language,
+                    timezone
+                },
+                notifications: {
+                    ...currentSettings.notifications,
+                    reviewFilter
+                }
             };
 
             await tenantService.update(user.tenantId, {
@@ -66,108 +94,207 @@ const AdminSettings: React.FC = () => {
     if (loading) return <div>Loading settings...</div>;
 
     return (
-        <div>
+        <div className="pb-20">
             <PageHeader
                 title="Studio Settings"
-                description="Configure studio-wide policies and settings"
+                description="Configure studio-wide policies and preferences"
             />
 
-            <div style={{ maxWidth: '600px' }}>
-                <div style={{
-                    backgroundColor: 'var(--color-bg-secondary)',
-                    borderRadius: 'var(--border-radius-lg)',
-                    padding: '1.5rem',
-                    border: '1px solid var(--border-color)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                        <Settings className="text-primary" size={24} />
-                        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Cancellation Policy</h2>
+            <div className="max-w-3xl space-y-8">
+
+                {/* Status Messages */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-center gap-2">
+                        <AlertCircle size={18} />
+                        <span>{error}</span>
                     </div>
+                )}
+                {successMessage && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-lg flex items-center gap-2">
+                        <Save size={18} />
+                        <span>{successMessage}</span>
+                    </div>
+                )}
 
-                    {error && (
-                        <div style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid var(--color-danger)',
-                            color: 'var(--color-danger)',
-                            padding: '0.75rem',
-                            borderRadius: 'var(--border-radius-md)',
-                            marginBottom: '1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            fontSize: '0.875rem'
-                        }}>
-                            <AlertCircle size={16} />
-                            <span>{error}</span>
+                <form onSubmit={handleSave} className="space-y-8">
+
+                    {/* Cancellation Policy */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                            <Settings className="text-gray-500" size={24} />
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Cancellation Policy</h2>
+                                <p className="text-sm text-gray-500">Manage booking rules</p>
+                            </div>
                         </div>
-                    )}
 
-                    {successMessage && (
-                        <div style={{
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            border: '1px solid var(--color-success)',
-                            color: 'var(--color-success)',
-                            padding: '0.75rem',
-                            borderRadius: 'var(--border-radius-md)',
-                            marginBottom: '1rem',
-                            fontSize: '0.875rem'
-                        }}>
-                            {successMessage}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSave}>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                                Cancellation Window (Hours)
-                            </label>
-                            <div style={{ marginBottom: '0.5rem' }}>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Cancellation Window (Hours)
+                                </label>
                                 <input
                                     type="number"
                                     min="0"
                                     value={cancellationWindow}
                                     onChange={(e) => setCancellationWindow(Number(e.target.value))}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem 1rem',
-                                        borderRadius: 'var(--border-radius-md)',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: 'var(--color-bg-primary)',
-                                        color: 'var(--color-text-primary)',
-                                        fontSize: '1rem'
-                                    }}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Sessions cancelled fewer than this many hours in advance will assume a credit was used.
+                                </p>
                             </div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                                Sessions cancelled fewer than this many hours in advance will automatically use a session credit (unless manually overridden by admin).
-                            </p>
+                        </div>
+                    </div>
+
+                    {/* Security Settings */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                            <div className="text-purple-600">
+                                <Settings size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Security & Access</h2>
+                                <p className="text-sm text-gray-500">Manage studio security</p>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                                type="submit"
-                                disabled={saving}
-                                style={{
-                                    padding: '0.75rem 1.5rem',
-                                    backgroundColor: 'var(--color-primary)',
-                                    color: 'white',
-                                    borderRadius: 'var(--border-radius-md)',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    border: 'none',
-                                    cursor: saving ? 'not-allowed' : 'pointer',
-                                    opacity: saving ? 0.7 : 1
-                                }}
-                            >
-                                <Save size={18} />
-                                {saving ? 'Saving...' : 'Save Changes'}
-                            </button>
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-medium text-gray-900 dark:text-white">Your Two-Factor Authentication</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        Secure your own admin account.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIs2FAModalOpen(true)}
+                                    className="px-4 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300 rounded-lg font-medium hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+                                >
+                                    Manage 2FA
+                                </button>
+                            </div>
+
+                            <div className="pt-4 border-t border-gray-100 dark:border-slate-800">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-medium text-gray-900 dark:text-white">Enforce 2FA for Staff</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            Require all coaches and admins to enable 2FA.
+                                        </p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={enforce2FA}
+                                            onChange={(e) => setEnforce2FA(e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+
+                    {/* System Preferences */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                            <Settings className="text-blue-500" size={24} />
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">System Preferences</h2>
+                                <p className="text-sm text-gray-500">Localization and region</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Default Language
+                                </label>
+                                <select
+                                    value={language}
+                                    onChange={(e) => setLanguage(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish (Español)</option>
+                                    <option value="de">German (Deutsch)</option>
+                                    <option value="ar">Arabic (العربية)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Timezone
+                                </label>
+                                <select
+                                    value={timezone}
+                                    onChange={(e) => setTimezone(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">Eastern Time (US)</option>
+                                    <option value="Europe/London">London (GMT)</option>
+                                    <option value="Europe/Berlin">Berlin (CET)</option>
+                                    <option value="Asia/Dubai">Dubai (GST)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Notification Defaults */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                            <Settings className="text-orange-500" size={24} />
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Notification Defaults</h2>
+                                <p className="text-sm text-gray-500">Global alert settings</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Public Reviews Filter
+                            </label>
+                            <select
+                                value={reviewFilter}
+                                onChange={(e) => setReviewFilter(e.target.value as any)}
+                                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                                <option value="all">Publish All Reviews Automatically</option>
+                                <option value="positive">Publish Only Positive (4-5 stars)</option>
+                            </select>
+                            <p className="text-xs text-gray-400 mt-2">
+                                Controls which reviews appear on your public landing page automatically.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4">
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                            <Save size={20} />
+                            {saving ? 'Saving Changes...' : 'Save All Settings'}
+                        </button>
+                    </div>
+                </form>
             </div>
+
+            {/* 2FA Setup Modal */}
+            {is2FAModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+                        <TwoFactorSetup
+                            onComplete={() => setIs2FAModalOpen(false)}
+                            onCancel={() => setIs2FAModalOpen(false)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

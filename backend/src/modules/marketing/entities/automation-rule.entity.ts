@@ -35,13 +35,19 @@ export class AutomationRule {
 
     @Column({
         type: 'enum',
-        enum: AutomationActionType
+        enum: AutomationActionType,
+        nullable: true
     })
     actionType: AutomationActionType;
 
     // JSON column to store action details (e.g., { templateId: 'welcome_email', subject: 'Hi' })
-    @Column({ type: 'jsonb' })
+    @Column({ type: 'jsonb', nullable: true })
     actionPayload: any;
+
+    // Multi-step actions for drip campaigns
+    // Structure: Array<{ type: AutomationActionType, delayMinutes: number, payload: any, order: number }>
+    @Column({ type: 'jsonb', nullable: true })
+    actions: any;
 
     @Column({ default: true })
     isActive: boolean;

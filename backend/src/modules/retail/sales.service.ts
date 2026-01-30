@@ -10,6 +10,8 @@ import { ProductStock } from './entities/product-stock.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Transaction, TransactionType, TransactionCategory } from '../packages/entities/transaction.entity';
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class SalesService {
     private readonly logger = new Logger(SalesService.name);
@@ -21,10 +23,11 @@ export class SalesService {
         private readonly clientRepo: Repository<Client>,
         private readonly productsService: ProductsService,
         private readonly dataSource: DataSource,
+        private readonly auditService: AuditService,
     ) { }
 
     async createSale(tenantId: string, userId: string, dto: CreateSaleDto): Promise<Sale> {
-        return this.dataSource.transaction(async (manager) => {
+        const savedSale = await this.dataSource.transaction(async (manager) => {
             // 1. Validate Client (if provided)
             let client: Client | null = null;
             if (dto.clientId) {
@@ -142,8 +145,36 @@ export class SalesService {
             sale.transaction = savedTx;
 
 
-            return manager.save(sale);
+            const savedSale = await manager.save(sale);
+
+            // Audit Log - Note: manager doesn't track AuditService, calling it outside? 
+            // AuditService uses its own repo. It is safer to call it after transaction commits, 
+            // or pass manager if AuditService supported it.
+            // For now, logging asynchronously/independently inside the service flow is acceptable if not strictly transactional.
+            // However, since we are inside `dataSource.transaction`, `this.auditService` will use a separate connection/manager unless improved.
+            // A simple await here is fine for now as Audit isn't blocking the business transaction success usually.
+
+            return savedSale;
         });
+
+        // Log after successful transaction
+        // Since the return of transaction is savedSale, we can log here if we capture the ID.
+        // But `this.dataSource.transaction` returns the result.
+
+        // Refactoring to log inside the transaction block might need AuditService to accept a manager, 
+        // OR we just accept that if audit fails, the transaction still succeeds (which is arguably better for availability).
+
+        // Actually, let's just log "best effort" inside the transaction callback for simplicity in this codebase style.
+        await this.auditService.log(
+            tenantId,
+            'CREATE_ORDER',
+            'Sale',
+            savedSale.id, // Captured from transaction result
+            userId,
+            { amount: savedSale.totalAmount, method: dto.paymentMethod }
+        );
+
+        return savedSale;
     }
 
     async getHistory(tenantId: string, studioId?: string): Promise<Sale[]> {

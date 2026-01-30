@@ -1,14 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WaitingListEntry, WaitingListStatus } from './entities/waiting-list.entity';
 import { CreateWaitingListEntryDto, UpdateWaitingListEntryDto } from './dto';
 
+import { AuditService } from '../audit/audit.service';
+import { StudiosService } from '../studios/studios.service'; // Assuming this service exists
+import { ClientsService } from '../clients/clients.service'; // Assuming this service exists
+
 @Injectable()
 export class WaitingListService {
+    private readonly logger = new Logger(WaitingListService.name);
+
     constructor(
         @InjectRepository(WaitingListEntry)
-        private readonly waitingListRepository: Repository<WaitingListEntry>,
+        private readonly waitingListRepo: Repository<WaitingListEntry>,
+        private readonly studiosService: StudiosService,
+        private readonly clientsService: ClientsService,
+        private readonly auditService: AuditService,
     ) { }
 
     async create(createDto: CreateWaitingListEntryDto, tenantId: string): Promise<WaitingListEntry> {
@@ -18,18 +27,28 @@ export class WaitingListService {
         // Determine initial status
         const status = createDto.requiresApproval ? WaitingListStatus.PENDING : WaitingListStatus.APPROVED;
 
-        const entry = this.waitingListRepository.create({
+        const entry = this.waitingListRepo.create({
             ...createDto,
             tenantId,
             status,
             priority,
         });
 
-        return this.waitingListRepository.save(entry);
+        const savedEntry = await this.waitingListRepo.save(entry);
+
+        await this.auditService.log(
+            tenantId,
+            'JOIN_WAITING_LIST',
+            'WaitingListEntry',
+            savedEntry.id,
+            'CLIENT_API'
+        );
+
+        return savedEntry;
     }
 
     async findAll(tenantId: string, filters?: any): Promise<WaitingListEntry[]> {
-        const query = this.waitingListRepository.createQueryBuilder('entry')
+        const query = this.waitingListRepo.createQueryBuilder('entry')
             .leftJoinAndSelect('entry.client', 'client')
             .leftJoinAndSelect('entry.studio', 'studio')
             .leftJoinAndSelect('entry.coach', 'coach')
@@ -50,7 +69,7 @@ export class WaitingListService {
     }
 
     async findOne(id: string, tenantId: string): Promise<WaitingListEntry> {
-        const entry = await this.waitingListRepository.findOne({
+        const entry = await this.waitingListRepo.findOne({
             where: { id, tenantId },
             relations: ['client', 'studio', 'coach', 'session', 'approver']
         });
@@ -63,7 +82,7 @@ export class WaitingListService {
     }
 
     async findByClient(clientId: string, tenantId: string): Promise<WaitingListEntry[]> {
-        return this.waitingListRepository.find({
+        return this.waitingListRepo.find({
             where: { clientId, tenantId },
             relations: ['studio', 'coach', 'session'],
             order: { createdAt: 'DESC' }
@@ -73,14 +92,21 @@ export class WaitingListService {
     async update(id: string, updateDto: UpdateWaitingListEntryDto, tenantId: string): Promise<WaitingListEntry> {
         const entry = await this.findOne(id, tenantId);
         Object.assign(entry, updateDto);
-        return this.waitingListRepository.save(entry);
+        return this.waitingListRepo.save(entry);
     }
 
     async remove(id: string, tenantId: string): Promise<void> {
-        const result = await this.waitingListRepository.delete({ id, tenantId });
+        const result = await this.waitingListRepo.delete({ id, tenantId });
         if (result.affected === 0) {
             throw new NotFoundException(`Waiting list entry with ID ${id} not found`);
         }
+        await this.auditService.log(
+            tenantId,
+            'LEAVE_WAITING_LIST',
+            'WaitingListEntry',
+            id,
+            'CLIENT_API'
+        );
     }
 
     async approve(id: string, approverId: string, tenantId: string): Promise<WaitingListEntry> {
@@ -90,7 +116,7 @@ export class WaitingListService {
         entry.approvedBy = approverId;
         entry.approvedAt = new Date();
 
-        return this.waitingListRepository.save(entry);
+        return this.waitingListRepo.save(entry);
     }
 
     async reject(id: string, tenantId: string): Promise<WaitingListEntry> {
@@ -99,13 +125,23 @@ export class WaitingListService {
         entry.status = WaitingListStatus.CANCELLED;
         // Optimization: Could also add rejectedBy/At logic if needed, reusing approver fields or adding new ones
 
-        return this.waitingListRepository.save(entry);
+        return this.waitingListRepo.save(entry);
     }
 
     async updatePriority(id: string, newPriority: number, tenantId: string): Promise<WaitingListEntry> {
         const entry = await this.findOne(id, tenantId);
         entry.priority = newPriority;
-        return this.waitingListRepository.save(entry);
+        await this.waitingListRepo.save(entry);
+
+        await this.auditService.log(
+            tenantId,
+            'UPDATE_WAITING_LIST',
+            'WaitingListEntry',
+            id,
+            'CLIENT_API',
+            { priority: newPriority }
+        );
+        return entry; // Return the updated entry
     }
 
     async notifyClient(id: string, tenantId: string, mailerService: any): Promise<WaitingListEntry> {
@@ -133,12 +169,12 @@ export class WaitingListService {
 
         entry.status = WaitingListStatus.NOTIFIED;
         entry.notifiedAt = new Date();
-        return this.waitingListRepository.save(entry);
+        return this.waitingListRepo.save(entry);
     }
 
     async markAsBooked(id: string, tenantId: string): Promise<WaitingListEntry> {
         const entry = await this.findOne(id, tenantId);
         entry.status = WaitingListStatus.BOOKED;
-        return this.waitingListRepository.save(entry);
+        return this.waitingListRepo.save(entry);
     }
 }

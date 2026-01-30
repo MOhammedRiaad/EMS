@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUrl, IsEnum, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsUrl, IsEnum, IsObject, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateClientProfileDto {
@@ -41,5 +41,25 @@ export class UpdateClientProfileDto {
     consentFlags?: {
         marketing?: boolean;
         data_processing?: boolean;
+    };
+
+    @ApiProperty({ required: false })
+    @IsArray()
+    @IsOptional()
+    healthGoals?: Array<{ id: string; goal: string; completed: boolean; targetDate?: string }>;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    healthNotes?: string;
+
+    @ApiProperty({ required: false })
+    @IsObject()
+    @IsOptional()
+    medicalHistory?: {
+        allergies: string[];
+        injuries: string[];
+        conditions: string[];
+        custom?: any;
     };
 }

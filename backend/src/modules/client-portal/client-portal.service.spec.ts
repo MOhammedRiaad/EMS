@@ -9,6 +9,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 import { AuthService } from '../auth/auth.service';
 import { ClientPackageStatus } from '../packages/entities/client-package.entity';
+import { ClientProgressPhoto } from '../clients/entities/client-progress-photo.entity';
 
 describe('ClientPortalService', () => {
     let service: ClientPortalService;
@@ -90,6 +91,7 @@ describe('ClientPortalService', () => {
                     useValue: {
                         getClientPackages: jest.fn(),
                         getActivePackageForClient: jest.fn(),
+                        findBestPackageForSession: jest.fn(),
                     },
                 },
                 {
@@ -132,6 +134,16 @@ describe('ClientPortalService', () => {
                         create: jest.fn(),
                     },
                 },
+                {
+                    provide: getRepositoryToken(ClientProgressPhoto),
+                    useValue: {
+                        find: jest.fn(),
+                        create: jest.fn(),
+                        save: jest.fn(),
+                        findOne: jest.fn(),
+                        remove: jest.fn(),
+                    },
+                },
             ],
         }).compile();
 
@@ -154,6 +166,7 @@ describe('ClientPortalService', () => {
     describe('getDashboard', () => {
         beforeEach(() => {
             sessionsService.findAll.mockResolvedValue([mockSession] as any);
+            packagesService.findBestPackageForSession.mockResolvedValue(mockPackage as any);
             packagesService.getClientPackages.mockResolvedValue([mockPackage] as any);
         });
 
@@ -176,7 +189,7 @@ describe('ClientPortalService', () => {
         it('should call packagesService.getClientPackages', async () => {
             await service.getDashboard('client-123', 'tenant-123');
 
-            expect(packagesService.getClientPackages).toHaveBeenCalledWith('client-123', 'tenant-123');
+            expect(packagesService.findBestPackageForSession).toHaveBeenCalledWith('client-123', 'tenant-123');
         });
     });
 

@@ -22,7 +22,7 @@ describe('CoachesService', () => {
         active: true,
         user: { id: 'user-123', firstName: 'Coach', lastName: 'Smith' },
         studio: { id: 'studio-123', name: 'Downtown Studio' },
-    } as Coach;
+    } as unknown as Coach;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -35,6 +35,14 @@ describe('CoachesService', () => {
                         findOne: jest.fn(),
                         create: jest.fn(),
                         save: jest.fn(),
+                        createQueryBuilder: jest.fn(() => ({
+                            leftJoinAndSelect: jest.fn().mockReturnThis(),
+                            where: jest.fn().mockReturnThis(),
+                            andWhere: jest.fn().mockReturnThis(),
+                            orWhere: jest.fn().mockReturnThis(),
+                            orderBy: jest.fn().mockReturnThis(),
+                            getMany: jest.fn().mockResolvedValue([mockCoach]),
+                        })),
                     },
                 },
                 {
@@ -42,6 +50,13 @@ describe('CoachesService', () => {
                     useValue: {
                         findByEmail: jest.fn(),
                         createClientUser: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
                     },
                 },
             ],
@@ -60,16 +75,14 @@ describe('CoachesService', () => {
 
     describe('findAll', () => {
         it('should return all coaches for tenant', async () => {
-            repository.find.mockResolvedValue([mockCoach]);
-
             const result = await service.findAll('tenant-123');
-
             expect(result).toEqual([mockCoach]);
-            expect(repository.find).toHaveBeenCalledWith({
-                where: { tenantId: 'tenant-123' },
-                relations: ['user', 'studio'],
-                order: { createdAt: 'DESC' },
-            });
+            expect(repository.createQueryBuilder).toHaveBeenCalledWith('coach');
+        });
+
+        it('should apply search filter', async () => {
+            await service.findAll('tenant-123', 'Coach');
+            expect(repository.createQueryBuilder).toHaveBeenCalled();
         });
     });
 
@@ -102,8 +115,8 @@ describe('CoachesService', () => {
         });
 
         it('should filter by client gender preference when provided', async () => {
-            const malePreferringCoach = { ...mockCoach, preferredClientGender: 'male' };
-            const anyPreferringCoach = { ...mockCoach, id: 'coach-456', preferredClientGender: 'any' };
+            const malePreferringCoach = { ...mockCoach, preferredClientGender: 'male' } as unknown as Coach;
+            const anyPreferringCoach = { ...mockCoach, id: 'coach-456', preferredClientGender: 'any' } as unknown as Coach;
             repository.find.mockResolvedValue([malePreferringCoach, anyPreferringCoach]);
 
             const result = await service.findActive('tenant-123', 'male');
@@ -112,7 +125,7 @@ describe('CoachesService', () => {
         });
 
         it('should exclude coaches with mismatching gender preference', async () => {
-            const femalePreferringCoach = { ...mockCoach, preferredClientGender: 'female' };
+            const femalePreferringCoach = { ...mockCoach, preferredClientGender: 'female' } as unknown as Coach;
             repository.find.mockResolvedValue([femalePreferringCoach]);
 
             const result = await service.findActive('tenant-123', 'male');

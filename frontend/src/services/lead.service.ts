@@ -12,6 +12,19 @@ export interface Lead {
     assignedTo?: { id: string; firstName: string; lastName: string };
     createdAt: string;
     updatedAt: string;
+    activities?: LeadActivity[];
+}
+
+export interface LeadActivity {
+    id: string;
+    type: 'note' | 'status_changed' | 'email_sent' | 'call_logged' | 'converted';
+    content: string;
+    createdAt: string;
+    createdBy?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    };
 }
 
 export interface CreateLeadDto {

@@ -22,7 +22,7 @@ describe('WaitingListService', () => {
         createdAt: new Date(),
         client: { id: 'client-123', firstName: 'John', email: 'john@example.com' },
         studio: { id: 'studio-123', name: 'Downtown Studio' },
-    } as WaitingListEntry;
+    } as unknown as WaitingListEntry;
 
     const createMockQueryBuilder = (results: any[] = []) => ({
         leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -45,6 +45,25 @@ describe('WaitingListService', () => {
                         save: jest.fn(),
                         delete: jest.fn(),
                         createQueryBuilder: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../studios/studios.service').StudiosService,
+                    useValue: {
+                        findOne: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../clients/clients.service').ClientsService,
+                    useValue: {
+                        findOne: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
                     },
                 },
             ],

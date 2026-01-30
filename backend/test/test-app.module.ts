@@ -26,6 +26,12 @@ import { Sale } from '../src/modules/retail/entities/sale.entity';
 import { SaleItem } from '../src/modules/retail/entities/sale-item.entity';
 import { Waiver } from '../src/modules/waivers/entities/waiver.entity';
 import { ClientWaiver } from '../src/modules/waivers/entities/client-waiver.entity';
+import { Notification } from '../src/modules/notifications/entities/notification.entity';
+import { Announcement } from '../src/modules/notifications/entities/announcement.entity';
+import { AnnouncementRead } from '../src/modules/notifications/entities/announcement-read.entity';
+import { SessionParticipant } from '../src/modules/sessions/entities/session-participant.entity';
+import { AutomationRule } from '../src/modules/marketing/entities/automation-rule.entity';
+import { AutomationExecution } from '../src/modules/marketing/entities/automation-execution.entity';
 
 // Feature Modules
 import { AuthModule } from '../src/modules/auth/auth.module';
@@ -46,6 +52,11 @@ import { ClientPortalModule } from '../src/modules/client-portal/client-portal.m
 import { CoachPortalModule } from '../src/modules/coach-portal/coach-portal.module';
 import { RetailModule } from '../src/modules/retail/retail.module';
 import { WaiversModule } from '../src/modules/waivers/waivers.module';
+import { NotificationsModule } from '../src/modules/notifications/notifications.module';
+import { MarketingModule } from '../src/modules/marketing/marketing.module';
+
+import { AuditLog } from '../src/modules/audit/entities/audit-log.entity';
+import { AuditModule } from '../src/modules/audit/audit.module';
 
 const ALL_ENTITIES = [
     User, Tenant, Studio, Room, Coach, Client, Session,
@@ -53,6 +64,9 @@ const ALL_ENTITIES = [
     Package, ClientPackage, Transaction,
     Product, ProductStock, Sale, SaleItem,
     Waiver, ClientWaiver,
+    Notification, Announcement, AnnouncementRead,
+    SessionParticipant, AutomationRule, AutomationExecution,
+    AuditLog,
 ];
 
 @Module({
@@ -106,6 +120,9 @@ const ALL_ENTITIES = [
         CoachPortalModule,
         RetailModule,
         WaiversModule,
+        NotificationsModule,
+        MarketingModule,
+        AuditModule,
     ],
     controllers: [HealthController],
 })

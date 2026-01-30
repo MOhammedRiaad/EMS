@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight, Bell, Flame, Award, Plus } from 'lucide-react';
+import { Calendar, Package, Clock, TrendingUp, Zap, X, List, ChevronRight, Bell, Flame, Plus } from 'lucide-react';
 import type { DashboardNotification } from '../../services/client-notifications.service';
 import type { WaitingListEntry } from './useClientHomeState';
 
@@ -156,8 +156,8 @@ export const NotificationsSection: React.FC<NotificationsSectionProps> = ({ noti
                 <div
                     key={notification.id}
                     className={`premium-card p-4 flex gap-3 stagger-${index + 1} ${notification.priority === 'high'
-                            ? 'border-l-4 border-l-red-500'
-                            : 'border-l-4 border-l-amber-500'
+                        ? 'border-l-4 border-l-red-500'
+                        : 'border-l-4 border-l-amber-500'
                         }`}
                 >
                     <div className={`mt-0.5 ${notification.priority === 'high' ? 'text-red-500' : 'text-amber-500'}`}>
@@ -418,25 +418,7 @@ export const QuickActionsCard: React.FC = () => (
     </div>
 );
 
-// ============================================================================
-// Booking Promo Card
-// ============================================================================
-export const BookingPromoCard: React.FC = () => (
-    <section className="premium-card p-5 animate-fade-in-up stagger-4">
-        <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30 animate-float">
-                <Award size={26} />
-            </div>
-            <div className="flex-1">
-                <h4 className="font-bold text-gray-800 dark:text-white">Keep the momentum!</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Book your next session to stay on track.</p>
-            </div>
-            <Link to="/client/book" className="btn-gradient px-4 py-2 text-sm">
-                Book
-            </Link>
-        </div>
-    </section>
-);
+
 
 // ============================================================================
 // Floating Action Button for Quick Booking

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Zap, LayoutList, List, BarChart } from 'lucide-react';
+import { Zap, LayoutList, List, BarChart, Megaphone, Clock } from 'lucide-react';
 
 const MarketingDashboard: React.FC = () => {
     return (
@@ -50,6 +50,30 @@ const MarketingDashboard: React.FC = () => {
                 >
                     <Zap size={18} />
                     Automations
+                </NavLink>
+                <NavLink
+                    to="/admin/marketing/queue"
+                    className={({ isActive }) =>
+                        `flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isActive
+                            ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`
+                    }
+                >
+                    <Clock size={18} />
+                    Queue
+                </NavLink>
+                <NavLink
+                    to="/admin/marketing/announcements"
+                    className={({ isActive }) =>
+                        `flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isActive
+                            ? 'border-purple-600 text-purple-600 dark:border-purple-400 dark:text-purple-400'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                        }`
+                    }
+                >
+                    <Megaphone size={18} />
+                    Announcements
                 </NavLink>
                 <NavLink
                     to="/admin/marketing/reports"

@@ -22,6 +22,7 @@ import AdminPackages from './pages/admin/AdminPackages';
 import AdminCashFlow from './pages/admin/AdminCashFlow';
 import AdminSettings from './pages/admin/AdminSettings';
 import Analytics from './pages/admin/Analytics';
+import AuditLogsPage from './pages/admin/AuditLogsPage';
 import Reviews from './pages/admin/Reviews';
 import ProductListPage from './pages/admin/retail/ProductListPage';
 import InventoryPage from './pages/admin/retail/InventoryPage';
@@ -32,7 +33,9 @@ import MarketingDashboard from './pages/admin/marketing/MarketingDashboard';
 import LeadKanbanBoard from './pages/admin/marketing/leads/LeadKanbanBoard';
 import LeadListView from './pages/admin/marketing/leads/LeadListView';
 import AutomationList from './pages/admin/marketing/automations/AutomationList';
+import AutomationQueue from './pages/admin/marketing/automations/AutomationQueue';
 import MarketingReports from './pages/admin/marketing/reports/MarketingReports';
+import AnnouncementManager from './pages/admin/marketing/announcements/AnnouncementManager';
 import { AuthProvider } from './contexts/AuthContext';
 import { MenuPreferencesProvider } from './contexts/MenuPreferencesContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -56,6 +59,7 @@ import CoachHome from './pages/coach/CoachHome';
 import CoachClients from './pages/coach/CoachClients';
 import CoachClientDetails from './pages/coach/CoachClientDetails';
 import CoachAvailability from './pages/coach/CoachAvailability';
+import CoachSettings from './pages/coach/CoachSettings';
 
 function App() {
   return (
@@ -94,6 +98,7 @@ function App() {
                   <Route path="clients/:id" element={<CoachClientDetails />} />
                   <Route path="availability" element={<CoachAvailability />} />
                   <Route path="inbody/new/:clientId" element={<InBodyScanForm />} />
+                  <Route path="settings" element={<CoachSettings />} />
                 </Route>
               </Route>
 
@@ -132,6 +137,8 @@ function App() {
                   <Route path="admin/settings" element={<AdminSettings />} />
                   <Route path="admin/branding" element={<BrandSettings />} />
                   <Route path="analytics" element={<Analytics />} />
+                  <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+                  <Route path="admin/announcements" element={<AnnouncementManager />} />
 
                   {/* Marketing Routes */}
                   <Route path="admin/marketing" element={<MarketingDashboard />}>
@@ -139,6 +146,7 @@ function App() {
                     <Route path="leads" element={<LeadKanbanBoard />} />
                     <Route path="leads/list" element={<LeadListView />} />
                     <Route path="automations" element={<AutomationList />} />
+                    <Route path="queue" element={<AutomationQueue />} />
                     <Route path="reports" element={<MarketingReports />} />
                   </Route>
                 </Route>

@@ -7,6 +7,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class ProductsService {
     constructor(
@@ -14,6 +16,7 @@ export class ProductsService {
         private readonly productRepo: Repository<Product>,
         @InjectRepository(ProductStock)
         private readonly stockRepo: Repository<ProductStock>,
+        private readonly auditService: AuditService,
     ) { }
 
     async create(tenantId: string, dto: CreateProductDto): Promise<Product> {
@@ -21,7 +24,16 @@ export class ProductsService {
             ...dto,
             tenantId,
         });
-        return this.productRepo.save(product);
+        const savedProduct = await this.productRepo.save(product);
+        await this.auditService.log(
+            tenantId,
+            'CREATE_PRODUCT',
+            'Product',
+            savedProduct.id,
+            'API_USER',
+            { name: dto.name, price: dto.price }
+        );
+        return savedProduct;
     }
 
     async findAll(tenantId: string): Promise<Product[]> {
@@ -40,8 +52,19 @@ export class ProductsService {
     }
 
     async update(tenantId: string, id: string, dto: UpdateProductDto): Promise<Product> {
-        await this.findOne(tenantId, id); // Ensure existence
+        const product = await this.findOne(tenantId, id);
+
         await this.productRepo.update(id, dto);
+
+        await this.auditService.log(
+            tenantId,
+            'UPDATE_PRODUCT',
+            'Product',
+            id,
+            'API_USER',
+            { changes: dto }
+        );
+
         return this.findOne(tenantId, id);
     }
 
@@ -97,6 +120,17 @@ export class ProductsService {
 
         if (stock.quantity < 0) stock.quantity = 0; // Prevent negative stock for now
 
-        return this.stockRepo.save(stock);
+        const savedStock = await this.stockRepo.save(stock);
+
+        await this.auditService.log(
+            tenantId,
+            'UPDATE_STOCK',
+            'ProductStock',
+            savedStock.id,
+            'API_USER',
+            { productId, studioId, operation: dto.operation, quantity: dto.quantity, newTotal: savedStock.quantity }
+        );
+
+        return savedStock;
     }
 }

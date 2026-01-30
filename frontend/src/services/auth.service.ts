@@ -59,6 +59,32 @@ class AuthService {
             body: JSON.stringify(data)
         });
     }
+
+    async generateTwoFactor(): Promise<{ secret: string; qrCode: string }> {
+        return authenticatedFetch('/auth/2fa/generate', {
+            method: 'POST'
+        });
+    }
+
+    async enableTwoFactor(token: string): Promise<any> {
+        return authenticatedFetch('/auth/2fa/enable', {
+            method: 'POST',
+            body: JSON.stringify({ token })
+        });
+    }
+
+    async disableTwoFactor(): Promise<any> {
+        return authenticatedFetch('/auth/2fa/disable', {
+            method: 'POST'
+        });
+    }
+
+    async verifyTwoFactor(userId: string, token: string): Promise<AuthResponse> {
+        return authenticatedFetch('/auth/2fa/authenticate', {
+            method: 'POST',
+            body: JSON.stringify({ userId, token })
+        });
+    }
 }
 
 export const authService = new AuthService();

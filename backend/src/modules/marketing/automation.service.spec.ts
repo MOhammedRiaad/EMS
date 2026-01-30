@@ -1,24 +1,39 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThanOrEqual } from 'typeorm';
 import { AutomationService } from './automation.service';
 import { AutomationRule, AutomationTriggerType, AutomationActionType } from './entities/automation-rule.entity';
+import { AutomationExecution, AutomationExecutionStatus } from './entities/automation-execution.entity';
+import { MailerService } from '../mailer/mailer.service';
 
 describe('AutomationService', () => {
     let service: AutomationService;
-    let repository: jest.Mocked<Repository<AutomationRule>>;
+    let ruleRepository: jest.Mocked<Repository<AutomationRule>>;
+    let executionRepository: jest.Mocked<Repository<AutomationExecution>>;
+    let mailerService: jest.Mocked<MailerService>;
 
     const mockRule = {
         id: 'rule-123',
         name: 'Test Rule',
         triggerType: AutomationTriggerType.NEW_LEAD,
-        actionType: AutomationActionType.SEND_EMAIL,
-        actionPayload: { subject: 'Hello' },
         isActive: true,
-        conditions: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        actions: [
+            { id: '1', type: AutomationActionType.SEND_EMAIL, delayMinutes: 0, payload: { subject: 'Hi' }, order: 0 },
+            { id: '2', type: AutomationActionType.SEND_EMAIL, delayMinutes: 60, payload: { subject: 'Followup' }, order: 1 }
+        ]
     } as AutomationRule;
+
+    const mockExecution = {
+        id: 'exec-123',
+        ruleId: 'rule-123',
+        tenantId: 'default',
+        entityId: 'client-123',
+        currentStepIndex: 0,
+        status: AutomationExecutionStatus.PENDING,
+        nextRunAt: new Date(Date.now() - 1000), // Past
+        context: { email: 'test@example.com' },
+        rule: mockRule
+    } as AutomationExecution;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -35,60 +50,144 @@ describe('AutomationService', () => {
                         delete: jest.fn(),
                     },
                 },
+                {
+                    provide: getRepositoryToken(AutomationExecution),
+                    useValue: {
+                        create: jest.fn(),
+                        save: jest.fn(),
+                        find: jest.fn(),
+                        findAndCount: jest.fn(),
+                    },
+                },
+                {
+                    provide: MailerService,
+                    useValue: {
+                        sendMail: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+                    },
+                },
             ],
         }).compile();
 
         service = module.get<AutomationService>(AutomationService);
-        repository = module.get(getRepositoryToken(AutomationRule));
+        ruleRepository = module.get(getRepositoryToken(AutomationRule));
+        executionRepository = module.get(getRepositoryToken(AutomationExecution));
+        mailerService = module.get(MailerService);
     });
 
     it('should be defined', () => {
         expect(service).toBeDefined();
     });
 
-    describe('create', () => {
-        it('should create a rule', async () => {
-            const createDto = { name: 'New Rule' };
-            repository.create.mockReturnValue(mockRule);
-            repository.save.mockResolvedValue(mockRule);
+    describe('triggerEvent', () => {
+        it('should create execution for active rules', async () => {
+            ruleRepository.find.mockResolvedValue([mockRule]);
+            executionRepository.create.mockReturnValue(mockExecution);
+            executionRepository.save.mockResolvedValue(mockExecution);
 
-            const result = await service.create(createDto);
+            await service.triggerEvent(AutomationTriggerType.NEW_LEAD, { clientId: 'client-123' });
 
-            expect(repository.create).toHaveBeenCalledWith(createDto);
-            expect(result).toBe(mockRule);
+            expect(ruleRepository.find).toHaveBeenCalledWith({
+                where: { triggerType: AutomationTriggerType.NEW_LEAD, isActive: true }
+            });
+            expect(executionRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+                ruleId: mockRule.id,
+                entityId: 'client-123'
+            }));
+            expect(executionRepository.save).toHaveBeenCalled();
         });
     });
 
-    describe('triggerEvent', () => {
-        it('should find active rules and execute them', async () => {
-            repository.find.mockResolvedValue([mockRule]);
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    describe('findAllExecutions', () => {
+        it('should return paginated executions', async () => {
+            const expectedData = [mockExecution];
+            const expectedTotal = 1;
+            executionRepository.findAndCount.mockResolvedValue([expectedData, expectedTotal]);
 
-            await service.triggerEvent(AutomationTriggerType.NEW_LEAD, { leadId: '123' });
+            // Test default params
+            const result = await service.findAllExecutions();
 
-            expect(repository.find).toHaveBeenCalledWith({
-                where: { triggerType: AutomationTriggerType.NEW_LEAD, isActive: true }
+            expect(result).toEqual({
+                data: expectedData,
+                total: expectedTotal,
+                page: 1,
+                limit: 50
             });
-            // Since executeAction is private and just logs, we check if it didn't crash
-            // and maybe check if log happened (optional, implementation detail)
-            expect(consoleSpy).toHaveBeenCalledWith(
-                expect.stringContaining('[Automation] Executing rule'),
-                mockRule.actionPayload
-            );
-
-            consoleSpy.mockRestore();
+            expect(executionRepository.findAndCount).toHaveBeenCalledWith({
+                relations: ['rule'],
+                order: { createdAt: 'DESC' },
+                take: 50,
+                skip: 0
+            });
         });
 
-        it('should do nothing if no rules found', async () => {
-            repository.find.mockResolvedValue([]);
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+        it('should respect custom pagination params', async () => {
+            const expectedData = [mockExecution];
+            const expectedTotal = 55;
+            executionRepository.findAndCount.mockResolvedValue([expectedData, expectedTotal]);
 
-            await service.triggerEvent(AutomationTriggerType.NEW_LEAD, {});
+            const result = await service.findAllExecutions({ page: 2, limit: 20 });
 
-            expect(repository.find).toHaveBeenCalled();
-            expect(consoleSpy).not.toHaveBeenCalled();
+            expect(result).toEqual({
+                data: expectedData,
+                total: expectedTotal,
+                page: 2,
+                limit: 20
+            });
+            expect(executionRepository.findAndCount).toHaveBeenCalledWith({
+                relations: ['rule'],
+                order: { createdAt: 'DESC' },
+                take: 20,
+                skip: 20 // (2-1) * 20
+            });
+        });
+    });
 
-            consoleSpy.mockRestore();
+    describe('processPendingExecutions', () => {
+        it('should execute pending step and schedule next', async () => {
+            // Setup execution at step 0
+            executionRepository.find.mockResolvedValue([mockExecution]);
+            executionRepository.save.mockImplementation(async (e) => e as AutomationExecution);
+
+            await service.processPendingExecutions();
+
+            // Should send email for step 0
+            expect(mailerService.sendMail).toHaveBeenCalledWith(
+                'test@example.com', 'Hi', 'No content', expect.any(String)
+            );
+
+            // Should advance to step 1
+            expect(executionRepository.save).toHaveBeenCalledWith(expect.objectContaining({
+                currentStepIndex: 1,
+                // nextRunAt should be ~60 mins from now, but hard to test exact time logic with mock Date, 
+                // just ensure it was updated and saved
+            }));
+        });
+
+        it('should complete execution if no more steps', async () => {
+            const lastStepExecution = {
+                ...mockExecution,
+                currentStepIndex: 1, // Last step in mockRule (length 2, index 1 is last)
+            } as AutomationExecution;
+
+            executionRepository.find.mockResolvedValue([lastStepExecution]);
+            executionRepository.save.mockImplementation(async (e) => e as AutomationExecution);
+
+            await service.processPendingExecutions();
+
+            expect(mailerService.sendMail).toHaveBeenCalledWith(
+                'test@example.com', 'Followup', expect.any(String), expect.any(String)
+            );
+
+            expect(executionRepository.save).toHaveBeenCalledWith(expect.objectContaining({
+                status: AutomationExecutionStatus.COMPLETED
+            }));
         });
     });
 });

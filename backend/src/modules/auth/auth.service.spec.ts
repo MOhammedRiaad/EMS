@@ -60,11 +60,22 @@ describe('AuthService', () => {
         passwordResetExpires: null,
     } as User;
 
+    const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn(),
+        getMany: jest.fn(),
+    };
+
     const mockUserRepository = {
         findOne: jest.fn(),
         find: jest.fn(),
         create: jest.fn(),
         save: jest.fn(),
+        createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
     };
 
     const mockJwtService = {
@@ -601,6 +612,7 @@ describe('AuthService', () => {
 
         it('should enable 2FA with valid token', async () => {
             const userWithSecret = { ...mockUser, twoFactorSecret: 'secret' } as User;
+            mockQueryBuilder.getOne.mockResolvedValue(userWithSecret);
             const result = await service.enableTwoFactor(userWithSecret, 'valid-token');
 
             expect(result).toHaveProperty('message');
@@ -611,7 +623,7 @@ describe('AuthService', () => {
 
         it('should verify 2FA login and return tokens', async () => {
             const userWith2FA = { ...mockUser, isTwoFactorEnabled: true, twoFactorSecret: 'secret' } as User;
-            mockUserRepository.findOne.mockResolvedValue(userWith2FA);
+            mockQueryBuilder.getOne.mockResolvedValue(userWith2FA);
             mockTenantsService.findOne.mockResolvedValue(mockTenant);
             mockJwtService.sign.mockReturnValue('mock-token');
 

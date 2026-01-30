@@ -32,12 +32,13 @@ describe('SessionsService', () => {
         roomId: 'room-123',
         coachId: 'coach-123',
         clientId: 'client-123',
-        startTime: new Date('2026-01-25T10:00:00Z'),
-        endTime: new Date('2026-01-25T10:20:00Z'),
+        startTime: new Date('2027-01-25T10:00:00Z'),
+        endTime: new Date('2027-01-25T10:20:00Z'),
         status: 'scheduled',
         room: { id: 'room-123', name: 'Room A', active: true },
         coach: { id: 'coach-123', user: { firstName: 'John' } },
         client: { id: 'client-123', firstName: 'Jane' },
+        clientPackageId: 'pkg-123',
     } as Session;
 
     const mockRoom = {
@@ -153,6 +154,7 @@ describe('SessionsService', () => {
                     useValue: {
                         getActivePackageForClient: jest.fn(),
                         getClientPackages: jest.fn(),
+                        findBestPackageForSession: jest.fn(),
                         useSession: jest.fn(),
                         returnSession: jest.fn(),
                     },
@@ -163,6 +165,13 @@ describe('SessionsService', () => {
                         checkAndUnlockAchievements: jest.fn().mockResolvedValue(undefined),
                         getClientAchievements: jest.fn(),
                         getClientGoals: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
                     },
                 },
             ],
@@ -336,6 +345,7 @@ describe('SessionsService', () => {
             studioRepository.findOne.mockResolvedValue(mockStudio);
             coachRepository.findOne.mockResolvedValue(mockCoach);
             packagesService.getActivePackageForClient.mockResolvedValue(mockActivePackage as any);
+            packagesService.findBestPackageForSession.mockResolvedValue(mockActivePackage as any);
             packagesService.getClientPackages.mockResolvedValue([mockActivePackage] as any);
             sessionRepository.count.mockResolvedValue(0);
             sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);
@@ -375,7 +385,7 @@ describe('SessionsService', () => {
 
             expect(result.status).toBe('completed');
             expect(sessionRepository.save).toHaveBeenCalled();
-            expect(packagesService.useSession).toHaveBeenCalled();
+            expect(packagesService.useSession).not.toHaveBeenCalled();
         });
 
         it('should trigger gamification check on completion', async () => {
@@ -396,7 +406,7 @@ describe('SessionsService', () => {
 
             await service.updateStatus('session-123', 'tenant-123', 'no_show');
 
-            expect(packagesService.useSession).toHaveBeenCalled();
+            expect(packagesService.useSession).not.toHaveBeenCalled();
         });
 
         it('should set cancelledAt when cancelling', async () => {
@@ -426,7 +436,13 @@ describe('SessionsService', () => {
 
             await service.updateStatus('session-123', 'tenant-123', 'cancelled', true);
 
-            expect(packagesService.useSession).toHaveBeenCalled();
+            // If session was already deducted on book, cancelling shouldn't deduct again unless we are "charging" for it?
+            // Actually, if we cancel, we usually REFUND. If override is TRUE (deductSession), it means "DON'T REFUND"?
+            // Or does it means "CHARGE NOW"?
+            // With consume-on-book, "deductSession=true" on cancel means "DO NOT REFUND".
+            // So we shouldn't call useSession, we just shouldn't call returnSession.
+            expect(packagesService.useSession).not.toHaveBeenCalled();
+            expect(packagesService.returnSession).not.toHaveBeenCalled();
         });
     });
 
@@ -479,6 +495,7 @@ describe('SessionsService', () => {
             studioRepository.findOne.mockResolvedValue(mockStudio);
             coachRepository.findOne.mockResolvedValue(mockCoach);
             packagesService.getActivePackageForClient.mockResolvedValue(mockActivePackage as any);
+            packagesService.findBestPackageForSession.mockResolvedValue(mockActivePackage as any);
             packagesService.getClientPackages.mockResolvedValue([mockActivePackage] as any);
             sessionRepository.count.mockResolvedValue(0);
             sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);

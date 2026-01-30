@@ -36,6 +36,7 @@ import { ParqModule } from './modules/parq/parq.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { MarketingModule } from './modules/marketing/marketing.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -124,6 +125,7 @@ import { MarketingModule } from './modules/marketing/marketing.module';
     CalendarModule,
     LeadsModule,
     MarketingModule,
+    AuditModule,
   ],
   controllers: [HealthController],
   providers: [

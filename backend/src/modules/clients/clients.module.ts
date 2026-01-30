@@ -9,13 +9,15 @@ import { MailerModule } from '../mailer/mailer.module';
 
 import { Transaction } from '../packages/entities/transaction.entity';
 import { WaiversModule } from '../waivers/waivers.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto]),
         AuthModule,
         MailerModule,
-        forwardRef(() => WaiversModule)
+        forwardRef(() => WaiversModule),
+        AuditModule
     ],
     controllers: [ClientsController],
     providers: [ClientsService],

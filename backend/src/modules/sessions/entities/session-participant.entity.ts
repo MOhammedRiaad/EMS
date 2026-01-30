@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { TenantScopedEntity } from '../../../common/entities';
 import { Session } from './session.entity';
 import { Client } from '../../clients/entities/client.entity';
+import { ClientPackage } from '../../packages/entities/client-package.entity';
 
 @Entity('session_participants')
 export class SessionParticipant extends TenantScopedEntity {
@@ -28,4 +29,11 @@ export class SessionParticipant extends TenantScopedEntity {
         default: 'scheduled',
     })
     status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+
+    @Column({ name: 'client_package_id', type: 'uuid', nullable: true })
+    clientPackageId: string | null;
+
+    @ManyToOne(() => ClientPackage, { onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'client_package_id' })
+    clientPackage: ClientPackage;
 }

@@ -280,8 +280,7 @@ const Dashboard: React.FC = () => {
                 />
             </div>
 
-            {/* Notifications Widget */}
-            <NotificationsWidget />
+
         </div>
     );
 };

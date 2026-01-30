@@ -25,6 +25,7 @@ export interface Coach {
 // Flattened interface for UI display
 export interface CoachDisplay {
     id: string;
+    userId: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -42,6 +43,7 @@ export interface CoachDisplay {
 export function transformCoachForDisplay(coach: Coach): CoachDisplay {
     return {
         id: coach.id,
+        userId: coach.userId,
         firstName: coach.user?.firstName || '',
         lastName: coach.user?.lastName || '',
         email: coach.user?.email || '',
@@ -67,8 +69,9 @@ export interface CreateCoachInput {
 }
 
 export const coachesService = {
-    async getAll(): Promise<CoachDisplay[]> {
-        const coaches: Coach[] = await authenticatedFetch('/coaches');
+    async getAll(search?: string): Promise<CoachDisplay[]> {
+        const query = search ? `?search=${encodeURIComponent(search)}` : '';
+        const coaches: Coach[] = await authenticatedFetch(`/coaches${query}`);
         return coaches.map(transformCoachForDisplay);
     },
 

@@ -17,6 +17,8 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@radix-ui/react-tooltip": "^1.2.8",
     "antd": "^6.2.1",
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "lucide-react": "^0.562.0",
@@ -24,13 +26,15 @@
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0",
     "react-signature-canvas": "^1.1.0-alpha.2",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",

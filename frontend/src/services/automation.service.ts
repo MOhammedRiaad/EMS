@@ -24,8 +24,9 @@ export interface AutomationRule {
     name: string;
     triggerType: AutomationTriggerType;
     conditions: any;
-    actionType: AutomationActionType;
-    actionPayload: any;
+    actionType?: AutomationActionType;
+    actionPayload?: any;
+    actions?: { id: string; type: AutomationActionType; delayMinutes: number; payload: any; order: number }[];
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -35,8 +36,9 @@ export interface CreateAutomationRuleDto {
     name: string;
     triggerType: AutomationTriggerType;
     conditions?: any;
-    actionType: AutomationActionType;
-    actionPayload: any;
+    actionType?: AutomationActionType;
+    actionPayload?: any;
+    actions?: { id: string; type: AutomationActionType; delayMinutes: number; payload: any; order: number }[];
     isActive?: boolean;
 }
 
@@ -61,7 +63,25 @@ export const automationService = {
         return res.data;
     },
 
+    async getExecutions() {
+        const res = await api.get<AutomationExecution[]>('/marketing/automations/executions');
+        return res.data;
+    },
+
+
+
     async delete(id: string) {
         await api.delete(`/marketing/automations/${id}`);
     }
 };
+
+export interface AutomationExecution {
+    id: string;
+    ruleId: string;
+    rule: AutomationRule;
+    entityId: string;
+    status: 'pending' | 'completed' | 'failed' | 'cancelled';
+    currentStepIndex: number;
+    nextRunAt: string;
+    createdAt: string;
+}

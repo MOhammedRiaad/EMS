@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ClientsService } from './clients.service';
@@ -21,8 +21,8 @@ export class ClientsController {
 
     @Get()
     @ApiOperation({ summary: 'List all clients for tenant' })
-    findAll(@TenantId() tenantId: string) {
-        return this.clientsService.findAll(tenantId);
+    findAll(@TenantId() tenantId: string, @Query('search') search?: string) {
+        return this.clientsService.findAll(tenantId, search);
     }
 
     @Get(':id')

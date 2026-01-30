@@ -11,6 +11,7 @@ import { CoachesService } from '../coaches/coaches.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+import { ClientProgressPhoto } from '../clients/entities/client-progress-photo.entity';
 
 @Injectable()
 export class ClientPortalService {
@@ -23,6 +24,8 @@ export class ClientPortalService {
         private readonly authService: AuthService,
         @InjectRepository(FavoriteCoach)
         private readonly favoriteCoachRepo: Repository<FavoriteCoach>,
+        @InjectRepository(ClientProgressPhoto)
+        private readonly progressPhotoRepo: Repository<ClientProgressPhoto>,
     ) { }
 
     // ... existing code ...
@@ -46,40 +49,32 @@ export class ClientPortalService {
         const allScheduledSessions = await this.sessionsService.findAll(tenantId, {
             clientId,
             status: 'scheduled',
+            from: new Date().toISOString(),
         });
         const scheduledCount = allScheduledSessions.length;
 
-        // 2. Get active package (priority to the one with sessions remaining and not expired)
-        const packages = await this.packagesService.getClientPackages(clientId, tenantId);
+        // 2. Get active package to display
+        // We prioritize the package that will be used for the next booking (oldest active)
+        const activePackage = await this.packagesService.findBestPackageForSession(clientId, tenantId);
 
-        // Filter for active packages
-        const activePackages = packages.filter(p =>
-            p.status === ClientPackageStatus.ACTIVE &&
-            p.sessionsRemaining > 0 &&
-            new Date(p.expiryDate) > new Date()
-        );
-
-        // Sort by expiry date (soonest first)
-        activePackages.sort((a, b) => {
-            const dateA = new Date(a.expiryDate).getTime();
-            const dateB = new Date(b.expiryDate).getTime();
-            return dateA - dateB;
-        });
-
-        const activePackage = activePackages[0] || null;
-
-        // Calculate available sessions for client
-        const scheduledSessionsCount = scheduledCount;
-        const availableSessions = activePackage
-            ? activePackage.sessionsRemaining - scheduledSessionsCount
-            : 0;
+        // If no active package with sessions, maybe try to find ANY active package to show?
+        // Or just return null. 
+        // Let's try to find an active package even if 0 scheduled (already handled by findBestPackage? No, that requires > 0)
+        // Fallback: Get most recent package if 'best' (consumable) is not found
+        let displayPackage = activePackage;
+        if (!displayPackage) {
+            const packages = await this.packagesService.getClientPackages(clientId, tenantId);
+            displayPackage = packages.find(p => p.status === ClientPackageStatus.ACTIVE) || packages[0] || null;
+        }
 
         return {
             nextSession,
-            activePackage: activePackage ? {
-                ...activePackage,
-                scheduledSessions: scheduledSessionsCount,
-                availableSessions: availableSessions,
+            activePackage: displayPackage ? {
+                ...displayPackage,
+                // Now simple: sessionsRemaining IS the available count.
+                // We don't deduct scheduled sessions again because they are already deducted on book!
+                availableSessions: displayPackage.sessionsRemaining,
+                scheduledSessions: displayPackage.sessionsUsed, // usage history
             } : null,
         };
     }
@@ -221,6 +216,11 @@ export class ClientPortalService {
             gender: client.user?.gender || (client as any).gender,
             privacyPreferences: client.privacyPreferences,
             consentFlags: client.consentFlags,
+            // Extended fields
+            healthGoals: client.healthGoals,
+            medicalHistory: client.medicalHistory, // Check privacy requirements if this should be full or partial
+            healthNotes: client.healthNotes,
+            isTwoFactorEnabled: client.user?.isTwoFactorEnabled || false,
         };
     }
 
@@ -234,7 +234,7 @@ export class ClientPortalService {
         return this.coachesService.findActive(tenantId, clientGender);
     }
 
-    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string; privacyPreferences?: any; consentFlags?: any }) {
+    async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string; privacyPreferences?: any; consentFlags?: any; healthGoals?: any[]; healthNotes?: string; medicalHistory?: any; }) {
         const client = await this.clientsService.findOne(clientId, tenantId, ['user']);
 
         if (!client) {
@@ -249,6 +249,9 @@ export class ClientPortalService {
         if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
         if ((dto as any).privacyPreferences !== undefined) updateData.privacyPreferences = (dto as any).privacyPreferences;
         if ((dto as any).consentFlags !== undefined) updateData.consentFlags = (dto as any).consentFlags;
+        if (dto.healthGoals !== undefined) updateData.healthGoals = dto.healthGoals;
+        if (dto.healthNotes !== undefined) updateData.healthNotes = dto.healthNotes;
+        if (dto.medicalHistory !== undefined) updateData.medicalHistory = dto.medicalHistory;
 
         let clientUpdated = client;
         if (Object.keys(updateData).length > 0) {
@@ -272,6 +275,7 @@ export class ClientPortalService {
             gender: updatedGender,
             privacyPreferences: clientUpdated.privacyPreferences,
             consentFlags: clientUpdated.consentFlags,
+            healthGoals: clientUpdated.healthGoals,
         };
     }
 
@@ -337,5 +341,34 @@ export class ClientPortalService {
             ...f.coach,
             favoritedAt: f.favoritedAt
         }));
+    }
+
+    // Progress Photos
+    async getProgressPhotos(clientId: string, tenantId: string) {
+        return this.progressPhotoRepo.find({
+            where: { clientId, tenantId },
+            order: { takenAt: 'DESC' }
+        });
+    }
+
+    async addProgressPhoto(clientId: string, tenantId: string, dto: { photoUrl: string; notes?: string; type?: 'front' | 'back' | 'side' | 'other'; takenAt?: Date }) {
+        const photo = this.progressPhotoRepo.create({
+            clientId,
+            tenantId,
+            ...dto
+        });
+        return this.progressPhotoRepo.save(photo);
+    }
+
+    async deleteProgressPhoto(clientId: string, tenantId: string, photoId: string) {
+        const photo = await this.progressPhotoRepo.findOne({ where: { id: photoId, tenantId } });
+        if (!photo) throw new Error('Photo not found');
+
+        if (photo.clientId !== clientId) {
+            throw new Error('Unauthorized');
+        }
+
+        await this.progressPhotoRepo.remove(photo);
+        return { message: 'Photo deleted' };
     }
 }

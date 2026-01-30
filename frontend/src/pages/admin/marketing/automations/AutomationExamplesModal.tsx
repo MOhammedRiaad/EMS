@@ -12,23 +12,33 @@ const EXAMPLES = [
         title: 'Welcome Email',
         description: 'Send a warm welcome email immediately when a new lead is created.',
         triggerType: 'new_lead',
-        actionType: 'send_email',
+        actions: [
+            {
+                type: 'send_email',
+                delayMinutes: 0,
+                payload: {
+                    subject: 'Welcome to EMS Studio!',
+                    templateId: 'welcome_v1'
+                }
+            }
+        ],
         icon: Mail,
-        payload: {
-            subject: 'Welcome to EMS Studio!',
-            templateId: 'welcome_v1'
-        },
         conditions: {}
     },
     {
         title: 'Re-engagement Campaign',
         description: 'Text clients who haven\'t booked a session in 30 days.',
         triggerType: 'inactive_client',
-        actionType: 'send_sms',
+        actions: [
+            {
+                type: 'send_sms',
+                delayMinutes: 0,
+                payload: {
+                    message: 'We miss you! Come back for a session and get 10% off.'
+                }
+            }
+        ],
         icon: MessageSquare,
-        payload: {
-            message: 'We miss you! Come back for a session and get 10% off.'
-        },
         conditions: {
             daysSinceLastSession: 30
         }
@@ -37,27 +47,36 @@ const EXAMPLES = [
         title: 'Birthday Discount',
         description: 'Send a birthday wish and discount code on their special day.',
         triggerType: 'birthday',
-        actionType: 'send_email',
+        actions: [
+            {
+                type: 'send_email',
+                delayMinutes: 0,
+                payload: {
+                    subject: 'Happy Birthday! Here is a gift for you',
+                    templateId: 'birthday_promo'
+                }
+            }
+        ],
         icon: Gift,
-        payload: {
-            subject: 'Happy Birthday! Here is a gift for you',
-            templateId: 'birthday_promo'
-        },
         conditions: {}
     },
     {
         title: 'Lead Follow-up',
         description: 'Create a task for staff to call a lead if they haven\'t converted after 3 days.',
         triggerType: 'lead_status_changed',
-        actionType: 'create_task',
+        actions: [
+            {
+                type: 'create_task',
+                delayMinutes: 4320, // 3 days
+                payload: {
+                    taskTitle: 'Follow up with lead',
+                    priority: 'high'
+                }
+            }
+        ],
         icon: Bell,
-        payload: {
-            taskTitle: 'Follow up with lead',
-            priority: 'high'
-        },
         conditions: {
-            newStatus: 'new', // Logic would assume checking time passed, but this sets the base
-            daysPending: 3 // Hypothetical condition handling
+            newStatus: 'new'
         }
     }
 ];
@@ -104,7 +123,7 @@ const AutomationExamplesModal: React.FC<AutomationExamplesModalProps> = ({ isOpe
                             <div className="flex items-center text-xs text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3">
                                 <div className="flex flex-col">
                                     <span className="uppercase tracking-wide font-semibold mb-1">Action</span>
-                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{example.actionType.replace('_', ' ')}</span>
+                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{example.actions[0].type.replace('_', ' ')}</span>
                                 </div>
                             </div>
                         </div>

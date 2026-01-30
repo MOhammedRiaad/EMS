@@ -71,6 +71,14 @@ export class User extends TenantScopedEntityWithUpdate {
     @Exclude()
     calendarToken: string | null;
 
+    @Column({ name: 'notification_preferences', type: 'jsonb', nullable: true })
+    notificationPreferences: {
+        email: boolean;
+        sms: boolean;
+        push: boolean;
+        marketing: boolean;
+    } | null;
+
     @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
     lastLoginAt: Date | null;
 

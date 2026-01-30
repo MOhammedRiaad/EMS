@@ -6,7 +6,6 @@ import {
     ActivePackageCard,
     WaitingListCard,
     QuickActionsCard,
-    BookingPromoCard,
     FloatingBookButton
 } from './ClientHomeComponents';
 import { ActivityFeed } from '../../components/client/social/ActivityFeed';
@@ -78,9 +77,6 @@ const ClientHome = () => {
                             />
                             <QuickActionsCard />
                         </section>
-                        <div className="mt-6">
-                            <BookingPromoCard />
-                        </div>
                     </div>
 
                     {/* Sidebar Column */}

@@ -92,6 +92,13 @@ describe('PackagesService', () => {
                         createQueryBuilder: jest.fn(),
                     },
                 },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+                    },
+                },
             ],
         }).compile();
 
@@ -445,7 +452,7 @@ describe('PackagesService', () => {
 
             await service.createTransaction({
                 type: TransactionType.EXPENSE,
-                category: TransactionCategory.RENT,
+                category: TransactionCategory.OTHER,
                 amount: 200,
                 description: 'Monthly rent',
             }, 'tenant-123', 'user-123');

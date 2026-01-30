@@ -1,7 +1,7 @@
 # EMS Studio - Implementation Roadmap
 
-> **Last Updated**: January 27, 2026  
-> **Status**: ✅ Phase 3 Complete - Moving to Phase 4
+> **Last Updated**: January 29, 2026  
+> **Status**: ✅ Phase 3 Complete - Phase 4 In Progress (Gap Remediation Complete)
 
 ---
 
@@ -15,10 +15,11 @@
 - **Redis Caching** and **MinIO Storage** configured
 
 ### ⚠️ Critical Gaps Identified
-- ❌ **Zero automated tests** (highest priority)
-- ❌ **No monitoring/logging infrastructure**
-- ❌ **Missing security features** (password reset, 2FA, rate limiting)
-- ❌ **Limited documentation**
+### ⚠️ Critical Gaps Identified
+- ✅ **Automated tests** (Implemented in Phase 1.1)
+- ✅ **Monitoring/logging infrastructure** (Implemented in Phase 1.2)
+- ✅ **Security features** (2FA, Password Reset, Rate Limiting - Fully Implemented)
+- ✅ **Documentation** (Guides created)
 
 ---
 
@@ -72,6 +73,7 @@
 - [x] Account lockout after failed attempts
 - [x] Security headers (CORS, CSP, HSTS)
 - [x] Data encryption for sensitive fields
+- [x] **New**: 2FA Enforcement for Staff (Admin Settings)
 
 #### 1.4 Documentation
 - [x] Update main README with screenshots
@@ -187,21 +189,24 @@
 - [x] Auto-add sessions to client calendars (via iCal feed)
 
 #### 4.2 Marketing Automation & Lead CRM (Expanded) ⭐
-- [ ] **Lead Pipeline Board**: Kanban view (New -> Contacted -> Trial -> Converted)
-- [ ] **Lead Source Tracking**: Attribution (Facebook, Walk-in, Referral)
-- [ ] **"Smart Triggers" Engine**: (Inactive Client, Birthday, Low Balance)
-- [ ] **Automated Email/SMS Drip Campaigns**: Onboarding flows
+- [x] **Lead Pipeline Board**: Kanban view (New -> Contacted -> Trial -> Converted)
+- [x] **Lead Source Tracking**: Attribution (Facebook, Walk-in, Referral)
+- [x] **"Smart Triggers" Engine**: (Inactive Client, Birthday, Low Balance)
+- [x] **Automated Email/SMS Drip Campaigns**: Onboarding flows (Persistent Execution Engine)
+  - [x] **Automation Rule Editor**: Multi-step sequence builder
+  - [x] **Execution Queue**: Admin view for monitoring active campaigns
+  - [x] **Examples Library**: Quick-start templates modal
 - [ ] **Push Notifications for PWA**: Re-engagement
 
 
-#### 4.3 Notification Enhancements
-- [ ] SMS notifications (Twilio)
-- [ ] In-app notification center
-- [ ] Notification preferences management
-- [ ] Notification templates
+#### 4.3 Notification Enhancements ✅
+- [x] SMS notifications (Twilio)
+- [x] In-app notification center
+- [x] Notification preferences management
+- [x] Notification templates
 
 #### 4.4 Growth Tools (New)
-- [ ] Referral Program ("Give $20, Get $20" logic)
+- [-] Referral Program ("Give $20, Get $20" logic) (Deferred)
 - [ ] Guest/Family Account Linking (Shared Credits)
 - [ ] First-class ClassPass/Aggregator API support
 
@@ -222,7 +227,7 @@
 - [ ] English translations
 - [ ] RTL layout configuration
 - [ ] Date/time/currency localization
-- [ ] Language switcher component
+- [x] Language selector in Admin Settings (System Preference)
 
 ---
 
@@ -330,15 +335,11 @@
 
 ## 📝 Progress Tracking
 
-### Current Sprint: Phase 4 Start 🚀
+### Current Sprint: Phase 4 & Polish 🚀
 
-**Progress**: 100% of Phase 3 Complete ✅
-- ✅ **3.1 Tenant Settings**: Custom branding & logos
-- ✅ **3.2 Enhanced Client Profiles**: Goals & Progress tracking
-- ✅ **3.3 Coach Availability**: Visual editor & exclusions
-- ✅ **3.4 Recurring Sessions**: Series management & bulk updates
+**Progress**: Phase 4 well underway ✅
 
-**Status**: In Progress (January 27, 2026)
+**Status**: In Progress (January 28, 2026)
 
 ### Completed Milestones
 - ✅ Project foundation & Core Phases 1 & 2
@@ -346,10 +347,13 @@
 - ✅ Phase 3.2 Enhanced Client Profiles
 - ✅ Phase 3.3 Coach Availability Management
 - ✅ Phase 3.4 Recurring Sessions
+- ✅ Phase 4.1 Calendar Integration
+- ✅ Phase 4.2 Marketing Automation (Drip Campaigns, Rules, Queue)
+- ✅ Phase 4.3 Notification Enhancements (In-App Center)
 
 ### Next Milestones
-- ⏳ Phase 4.1 Calendar Integration
-- ⏳ Phase 4.2 Marketing Automation
+- ⏳ Phase 4.7 Internationalization (Pre-Release)
+- ⏳ Phase 4.4 Growth Tools
 
 ---
 

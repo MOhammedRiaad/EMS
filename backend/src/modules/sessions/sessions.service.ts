@@ -21,6 +21,8 @@ export interface ConflictResult {
     }>;
 }
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class SessionsService {
     private readonly logger = new Logger(SessionsService.name);
@@ -40,6 +42,7 @@ export class SessionsService {
         private clientsService: ClientsService,
         private packagesService: PackagesService,
         private gamificationService: GamificationService,
+        private readonly auditService: AuditService,
     ) { }
 
 
@@ -111,14 +114,27 @@ export class SessionsService {
             await this.validateCoachGenderPreference(dto.coachId, dto.clientId, tenantId);
         }
 
-        // Validate client has remaining sessions in their package
-        if (dto.clientId) {
-            await this.validateClientHasRemainingSessions(dto.clientId, tenantId);
+        // Deduct session from package immediately (Consume-on-Book)
+        let clientPackageId: string | null = null;
+        if (dto.clientId && (!dto.type || dto.type === 'individual')) {
+            const bestPackage = await this.packagesService.findBestPackageForSession(dto.clientId, tenantId);
+
+            if (!bestPackage) {
+                throw new BadRequestException('Client does not have an active package with remaining sessions. Please renew.');
+            }
+
+            await this.packagesService.useSession(bestPackage.id, tenantId);
+            clientPackageId = bestPackage.id;
         }
 
         // Check for conflicts
         const conflicts = await this.checkConflicts(dto, tenantId);
         if (conflicts.hasConflicts) {
+            // Rollback deduction if conflict?
+            // Since we awaited useSession, we must return it if we fail here.
+            if (clientPackageId) {
+                await this.packagesService.returnSession(clientPackageId, tenantId);
+            }
             throw new BadRequestException({
                 message: 'Scheduling conflict detected',
                 conflicts: conflicts.conflicts,
@@ -135,6 +151,7 @@ export class SessionsService {
             isRecurringParent: isRecurring,
             recurrencePattern: dto.recurrencePattern || null,
             recurrenceEndDate: dto.recurrenceEndDate ? new Date(dto.recurrenceEndDate) : null,
+            clientPackageId, // Link session to package
         });
 
         const savedSession = await this.sessionRepository.save(session);
@@ -162,7 +179,24 @@ export class SessionsService {
             }
         }
 
-        return savedSession;
+        const finalSession = await this.sessionRepository.save(savedSession);
+
+        // Log Booking
+        await this.auditService.log(
+            tenantId,
+            'BOOK_SESSION',
+            'Session',
+            finalSession.id,
+            'API_USER',
+            {
+                clientId: dto.clientId,
+                coachId: dto.coachId,
+                startTime: finalSession.startTime,
+                room: dto.roomId
+            }
+        );
+
+        return finalSession;
     }
 
     async createBulk(bulkDto: BulkCreateSessionDto, tenantId: string): Promise<{ created: number, errors: any[] }> {
@@ -650,8 +684,22 @@ export class SessionsService {
             }
         }
 
+        const originalTime = session.startTime.getTime();
         Object.assign(session, dto);
-        return this.sessionRepository.save(session);
+        const saved = await this.sessionRepository.save(session);
+
+        if (dto.startTime && new Date(dto.startTime).getTime() !== originalTime) {
+            await this.auditService.log(
+                tenantId,
+                'RESCHEDULE_SESSION',
+                'Session',
+                saved.id,
+                'API_USER',
+                { oldTime: new Date(originalTime), newTime: saved.startTime }
+            );
+        }
+
+        return saved;
     }
 
 
@@ -908,62 +956,83 @@ export class SessionsService {
 
         if (status === 'cancelled') {
             session.cancelledAt = new Date();
+            await this.auditService.log(
+                tenantId,
+                'CANCEL_SESSION',
+                'Session',
+                id,
+                'API_USER', // TODO: Pass user
+                { previousStatus: previousStatus }
+            );
         }
 
-        // Handle Individual Session Package Logic (Group sessions handled via SessionParticipantsService)
+        // Handle Individual Session Package Logic
+        // For group sessions, this logic is in SessionParticipantsService (or should be invoked from there)
         if (session.type !== 'group' && session.clientId) {
-            const isConsuming = ['completed', 'no_show'].includes(status);
-            const wasConsuming = ['completed', 'no_show'].includes(previousStatus);
+            const isCancelled = status === 'cancelled';
+            const wasCancelled = previousStatus === 'cancelled';
 
-            if (isConsuming && !wasConsuming) {
-                // Status changed to Consumed (Completed/No-Show) -> Deduct
-                // Check if already deducted? We assume "scheduled" didn't deduct.
-                const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
-                if (activePackage) {
-                    await this.packagesService.useSession(activePackage.id, tenantId);
-                    this.logger.log(`Deducted session for client ${session.clientId} (Status: ${status})`);
+            if (isCancelled && !wasCancelled) {
+                // Session Cancelled -> Check if we should refund
+                let shouldRefund = false;
 
-                    // Trigger gamification on completion
-                    if (status === 'completed') {
-                        this.gamificationService.checkAndUnlockAchievements(session.clientId, tenantId)
-                            .catch(err => this.logger.error(`Failed to check achievements for client ${session.clientId}`, err));
-                    }
-                }
-            } else if (!isConsuming && wasConsuming) {
-                // Status changed FROM Consumed TO Non-Consumed (e.g. Cancelled) -> Refund
-                const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
-                if (activePackage) {
-                    await this.packagesService.returnSession(activePackage.id, tenantId);
-                    this.logger.log(`Refunded session for client ${session.clientId} (Status: ${previousStatus} -> ${status})`);
-                }
-            } else if (status === 'cancelled' && previousStatus === 'scheduled') {
-                // Scheduled -> Cancelled
-                // Logic for late cancellation deduction
-
-                let shouldDeduct = false;
-                if (deductSession !== undefined) {
-                    shouldDeduct = deductSession;
+                if (deductSession === false) {
+                    // Explicitly told NOT to deduct (which means REFUND, since we deducted at booking)
+                    shouldRefund = true;
+                } else if (deductSession === true) {
+                    // Explicitly told to deduct (keep deduction) -> No refund
+                    shouldRefund = false;
                 } else {
-                    // Check policy
+                    // Check Policy
                     const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
-                    const cancellationWindowHours = tenant?.settings?.cancellationWindowHours || 48;
+                    const cancellationWindowHours = tenant?.settings?.cancellationWindowHours || 48; // Default 48h
 
                     const now = new Date();
                     const sessionTime = new Date(session.startTime);
                     const hoursUntilSession = (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-                    if (hoursUntilSession < cancellationWindowHours) {
-                        shouldDeduct = true; // Late cancel
+                    if (hoursUntilSession >= cancellationWindowHours) {
+                        shouldRefund = true; // Early enough to refund
+                    } else {
+                        this.logger.log(`Late cancellation for session ${id}. No refund.`);
+                        shouldRefund = false;
                     }
                 }
 
-                if (shouldDeduct) {
-                    const activePackage = await this.packagesService.getActivePackageForClient(session.clientId, tenantId);
-                    if (activePackage) {
-                        await this.packagesService.useSession(activePackage.id, tenantId);
-                        this.logger.log(`Late cancellation deduction for client ${session.clientId}`);
-                    }
+                if (shouldRefund && session.clientPackageId) {
+                    await this.packagesService.returnSession(session.clientPackageId, tenantId);
+                    this.logger.log(`Refunded session for client ${session.clientId} (Package: ${session.clientPackageId})`);
                 }
+            } else if (!isCancelled && wasCancelled) {
+                // Resurrecting a cancelled session? -> Deduct again!
+                // "Un-cancel"
+                // We need to find a package again because the old one might be expired or full? 
+                // Or we re-use the old ID if valid.
+                // Simplest: Try reusing clientPackageId.
+                if (session.clientPackageId) {
+                    // Check if package is valid?
+                    // For simplicity, just try to use it.
+                    try {
+                        await this.packagesService.useSession(session.clientPackageId, tenantId);
+                        this.logger.log(`Re-deducted session for client ${session.clientId} (Un-cancelled)`);
+                    } catch (e) {
+                        // If fails (e.g. package expired), throw error?
+                        // "Cannot uncancel session: package invalid"
+                        throw new BadRequestException('Cannot restore session: Linked package is no longer valid for deduction.');
+                    }
+                } else {
+                    // If no package linked (legacy?), try find best.
+                    const bestPackage = await this.packagesService.findBestPackageForSession(session.clientId, tenantId);
+                    if (!bestPackage) throw new BadRequestException('No active package to cover this session.');
+                    await this.packagesService.useSession(bestPackage.id, tenantId);
+                    session.clientPackageId = bestPackage.id;
+                }
+            }
+
+            // Gamification still triggers on completion
+            if (status === 'completed' && previousStatus !== 'completed') {
+                this.gamificationService.checkAndUnlockAchievements(session.clientId, tenantId)
+                    .catch(err => this.logger.error(`Failed to check achievements for client ${session.clientId}`, err));
             }
         }
 

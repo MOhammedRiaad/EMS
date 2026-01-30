@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Mail, Phone, User, Edit, Trash2, Clock, MessageSquare, UserPlus } from 'lucide-react';
-import { type Lead } from '../../../../services/lead.service';
+import { leadService, type Lead } from '../../../../services/lead.service';
 
 interface LeadDetailsModalProps {
     isOpen: boolean;
@@ -12,7 +12,34 @@ interface LeadDetailsModalProps {
 }
 
 const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, lead, onEdit, onConvert, onDelete }) => {
-    if (!isOpen || !lead) return null;
+    const [fullLead, setFullLead] = React.useState<Lead | null>(null);
+    const [loading, setLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        if (isOpen && lead) {
+            loadFullLead(lead.id);
+        } else {
+            setFullLead(null);
+        }
+    }, [isOpen, lead]);
+
+    const loadFullLead = async (id: string) => {
+        setLoading(true);
+        try {
+            const data = await leadService.getOne(id);
+            setFullLead(data);
+        } catch (error) {
+            console.error('Failed to load full lead details', error);
+            // Fallback to basic lead info if fetch fails
+            setFullLead(lead);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const activeLead = fullLead || lead; // Use full details if available, else props
+
+    if (!isOpen || !activeLead) return null;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -32,17 +59,17 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                 <div className="flex justify-between items-start p-6 border-b border-gray-200 dark:border-gray-800">
                     <div className="flex items-start gap-4">
                         <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-xl">
-                            {lead.firstName[0]}{lead.lastName[0]}
+                            {activeLead.firstName[0]}{activeLead.lastName[0]}
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                                {lead.firstName} {lead.lastName}
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium uppercase ${getStatusColor(lead.status)}`}>
-                                    {lead.status.replace('_', ' ')}
+                                {activeLead.firstName} {activeLead.lastName}
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium uppercase ${getStatusColor(activeLead.status)}`}>
+                                    {activeLead.status.replace('_', ' ')}
                                 </span>
                             </h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                                <Clock size={14} /> Created {new Date(lead.createdAt).toLocaleDateString()}
+                                <Clock size={14} /> Created {new Date(activeLead.createdAt).toLocaleDateString()}
                             </p>
                         </div>
                     </div>
@@ -61,12 +88,12 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
                                         <Mail size={16} className="text-gray-400" />
-                                        <a href={`mailto:${lead.email}`} className="hover:text-purple-600 truncate">{lead.email}</a>
+                                        <a href={`mailto:${activeLead.email}`} className="hover:text-purple-600 truncate">{activeLead.email}</a>
                                     </div>
-                                    {lead.phone && (
+                                    {activeLead.phone && (
                                         <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
                                             <Phone size={16} className="text-gray-400" />
-                                            <a href={`tel:${lead.phone}`} className="hover:text-purple-600">{lead.phone}</a>
+                                            <a href={`tel:${activeLead.phone}`} className="hover:text-purple-600">{activeLead.phone}</a>
                                         </div>
                                     )}
                                 </div>
@@ -74,10 +101,10 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
 
                             <div>
                                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Assigned To</h3>
-                                {lead.assignedTo ? (
+                                {activeLead.assignedTo ? (
                                     <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
                                         <User size={16} className="text-gray-400" />
-                                        <span>{lead.assignedTo.firstName} {lead.assignedTo.lastName}</span>
+                                        <span>{activeLead.assignedTo.firstName} {activeLead.assignedTo.lastName}</span>
                                     </div>
                                 ) : (
                                     <span className="text-sm text-gray-400 italic">Unassigned</span>
@@ -87,14 +114,14 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                             <div>
                                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Source</h3>
                                 <div className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg inline-block">
-                                    {lead.source || 'Unknown'}
+                                    {activeLead.source || 'Unknown'}
                                 </div>
                             </div>
 
                             <div>
                                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Notes</h3>
                                 <div className="text-sm text-gray-600 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-lg border border-yellow-100 dark:border-yellow-900/20">
-                                    {lead.notes || 'No notes added.'}
+                                    {activeLead.notes || 'No notes added.'}
                                 </div>
                             </div>
                         </div>
@@ -106,23 +133,36 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                             </h3>
 
                             <div className="relative space-y-6 before:absolute before:inset-0 before:ml-2.5 before:w-0.5 before:-translate-x-1/2 before:bg-gray-200 dark:before:bg-gray-700 before:h-full">
-                                {/* Current mock activities - ideally these come from lead.activities */}
-                                <div className="relative flex items-start gap-4">
-                                    <div className="absolute left-0 ml-2.5 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-purple-600"></div>
-                                    <div className="flex-1 pt-0.5">
-                                        <p className="text-sm text-gray-900 dark:text-white font-medium">Lead Created</p>
-                                        <p className="text-xs text-gray-500">{new Date(lead.createdAt).toLocaleString()}</p>
-                                    </div>
-                                </div>
+                                {loading && !activeLead.activities ? (
+                                    <div className="p-4 text-center text-sm text-gray-500">Loading activities...</div>
+                                ) : (
+                                    <>
+                                        {activeLead.activities?.map(activity => (
+                                            <div key={activity.id} className="relative flex items-start gap-4">
+                                                <div className="absolute left-0 ml-2.5 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-blue-500"></div>
+                                                <div className="flex-1 pt-0.5">
+                                                    <p className="text-sm text-gray-900 dark:text-white font-medium">
+                                                        {activity.content}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                        <span>{new Date(activity.createdAt).toLocaleString()}</span>
+                                                        {activity.createdBy && (
+                                                            <span>• by {activity.createdBy.firstName}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
 
-                                {/* Placeholder for real activities */}
-                                {/* 
-                                {lead.activities?.map(activity => (
-                                    <div key={activity.id} className="relative flex items-start gap-4">
-                                        ...
-                                    </div>
-                                ))} 
-                                */}
+                                        <div className="relative flex items-start gap-4">
+                                            <div className="absolute left-0 ml-2.5 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-purple-600"></div>
+                                            <div className="flex-1 pt-0.5">
+                                                <p className="text-sm text-gray-900 dark:text-white font-medium">Lead Created</p>
+                                                <p className="text-xs text-gray-500">{new Date(activeLead.createdAt).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -131,20 +171,20 @@ const LeadDetailsModal: React.FC<LeadDetailsModalProps> = ({ isOpen, onClose, le
                 {/* Footer / Actions */}
                 <div className="p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-800/50 rounded-b-2xl flex justify-end gap-3">
                     <button
-                        onClick={() => onDelete(lead)}
+                        onClick={() => onDelete(activeLead)}
                         className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
                     >
                         <Trash2 size={16} /> Delete
                     </button>
                     <button
-                        onClick={() => onEdit(lead)}
+                        onClick={() => onEdit(activeLead)}
                         className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-700 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors text-sm font-medium"
                     >
                         <Edit size={16} /> Edit
                     </button>
-                    {lead.status !== 'converted' && (
+                    {activeLead.status !== 'converted' && (
                         <button
-                            onClick={() => onConvert(lead)}
+                            onClick={() => onConvert(activeLead)}
                             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors text-sm font-medium shadow-sm shadow-green-600/20"
                         >
                             <UserPlus size={16} /> Convert to Client

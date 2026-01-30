@@ -20,7 +20,7 @@ describe('ReviewsService', () => {
         rating: 5,
         comment: 'Great session!',
         createdAt: new Date(),
-    } as ClientSessionReview;
+    } as unknown as ClientSessionReview;
 
     const mockSession = {
         id: 'session-123',
@@ -60,6 +60,13 @@ describe('ReviewsService', () => {
                     provide: getRepositoryToken(Session),
                     useValue: {
                         findOne: jest.fn(),
+                    },
+                },
+                {
+                    provide: require('../audit/audit.service').AuditService,
+                    useValue: {
+                        log: jest.fn(),
+                        calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
                     },
                 },
             ],

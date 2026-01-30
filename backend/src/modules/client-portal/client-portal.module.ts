@@ -10,10 +10,11 @@ import { CoachesModule } from '../coaches/coaches.module';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+import { ClientProgressPhoto } from '../clients/entities/client-progress-photo.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([FavoriteCoach]),
+        TypeOrmModule.forFeature([FavoriteCoach, ClientProgressPhoto]),
         SessionsModule,
         PackagesModule,
         WaitingListModule,

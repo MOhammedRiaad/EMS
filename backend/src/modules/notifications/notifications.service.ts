@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThan, In } from 'typeorm';
+import { Repository, Between, LessThan, In, MoreThan } from 'typeorm';
 import { Session } from '../sessions/entities/session.entity';
 import { ClientPackage, ClientPackageStatus } from '../packages/entities/client-package.entity';
 import { WaitingListEntry, WaitingListStatus } from '../waiting-list/entities/waiting-list.entity';
+import { Notification } from './entities/notification.entity';
+import { Announcement, AnnouncementTargetType } from './entities/announcement.entity';
+import { AnnouncementRead } from './entities/announcement-read.entity';
 
 export interface DashboardNotification {
     id: string;
@@ -25,7 +28,121 @@ export class NotificationsService {
         private readonly clientPackageRepository: Repository<ClientPackage>,
         @InjectRepository(WaitingListEntry)
         private readonly waitingListRepository: Repository<WaitingListEntry>,
+        @InjectRepository(Notification)
+        private readonly notificationRepository: Repository<Notification>,
+        @InjectRepository(Announcement)
+        private readonly announcementRepository: Repository<Announcement>,
+        @InjectRepository(AnnouncementRead)
+        private readonly announcementReadRepository: Repository<AnnouncementRead>,
     ) { }
+
+    // --- In-App Notifications ---
+
+    async createNotification(data: Partial<Notification>): Promise<Notification> {
+        const notification = this.notificationRepository.create(data);
+        return this.notificationRepository.save(notification);
+    }
+
+    async getUserNotifications(userId: string, tenantId: string): Promise<Notification[]> {
+        return this.notificationRepository.find({
+            where: { userId, tenantId },
+            order: { createdAt: 'DESC' },
+            take: 50
+        });
+    }
+
+    async getUnreadCount(userId: string, tenantId: string): Promise<number> {
+        return this.notificationRepository.count({
+            where: { userId, tenantId, readAt: null as any } // TypeORM null check
+        });
+    }
+
+    async markAsRead(id: string, userId: string): Promise<void> {
+        await this.notificationRepository.update({ id, userId }, { readAt: new Date() });
+    }
+
+    async markAllAsRead(userId: string, tenantId: string): Promise<void> {
+        await this.notificationRepository.update(
+            { userId, tenantId, readAt: null as any },
+            { readAt: new Date() }
+        );
+    }
+
+    // --- Announcements ---
+
+    async createAnnouncement(data: Partial<Announcement>): Promise<Announcement> {
+        const announcement = this.announcementRepository.create(data);
+        return this.announcementRepository.save(announcement);
+    }
+
+    async deleteAnnouncement(id: string, tenantId: string): Promise<void> {
+        await this.announcementRepository.delete({ id, tenantId });
+    }
+
+    async getAllAnnouncements(tenantId: string): Promise<Announcement[]> {
+        return this.announcementRepository.find({
+            where: { tenantId },
+            order: { createdAt: 'DESC' }
+        });
+    }
+
+    async getActiveAnnouncementsForUser(userId: string, tenantId: string, role: string): Promise<Announcement[]> {
+        const now = new Date();
+
+        // 1. Get all active announcements that are within date range
+        const activeAnnouncements = await this.announcementRepository.find({
+            where: [
+                {
+                    tenantId,
+                    isActive: true,
+                    endDate: MoreThan(now),
+                    startDate: LessThan(now)
+                },
+                {
+                    tenantId,
+                    isActive: true,
+                    endDate: null as any,
+                    startDate: LessThan(now)
+                }
+            ]
+        });
+
+        // 2. Filter by target type logic
+        const targetedRefs = activeAnnouncements.filter(a => {
+            if (a.targetType === AnnouncementTargetType.ALL) return true;
+            if (a.targetType === AnnouncementTargetType.CLIENTS && role === 'client') return true;
+            if (a.targetType === AnnouncementTargetType.COACHES && role === 'coach') return true;
+            if (a.targetType === AnnouncementTargetType.SPECIFIC_USERS) {
+                return a.targetUserIds && a.targetUserIds.includes(userId);
+            }
+            return false;
+        });
+
+        // 3. Filter out ones already read by this user
+        // Optimization: We could do a subquery or join, but for MVP this is fine unless thousands of announcements
+        const reads = await this.announcementReadRepository.find({
+            where: { userId }
+        });
+        const readIds = new Set(reads.map(r => r.announcementId));
+
+        return targetedRefs.filter(a => !readIds.has(a.id));
+    }
+
+    async markAnnouncementRead(announcementId: string, userId: string): Promise<void> {
+        // Idempotent check
+        const existing = await this.announcementReadRepository.findOne({
+            where: { announcementId, userId }
+        });
+
+        if (!existing) {
+            await this.announcementReadRepository.save({
+                announcementId,
+                userId
+            });
+        }
+    }
+
+    // --- Dashboard logic below (unchanged) ---
 
     async getDashboardNotifications(tenantId: string): Promise<DashboardNotification[]> {
         const notifications: DashboardNotification[] = [];

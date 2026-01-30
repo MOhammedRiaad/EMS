@@ -1,13 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AutomationRule, AutomationTriggerType } from './entities/automation-rule.entity';
+import { Repository, LessThanOrEqual } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { AutomationRule, AutomationTriggerType, AutomationActionType } from './entities/automation-rule.entity';
+import { AutomationExecution, AutomationExecutionStatus } from './entities/automation-execution.entity';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class AutomationService {
+    private readonly logger = new Logger(AutomationService.name);
+
     constructor(
         @InjectRepository(AutomationRule)
-        private ruleRepository: Repository<AutomationRule>
+        private ruleRepository: Repository<AutomationRule>,
+        @InjectRepository(AutomationExecution)
+        private executionRepository: Repository<AutomationExecution>,
+        private mailerService: MailerService
     ) { }
 
     async create(createDto: any): Promise<AutomationRule> {
@@ -17,6 +25,26 @@ export class AutomationService {
 
     async findAll(): Promise<AutomationRule[]> {
         return this.ruleRepository.find();
+    }
+
+    async findAllExecutions(options: { page?: number; limit?: number } = {}): Promise<{ data: AutomationExecution[]; total: number; page: number; limit: number }> {
+        const page = options.page || 1;
+        const limit = options.limit || 50;
+        const skip = (page - 1) * limit;
+
+        const [data, total] = await this.executionRepository.findAndCount({
+            relations: ['rule'],
+            order: { createdAt: 'DESC' },
+            take: limit,
+            skip: skip
+        });
+
+        return {
+            data,
+            total,
+            page,
+            limit
+        };
     }
 
     async update(id: string, updateDto: any): Promise<AutomationRule> {
@@ -32,21 +60,122 @@ export class AutomationService {
         await this.ruleRepository.delete(id);
     }
 
-    // This method would be called by other modules via EventListener
     async triggerEvent(type: AutomationTriggerType, context: any) {
+        this.logger.log(`Trigger event received: ${type} for entity ${context.clientId || 'unknown'}`);
+
         // Find active rules for this trigger type
         const rules = await this.ruleRepository.find({
             where: { triggerType: type, isActive: true }
         });
 
         for (const rule of rules) {
-            await this.executeAction(rule, context);
+            await this.createExecution(rule, context);
         }
     }
 
-    private async executeAction(rule: AutomationRule, context: any) {
-        console.log(`[Automation] Executing rule "${rule.name}" for trigger "${rule.triggerType}"`, rule.actionPayload);
-        // Implement action logic (email, sms, etc.) here
-        // e.g. if (rule.actionType === 'send_email') mailerService.send(...)
+    private async createExecution(rule: AutomationRule, context: any) {
+        let firstStepDelay = 0;
+        if (rule.actions && rule.actions.length > 0) {
+            // Sort by order just in case
+            rule.actions.sort((a: any, b: any) => a.order - b.order);
+            firstStepDelay = (rule.actions[0].delayMinutes || 0) * 60 * 1000;
+        }
+
+        const execution = this.executionRepository.create({
+            ruleId: rule.id,
+            tenantId: 'default', // TODO: Extract from context
+            entityId: context.clientId || context.leadId || 'unknown',
+            context: context,
+            currentStepIndex: 0,
+            status: AutomationExecutionStatus.PENDING,
+            nextRunAt: new Date(Date.now() + firstStepDelay)
+        });
+
+        await this.executionRepository.save(execution);
+        this.logger.log(`Created execution ${execution.id} for rule ${rule.name}`);
+    }
+
+    @Cron(CronExpression.EVERY_MINUTE)
+    async processPendingExecutions() {
+        this.logger.debug('Checking for pending automation executions...');
+
+        const pending = await this.executionRepository.find({
+            where: {
+                status: AutomationExecutionStatus.PENDING,
+                nextRunAt: LessThanOrEqual(new Date())
+            },
+            relations: ['rule']
+        });
+
+        if (pending.length > 0) {
+            this.logger.log(`Found ${pending.length} pending executions`);
+        }
+
+        for (const execution of pending) {
+            await this.executeStep(execution);
+        }
+    }
+
+    private async executeStep(execution: AutomationExecution) {
+        const rule = execution.rule;
+        if (!rule || !rule.actions || rule.actions.length === 0) {
+            execution.status = AutomationExecutionStatus.COMPLETED;
+            await this.executionRepository.save(execution);
+            return;
+        }
+
+        const actions = rule.actions.sort((a: any, b: any) => a.order - b.order);
+        const currentAction = actions[execution.currentStepIndex];
+
+        if (!currentAction) {
+            // No more steps
+            execution.status = AutomationExecutionStatus.COMPLETED;
+            await this.executionRepository.save(execution);
+            return;
+        }
+
+        try {
+            await this.performAction(currentAction.type, currentAction.payload, execution.context);
+
+            // Move to next step
+            execution.currentStepIndex++;
+            if (execution.currentStepIndex < actions.length) {
+                const nextAction = actions[execution.currentStepIndex];
+                const delayMs = (nextAction.delayMinutes || 0) * 60 * 1000;
+                execution.nextRunAt = new Date(Date.now() + delayMs);
+            } else {
+                execution.status = AutomationExecutionStatus.COMPLETED;
+            }
+        } catch (error) {
+            this.logger.error(`Failed to execute step for execution ${execution.id}`, error);
+            execution.status = AutomationExecutionStatus.FAILED;
+        }
+
+        await this.executionRepository.save(execution);
+    }
+
+    private async performAction(type: AutomationActionType | string, payload: any, context: any) {
+        this.logger.log(`[Automation] EXECUTING Action: ${type}`, payload);
+
+        if (type === AutomationActionType.SEND_EMAIL) {
+            // context.email should exist if it's a client/lead context
+            // If not directly in context, might need to fetch entity. 
+            // For now assume context has necessary info or payload has hardcoded receiver (unlikely for marketing)
+            // But usually context comes from `context.client.email` or `context.email`.
+
+            const recipient = context.email || (context.client ? context.client.email : null);
+            if (recipient) {
+                await this.mailerService.sendMail(
+                    recipient,
+                    payload.subject || 'Notification from EMS Studio',
+                    payload.body || 'No content',
+                    payload.htmlBody || '<p>No content</p>'
+                );
+            } else {
+                this.logger.warn('No recipient email found in context for SEND_EMAIL action');
+            }
+        }
+
+        // SMS implementation would go here
     }
 }

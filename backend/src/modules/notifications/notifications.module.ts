@@ -5,10 +5,13 @@ import { NotificationsService } from './notifications.service';
 import { Session } from '../sessions/entities/session.entity';
 import { ClientPackage } from '../packages/entities/client-package.entity';
 import { WaitingListEntry } from '../waiting-list/entities/waiting-list.entity';
+import { Notification } from './entities/notification.entity';
+import { Announcement } from './entities/announcement.entity';
+import { AnnouncementRead } from './entities/announcement-read.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Session, ClientPackage, WaitingListEntry]),
+        TypeOrmModule.forFeature([Session, ClientPackage, WaitingListEntry, Notification, Announcement, AnnouncementRead]),
     ],
     controllers: [NotificationsController],
     providers: [NotificationsService],

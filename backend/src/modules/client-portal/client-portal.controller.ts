@@ -144,4 +144,28 @@ export class ClientPortalController {
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.getFavoriteCoaches(clientId, tenantId);
     }
+
+    @Get('progress-photos')
+    @ApiOperation({ summary: 'Get progress photos' })
+    async getProgressPhotos(@Request() req: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getProgressPhotos(clientId, tenantId);
+    }
+
+    @Post('progress-photos')
+    @ApiOperation({ summary: 'Add progress photo' })
+    async addProgressPhoto(@Request() req: any, @Body() dto: { photoUrl: string; notes?: string; type?: 'front' | 'back' | 'side' | 'other'; takenAt?: Date }) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.addProgressPhoto(clientId, tenantId, dto);
+    }
+
+    @Delete('progress-photos/:id')
+    @ApiOperation({ summary: 'Delete progress photo' })
+    async deleteProgressPhoto(@Request() req: any, @Param('id') id: string) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.deleteProgressPhoto(clientId, tenantId, id);
+    }
 }

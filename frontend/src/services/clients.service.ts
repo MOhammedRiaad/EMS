@@ -2,6 +2,7 @@ import { authenticatedFetch } from './api';
 
 export interface Client {
     id: string;
+    userId?: string;
     firstName: string;
     lastName: string;
     email: string | null;
@@ -41,8 +42,9 @@ export interface CreateProgressPhotoDto {
 }
 
 export const clientsService = {
-    async getAll(): Promise<Client[]> {
-        return authenticatedFetch('/clients');
+    async getAll(search?: string): Promise<Client[]> {
+        const query = search ? `?search=${encodeURIComponent(search)}` : '';
+        return authenticatedFetch(`/clients${query}`);
     },
 
     async create(data: Partial<Client>): Promise<Client> {
