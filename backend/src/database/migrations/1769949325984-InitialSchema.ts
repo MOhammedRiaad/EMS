@@ -4,50 +4,7 @@ export class InitialSchema1769949325984 implements MigrationInterface {
     name = 'InitialSchema1769949325984'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "rooms" DROP CONSTRAINT "rooms_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "rooms" DROP CONSTRAINT "rooms_studio_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "studios" DROP CONSTRAINT "studios_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "users_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "coaches" DROP CONSTRAINT "coaches_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "coaches" DROP CONSTRAINT "coaches_user_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "coaches" DROP CONSTRAINT "coaches_studio_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "client_session_reviews" DROP CONSTRAINT "client_session_reviews_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "client_session_reviews" DROP CONSTRAINT "client_session_reviews_session_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "client_session_reviews" DROP CONSTRAINT "client_session_reviews_client_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "client_session_reviews" DROP CONSTRAINT "client_session_reviews_coach_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_studio_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_room_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_coach_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_client_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_ems_device_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "clients_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "clients_user_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "clients_studio_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" DROP CONSTRAINT "ems_devices_tenant_id_fkey"`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" DROP CONSTRAINT "ems_devices_studio_id_fkey"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_rooms_tenant"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_studios_tenant"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_users_tenant"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_users_email"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_coaches_tenant"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_reviews_coach"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sessions_tenant"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sessions_scheduling"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sessions_room"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sessions_coach"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sessions_client"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_sessions_device"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_clients_tenant"`);
-        await queryRunner.query(`DROP INDEX "public"."idx_clients_email"`);
-        await queryRunner.query(`ALTER TABLE "rooms" DROP CONSTRAINT "rooms_capacity_check"`);
-        await queryRunner.query(`ALTER TABLE "client_session_reviews" DROP CONSTRAINT "client_session_reviews_rating_check"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "sessions_intensity_level_check"`);
-        await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "valid_time_range"`);
-        await queryRunner.query(`ALTER TABLE "rooms" DROP CONSTRAINT "rooms_studio_id_name_key"`);
-        await queryRunner.query(`ALTER TABLE "studios" DROP CONSTRAINT "studios_tenant_id_slug_key"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "users_tenant_id_email_key"`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" DROP CONSTRAINT "ems_devices_studio_id_label_key"`);
+
         await queryRunner.query(`CREATE TABLE "packages" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "tenant_id" uuid NOT NULL, "name" character varying(100) NOT NULL, "description" text, "total_sessions" integer NOT NULL, "price" numeric(10,2) NOT NULL, "validity_days" integer NOT NULL DEFAULT '30', "is_active" boolean NOT NULL DEFAULT true, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_020801f620e21f943ead9311c98" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "client_packages" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "tenant_id" uuid NOT NULL, "client_id" uuid NOT NULL, "package_id" uuid NOT NULL, "purchase_date" date NOT NULL, "expiry_date" date NOT NULL, "sessions_used" integer NOT NULL DEFAULT '0', "sessions_remaining" integer NOT NULL, "status" character varying(20) NOT NULL DEFAULT 'active', "payment_method" character varying(20), "payment_notes" text, "paid_at" TIMESTAMP, "created_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_2a27f35aa98f9af499ba578a30b" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."session_participants_status_enum" AS ENUM('scheduled', 'in_progress', 'completed', 'cancelled', 'no_show')`);
