@@ -16,8 +16,8 @@ const WaiversTab: React.FC = () => {
             try {
                 const data = await clientsService.getWaivers(clientId);
                 setWaivers(data);
-            } catch (error) {
-                console.error(error);
+            } catch {
+                console.error('Failed to sign waiver:');
             } finally {
                 setLoading(false);
             }

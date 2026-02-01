@@ -92,6 +92,8 @@ export const clientPortalService = {
         healthGoals?: Array<{ id: string; goal: string; completed: boolean; targetDate?: string }>;
         medicalHistory?: { allergies: string[]; injuries: string[]; conditions: string[]; custom?: any };
         healthNotes?: string;
+        consentFlags?: { marketing: boolean; data_processing: boolean };
+        privacyPreferences?: { leaderboard_visible: boolean; activity_feed_visible: boolean };
     }): Promise<any> {
         return authenticatedFetch('/client-portal/profile', {
             method: 'PATCH',

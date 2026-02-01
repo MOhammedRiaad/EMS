@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clientsService, type ClientProgressPhoto } from '../../services/clients.service';
-import { Plus, Trash2, Calendar, Image as ImageIcon, Camera, Loader2, X, Upload } from 'lucide-react';
+import { Trash2, Calendar, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
 import { getImageUrl } from '../../utils/imageUtils';
 
 interface ProgressGalleryProps {
@@ -11,7 +11,6 @@ export const ProgressGallery: React.FC<ProgressGalleryProps> = ({ clientId }) =>
     const [photos, setPhotos] = useState<ClientProgressPhoto[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
-    const [newPhotoUrl, setNewPhotoUrl] = useState('');
     const [notes, setNotes] = useState('');
 
     useEffect(() => {

@@ -3,7 +3,6 @@ import { Calendar } from 'lucide-react';
 import PageHeader from '../../../components/common/PageHeader';
 import DataTable, { type Column } from '../../../components/common/DataTable';
 import { api } from '../../../services/api';
-import { FormInput } from '../../../components/common/FormField';
 
 interface Transaction {
     id: string;

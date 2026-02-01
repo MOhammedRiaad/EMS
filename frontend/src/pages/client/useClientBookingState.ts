@@ -49,9 +49,9 @@ export function useClientBookingState() {
                 }));
 
                 // Sort favorites first
-                formatted.sort((a, b) => {
-                    if (a.isFavorite && !b.isFavorite) return -1;
-                    if (!a.isFavorite && b.isFavorite) return 1;
+                formatted.sort((_a, _b) => {
+                    if (_a.isFavorite && !_b.isFavorite) return -1;
+                    if (!_a.isFavorite && _b.isFavorite) return 1;
                     return 0;
                 });
 
@@ -69,7 +69,7 @@ export function useClientBookingState() {
             const { favorited } = await clientPortalService.toggleFavoriteCoach(coachId);
             setCoaches(prev => prev.map(c =>
                 c.id === coachId ? { ...c, isFavorite: favorited } : c
-            ).sort((a, b) => {
+            ).sort((_a, _b) => {
                 return 0; // Keep order for now
             }));
         } catch (err) {

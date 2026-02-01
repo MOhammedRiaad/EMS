@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit, Megaphone, Search, X } from 'lucide-react';
+import { Plus, Trash2, Megaphone, Search, X } from 'lucide-react';
 import { api } from '../../../../services/api';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { clientsService, type Client } from '../../../../services/clients.service';
@@ -24,7 +24,7 @@ interface SelectableUser {
 }
 
 const AnnouncementManager: React.FC = () => {
-    const { isAuthenticated } = useAuth();
+    useAuth();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -42,7 +42,6 @@ const AnnouncementManager: React.FC = () => {
         startDate: new Date().toISOString().split('T')[0],
         endDate: ''
     });
-
 
 
     const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +70,7 @@ const AnnouncementManager: React.FC = () => {
                     .filter((c: Client) => c.userId) // Only clients with user accounts
                     .map((c: Client) => ({
                         id: c.userId!, // Use User ID
-                        name: `${c.firstName} ${c.lastName}`,
+                        name: `${c.firstName} ${c.lastName} `,
                         type: 'client' as const,
                         email: c.email || ''
                     })),
@@ -80,7 +79,7 @@ const AnnouncementManager: React.FC = () => {
                     .filter((c: CoachDisplay) => c.userId)
                     .map((c: CoachDisplay) => ({
                         id: c.userId, // Use User ID
-                        name: `${c.firstName} ${c.lastName}`,
+                        name: `${c.firstName} ${c.lastName} `,
                         type: 'coach' as const,
                         email: c.email
                     }))
@@ -195,7 +194,13 @@ const AnnouncementManager: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                        {announcements.length === 0 ? (
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                    Loading announcements...
+                                </td>
+                            </tr>
+                        ) : announcements.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                     No announcements found. Create one to get started.
@@ -339,7 +344,7 @@ const AnnouncementManager: React.FC = () => {
                                                             {user.name}
                                                         </div>
                                                         <div className="text-xs text-gray-500 flex items-center gap-1">
-                                                            <span className={`capitalize ${user.type === 'coach' ? 'text-purple-600' : 'text-blue-600'}`}>{user.type}</span>
+                                                            <span className={`capitalize ${user.type === 'coach' ? 'text-purple-600' : 'text-blue-600'} `}>{user.type}</span>
                                                             <span>•</span>
                                                             <span>{user.email}</span>
                                                         </div>

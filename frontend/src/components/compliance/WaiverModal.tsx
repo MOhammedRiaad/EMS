@@ -74,6 +74,12 @@ const WaiverModal: React.FC<WaiverModalProps> = ({ onSigned }) => {
                     </p>
                 </div>
 
+                {error && (
+                    <div className="p-4 bg-red-50 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                        {error}
+                    </div>
+                )}
+
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-slate-950">
                     <div

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Trash2, Search, CreditCard, User, Building } from 'lucide-react';
-import PageHeader from '../../../components/common/PageHeader';
+import { ShoppingCart, Trash2, Search, CreditCard } from 'lucide-react';
 import { retailService, type Product } from '../../../services/retail.service';
 import { type Client } from '../../../services/clients.service';
 import { api } from '../../../services/api';
 
 // Using common components where possible, or native tailwind elements
-import Modal from '../../../components/common/Modal'; // Assuming default export or adjust imports
 import { FormSelect, FormInput } from '../../../components/common/FormField';
 
 interface CartItem extends Product {
@@ -227,8 +225,8 @@ const POSPage: React.FC = () => {
                             ))}
                         </FormSelect>
                         {selectedClientId && (
-                            <div className={`text-xs mt-1 px-2 py-1 rounded ${(getClientBalance() ?? 0) < 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
-                                }`}>
+                            <div className={`text - xs mt - 1 px - 2 py - 1 rounded ${(getClientBalance() ?? 0) < 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                                } `}>
                                 Current Balance: €{(getClientBalance() ?? 0).toFixed(2)}
                             </div>
                         )}
@@ -307,17 +305,17 @@ const POSPage: React.FC = () => {
                                             </p>
 
                                             <div className="space-y-2">
-                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cash' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                <label className={`flex items - center p - 3 border rounded - lg cursor - pointer transition - colors ${paymentMethod === 'cash' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'} `}>
                                                     <input type="radio" name="payment" value="cash" checked={paymentMethod === 'cash'} onChange={(e) => setPaymentMethod(e.target.value)} className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500" />
                                                     <span className="ml-3 font-medium text-gray-900 dark:text-gray-100">Cash Payment</span>
                                                 </label>
 
-                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'card' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                <label className={`flex items - center p - 3 border rounded - lg cursor - pointer transition - colors ${paymentMethod === 'card' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'} `}>
                                                     <input type="radio" name="payment" value="card" checked={paymentMethod === 'card'} onChange={(e) => setPaymentMethod(e.target.value)} className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500" />
                                                     <span className="ml-3 font-medium text-gray-900 dark:text-gray-100">Card / Terminal</span>
                                                 </label>
 
-                                                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${!selectedClientId ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800' : paymentMethod === 'on_account' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                <label className={`flex items - center p - 3 border rounded - lg cursor - pointer transition - colors ${!selectedClientId ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-800' : paymentMethod === 'on_account' ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'} `}>
                                                     <input
                                                         type="radio"
                                                         name="payment"

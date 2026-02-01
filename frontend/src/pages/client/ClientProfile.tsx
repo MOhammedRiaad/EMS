@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, ChevronRight, Mail, Phone, Bell, Lock, Shield, Edit2 } from 'lucide-react';
+import { User, Settings, Bell, ChevronRight, Lock, Shield } from 'lucide-react';
 import { getImageUrl } from '../../utils/imageUtils';
 import { useClientProfileState } from './useClientProfileState';
 import {

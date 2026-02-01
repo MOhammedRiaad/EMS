@@ -10,7 +10,7 @@ import { AnnouncementModal } from '../notifications/AnnouncementModal';
 const ClientLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { logout, isAuthenticated, tenant } = useAuth();
+    const { logout, tenant } = useAuth();
 
     // Compliance handled by ComplianceManager
 
