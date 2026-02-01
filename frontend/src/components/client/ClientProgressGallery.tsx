@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image as ImageIcon, Upload, Plus, X, Trash2, Loader2, Calendar } from 'lucide-react';
+import { Image as ImageIcon, Upload, Plus, Trash2, Loader2, Calendar } from 'lucide-react';
 import { clientPortalService } from '../../services/client-portal.service';
 import { getImageUrl } from '../../utils/imageUtils';
 
