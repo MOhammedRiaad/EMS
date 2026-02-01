@@ -108,33 +108,15 @@ export class InitialSchema1769949325984 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "created_at" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "updated_at" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "client_id" DROP NOT NULL`);
-        await queryRunner.query(`ALTER TYPE "public"."session_status" RENAME TO "session_status_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."sessions_status_enum" AS ENUM('scheduled', 'in_progress', 'completed', 'cancelled', 'no_show')`);
-        await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "status" TYPE "public"."sessions_status_enum" USING "status"::"text"::"public"."sessions_status_enum"`);
-        await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "status" SET DEFAULT 'scheduled'`);
-        await queryRunner.query(`DROP TYPE "public"."session_status_old"`);
-        await queryRunner.query(`ALTER TABLE "sessions" ALTER COLUMN "status" SET NOT NULL`);
+
         await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "created_at" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "updated_at" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "clients" ADD CONSTRAINT "UQ_07a7a09b04e7b035c9d90cf4984" UNIQUE ("user_id")`);
-        await queryRunner.query(`ALTER TYPE "public"."client_status" RENAME TO "client_status_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."clients_status_enum" AS ENUM('active', 'inactive', 'suspended')`);
-        await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "status" TYPE "public"."clients_status_enum" USING "status"::"text"::"public"."clients_status_enum"`);
-        await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "status" SET DEFAULT 'active'`);
-        await queryRunner.query(`DROP TYPE "public"."client_status_old"`);
-        await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "status" SET NOT NULL`);
+
         await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "consent_flags" SET NOT NULL`);
         await queryRunner.query(`ALTER TABLE "clients" ALTER COLUMN "consent_flags" SET DEFAULT '{"marketing":false,"data_processing":true}'`);
         await queryRunner.query(`ALTER TABLE "ems_devices" ALTER COLUMN "created_at" SET NOT NULL`);
-        await queryRunner.query(`ALTER TYPE "public"."device_status" RENAME TO "device_status_old"`);
-        await queryRunner.query(`CREATE TYPE "public"."ems_devices_status_enum" AS ENUM('available', 'in_use', 'maintenance')`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" ALTER COLUMN "status" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" ALTER COLUMN "status" TYPE "public"."ems_devices_status_enum" USING "status"::"text"::"public"."ems_devices_status_enum"`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" ALTER COLUMN "status" SET DEFAULT 'available'`);
-        await queryRunner.query(`DROP TYPE "public"."device_status_old"`);
-        await queryRunner.query(`ALTER TABLE "ems_devices" ALTER COLUMN "status" SET NOT NULL`);
+
         await queryRunner.query(`ALTER TABLE "rooms" ADD CONSTRAINT "FK_0f89201bf9630448b61dd805ba5" FOREIGN KEY ("studio_id") REFERENCES "studios"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "studios" ADD CONSTRAINT "FK_94ac7504c3a2e99405894860335" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "users" ADD CONSTRAINT "FK_109638590074998bb72a2f2cf08" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
@@ -297,12 +279,7 @@ export class InitialSchema1769949325984 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "coaches" ALTER COLUMN "created_at" DROP NOT NULL`);
         await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "active" DROP NOT NULL`);
         await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "email_verified" DROP NOT NULL`);
-        await queryRunner.query(`CREATE TYPE "public"."user_role_old" AS ENUM('tenant_owner', 'admin', 'coach', 'client')`);
-        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT`);
-        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "role" TYPE "public"."user_role_old" USING "role"::"text"::"public"."user_role_old"`);
-        await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'client'`);
-        await queryRunner.query(`DROP TYPE "public"."users_role_enum"`);
-        await queryRunner.query(`ALTER TYPE "public"."user_role_old" RENAME TO "user_role"`);
+
         await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "updated_at" DROP NOT NULL`);
         await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "created_at" DROP NOT NULL`);
         await queryRunner.query(`ALTER TABLE "tenants" ALTER COLUMN "settings" DROP NOT NULL`);

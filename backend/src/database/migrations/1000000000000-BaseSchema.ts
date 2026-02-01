@@ -9,25 +9,25 @@ export class BaseSchema1000000000000 implements MigrationInterface {
             CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
             DO $$ BEGIN
-                CREATE TYPE user_role AS ENUM ('tenant_owner', 'admin', 'coach', 'client');
+                CREATE TYPE "public"."user_role" AS ENUM ('tenant_owner', 'admin', 'coach', 'client');
             EXCEPTION
                 WHEN duplicate_object THEN null;
             END $$;
 
             DO $$ BEGIN
-                CREATE TYPE session_status AS ENUM ('scheduled', 'in_progress', 'completed', 'cancelled', 'no_show');
+                CREATE TYPE "public"."sessions_status_enum" AS ENUM ('scheduled', 'in_progress', 'completed', 'cancelled', 'no_show');
             EXCEPTION
                 WHEN duplicate_object THEN null;
             END $$;
 
             DO $$ BEGIN
-                CREATE TYPE device_status AS ENUM ('available', 'in_use', 'maintenance');
+                CREATE TYPE "public"."ems_devices_status_enum" AS ENUM ('available', 'in_use', 'maintenance');
             EXCEPTION
                 WHEN duplicate_object THEN null;
             END $$;
 
             DO $$ BEGIN
-                CREATE TYPE client_status AS ENUM ('active', 'inactive', 'suspended');
+                CREATE TYPE "public"."clients_status_enum" AS ENUM ('active', 'inactive', 'suspended');
             EXCEPTION
                 WHEN duplicate_object THEN null;
             END $$;
@@ -90,7 +90,7 @@ export class BaseSchema1000000000000 implements MigrationInterface {
                 tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
                 email VARCHAR(255) NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
-                role user_role NOT NULL DEFAULT 'client',
+                role "public"."user_role" NOT NULL DEFAULT 'client',
                 first_name VARCHAR(100),
                 last_name VARCHAR(100),
                 phone VARCHAR(50),
@@ -125,7 +125,7 @@ export class BaseSchema1000000000000 implements MigrationInterface {
                 email VARCHAR(255),
                 phone VARCHAR(50),
                 date_of_birth DATE,
-                status client_status DEFAULT 'active',
+                status "public"."clients_status_enum" DEFAULT 'active',
                 consent_flags JSONB DEFAULT '{"marketing": false, "data_processing": true}',
                 health_notes TEXT,
                 notes TEXT,
@@ -141,7 +141,7 @@ export class BaseSchema1000000000000 implements MigrationInterface {
                 label VARCHAR(100) NOT NULL,
                 serial_number VARCHAR(100),
                 model VARCHAR(100),
-                status device_status DEFAULT 'available',
+                status "public"."ems_devices_status_enum" DEFAULT 'available',
                 last_maintenance_date DATE,
                 next_maintenance_date DATE,
                 notes TEXT,
@@ -161,7 +161,7 @@ export class BaseSchema1000000000000 implements MigrationInterface {
                 end_time TIMESTAMP WITH TIME ZONE NOT NULL,
                 program_type VARCHAR(100),
                 intensity_level INT CHECK (intensity_level BETWEEN 1 AND 10),
-                status session_status DEFAULT 'scheduled',
+                status "public"."sessions_status_enum" DEFAULT 'scheduled',
                 notes TEXT,
                 cancelled_at TIMESTAMP WITH TIME ZONE,
                 cancelled_reason TEXT,
