@@ -89,9 +89,13 @@ export class ClientPortalService {
     }
 
     async bookSession(clientId: string, tenantId: string, dto: any) {
-        // Resolve studio
-        let studioId = dto.studioId;
+        // Resolve studio - use client's linked studio
+        const client = await this.clientsService.findOne(clientId, tenantId);
+        if (!client) throw new Error('Client not found');
+
+        let studioId = dto.studioId || client.studioId;
         if (!studioId) {
+            // Fallback to first active studio only if client has no linked studio
             studioId = await this.sessionsService.findFirstActiveStudio(tenantId);
         }
         if (!studioId) throw new Error('No active studio found');
@@ -120,8 +124,11 @@ export class ClientPortalService {
     }
 
     async validateSession(clientId: string, tenantId: string, dto: any) {
-        // Resolve studio
-        let studioId = dto.studioId;
+        // Resolve studio - use client's linked studio
+        const client = await this.clientsService.findOne(clientId, tenantId);
+        if (!client) throw new Error('Client not found');
+
+        let studioId = dto.studioId || client.studioId;
         if (!studioId) {
             studioId = await this.sessionsService.findFirstActiveStudio(tenantId);
         }
@@ -172,16 +179,28 @@ export class ClientPortalService {
         return this.sessionsService.updateStatus(sessionId, tenantId, 'cancelled', deductSession);
     }
 
-    async getAvailableSlots(tenantId: string, user: any, date: string, coachId?: string) {
-        const defaultId = await this.sessionsService.findFirstActiveStudio(tenantId);
-        if (!defaultId) throw new Error('No active studio found');
-        return this.sessionsService.getAvailableSlots(tenantId, defaultId, date, coachId);
+    async getAvailableSlots(clientId: string, tenantId: string, date: string, coachId?: string) {
+        // Use client's linked studio for slot availability
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        let studioId = client?.studioId;
+        if (!studioId) {
+            // Fallback to first active studio
+            studioId = await this.sessionsService.findFirstActiveStudio(tenantId);
+        }
+        if (!studioId) throw new Error('No active studio found');
+
+        return this.sessionsService.getAvailableSlots(tenantId, studioId, date, coachId);
     }
 
     async joinWaitingList(clientId: string, tenantId: string, dto: { studioId?: string; preferredDate: string; preferredTimeSlot: string; notes?: string }) {
-        let studioId = dto.studioId;
+        // Use client's linked studio by default
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        let studioId: string | undefined = dto.studioId || client?.studioId || undefined;
         if (!studioId) {
-            studioId = await this.sessionsService.findFirstActiveStudio(tenantId) || undefined;
+            const firstStudio = await this.sessionsService.findFirstActiveStudio(tenantId);
+            studioId = firstStudio || undefined;
         }
 
         if (!studioId) {
@@ -225,13 +244,15 @@ export class ClientPortalService {
     }
 
     async getCoaches(clientId: string, tenantId: string) {
-        // Get client gender to filter coaches
+        // Get client to filter coaches by studio and gender preference
         const client = await this.clientsService.findOne(clientId, tenantId, ['user']);
         if (!client) throw new Error('Client not found');
 
         const clientGender = client.user?.gender || (client as any).gender;
+        const clientStudioId = client.studioId;
 
-        return this.coachesService.findActive(tenantId, clientGender);
+        // Filter by both studio and gender preference
+        return this.coachesService.findActive(tenantId, clientGender, clientStudioId ?? undefined);
     }
 
     async updateProfile(clientId: string, tenantId: string, dto: { firstName?: string; lastName?: string; phone?: string; avatarUrl?: string; gender?: string; privacyPreferences?: any; consentFlags?: any; healthGoals?: any[]; healthNotes?: string; medicalHistory?: any; }) {

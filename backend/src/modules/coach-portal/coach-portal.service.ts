@@ -76,7 +76,7 @@ export class CoachPortalService {
 
         return this.sessionsRepository.find({
             where: whereCondition,
-            relations: ['client', 'room'],
+            relations: ['client', 'room', 'participants', 'participants.client'],
             order: { startTime: 'ASC' }
         });
     }

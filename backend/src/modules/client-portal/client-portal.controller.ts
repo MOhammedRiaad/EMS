@@ -31,23 +31,13 @@ export class ClientPortalController {
     async getAvailableSlots(
         @Request() req: any,
         @Query('date') date: string,
-        @Query('studioId') studioId?: string,
         @Query('coachId') coachId?: string,
     ) {
-        // Use user's default studio if not provided? Or first active studio.
-        // For now, assuming single studio or requiring studioId.
-        // If undefined, maybe fetch the first studio of the tenant.
-        let targetStudioId = studioId;
-        if (!targetStudioId) {
-            // Quick hack: fetch any studio. Ideally client is linked to a home studio.
-            // Or we just require frontend to pass it.
-            // Let's rely on frontend sending it, or client-portal service handling it.
-            // But to be safe, if missing, we error or find one.
-            // Let's return error if missing for now, frontend should handle it.
-            // Actually, let's fetch 'first' studio to be user-friendly.
-        }
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
 
-        return this.clientPortalService.getAvailableSlots(req.user.tenantId, req.user, date, coachId);
+        // Uses client's linked studio for slot availability
+        return this.clientPortalService.getAvailableSlots(clientId, tenantId, date, coachId);
     }
 
     @Get('sessions')

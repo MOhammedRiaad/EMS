@@ -109,6 +109,14 @@ export class SessionsService {
         // Validate coach availability
         await this.validateCoachAvailability(dto.coachId, startTime, endTime, tenantId);
 
+        // Validate coach belongs to the selected studio
+        await this.validateCoachStudioLink(dto.coachId, dto.studioId, tenantId);
+
+        // Validate client belongs to the selected studio (if client specified)
+        if (dto.clientId) {
+            await this.validateClientStudioLink(dto.clientId, dto.studioId, tenantId);
+        }
+
         // Validate gender preference
         if (dto.clientId) {
             await this.validateCoachGenderPreference(dto.coachId, dto.clientId, tenantId);
@@ -944,6 +952,36 @@ export class SessionsService {
                     `This coach prefers to work with ${coachPreference} clients.`
                 );
             }
+        }
+    }
+
+    private async validateCoachStudioLink(coachId: string, studioId: string, tenantId: string): Promise<void> {
+        const coach = await this.coachRepository.findOne({
+            where: { id: coachId, tenantId }
+        });
+
+        if (!coach) {
+            throw new NotFoundException(`Coach ${coachId} not found`);
+        }
+
+        if (coach.studioId !== studioId) {
+            throw new BadRequestException(
+                `Coach is not linked to the selected studio. Please select a coach from the same studio.`
+            );
+        }
+    }
+
+    private async validateClientStudioLink(clientId: string, studioId: string, tenantId: string): Promise<void> {
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        if (!client) {
+            throw new NotFoundException(`Client ${clientId} not found`);
+        }
+
+        if (client.studioId !== studioId) {
+            throw new BadRequestException(
+                `Client is not linked to the selected studio. Please select a client from the same studio.`
+            );
         }
     }
 

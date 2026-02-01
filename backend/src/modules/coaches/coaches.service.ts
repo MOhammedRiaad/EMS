@@ -42,10 +42,18 @@ export class CoachesService {
         });
     }
 
-    async findActive(tenantId: string, clientGender?: string): Promise<Coach[]> {
+    async findActive(tenantId: string, clientGender?: string, studioId?: string): Promise<Coach[]> {
+        // Build where clause
+        const whereClause: any = { tenantId, active: true };
+
+        // Filter by studio if provided
+        if (studioId) {
+            whereClause.studioId = studioId;
+        }
+
         // Basic active coaches query
         const coaches = await this.coachRepository.find({
-            where: { tenantId, active: true },
+            where: whereClause,
             relations: ['user', 'studio'],
             order: { createdAt: 'DESC' }
         });

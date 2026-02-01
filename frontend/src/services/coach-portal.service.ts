@@ -10,14 +10,39 @@ export interface CoachSession {
     startTime: string;
     endTime: string;
     status: 'scheduled' | 'completed' | 'no_show' | 'cancelled';
+    type?: 'individual' | 'group';
     room?: { name: string };
     client: {
         id: string;
         firstName: string;
         lastName: string;
         profileImage?: string;
-    };
+    } | null;
+    participants?: Array<{
+        id: string;
+        status: string;
+        client: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        };
+    }>;
     notes?: string;
+}
+
+// Helper to extract error message from API response
+async function handleApiError(response: Response, fallbackMessage: string): Promise<never> {
+    try {
+        const errorData = await response.json();
+        // Handle nested error structure: { message: { message: "actual error" } }
+        const message = errorData?.message?.message || errorData?.message || fallbackMessage;
+        throw new Error(message);
+    } catch (e) {
+        if (e instanceof Error && e.message !== fallbackMessage) {
+            throw e;
+        }
+        throw new Error(fallbackMessage);
+    }
 }
 
 export const coachPortalService = {
@@ -26,7 +51,7 @@ export const coachPortalService = {
         const response = await fetch(`${API_URL}/coach-portal/dashboard`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Failed to fetch dashboard');
+        if (!response.ok) await handleApiError(response, 'Failed to fetch dashboard');
         return response.json();
     },
 
@@ -39,7 +64,7 @@ export const coachPortalService = {
         const response = await fetch(url.toString(), {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Failed to fetch schedule');
+        if (!response.ok) await handleApiError(response, 'Failed to fetch schedule');
         return response.json();
     },
 
@@ -53,7 +78,7 @@ export const coachPortalService = {
             },
             body: JSON.stringify({ status })
         });
-        if (!response.ok) throw new Error('Failed to update session status');
+        if (!response.ok) await handleApiError(response, 'Failed to update session status');
     },
 
     async getMyClients(): Promise<any[]> {
@@ -61,7 +86,7 @@ export const coachPortalService = {
         const response = await fetch(`${API_URL}/coach-portal/clients`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Failed to fetch clients');
+        if (!response.ok) await handleApiError(response, 'Failed to fetch clients');
         return response.json();
     },
 
@@ -70,7 +95,7 @@ export const coachPortalService = {
         const response = await fetch(`${API_URL}/coach-portal/clients/${clientId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Failed to fetch client details');
+        if (!response.ok) await handleApiError(response, 'Failed to fetch client details');
         return response.json();
     },
 
@@ -79,7 +104,7 @@ export const coachPortalService = {
         const response = await fetch(`${API_URL}/coach-portal/availability`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) throw new Error('Failed to fetch availability');
+        if (!response.ok) await handleApiError(response, 'Failed to fetch availability');
         return response.json();
     },
 
@@ -93,7 +118,7 @@ export const coachPortalService = {
             },
             body: JSON.stringify(rules)
         });
-        if (!response.ok) throw new Error('Failed to update availability');
+        if (!response.ok) await handleApiError(response, 'Failed to update availability');
         return response.json();
     }
 };

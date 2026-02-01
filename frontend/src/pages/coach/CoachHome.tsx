@@ -135,7 +135,13 @@ const CoachHome = () => {
                                                         {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-gray-900 dark:text-white">{session.client.firstName} {session.client.lastName}</div>
+                                                        <div className="font-bold text-gray-900 dark:text-white">
+                                                            {session.client
+                                                                ? `${session.client.firstName} ${session.client.lastName}`
+                                                                : session.type === 'group'
+                                                                    ? `Group Session (${session.participants?.length || 0} participants)`
+                                                                    : 'No Client Assigned'}
+                                                        </div>
                                                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
                                                             <div className={`w-2 h-2 rounded-full ${session.status === 'scheduled' ? 'bg-blue-500' :
                                                                 session.status === 'completed' ? 'bg-green-500' :
@@ -146,10 +152,31 @@ const CoachHome = () => {
                                                     </div>
                                                 </div>
 
-                                                <Link to={`/coach/clients/${session.client.id}`} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-50">
-                                                    <ChevronRight size={20} />
-                                                </Link>
+                                                {session.client && (
+                                                    <Link to={`/coach/clients/${session.client.id}`} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-50">
+                                                        <ChevronRight size={20} />
+                                                    </Link>
+                                                )}
                                             </div>
+
+                                            {/* Group Session Participants */}
+                                            {session.type === 'group' && session.participants && session.participants.length > 0 && (
+                                                <div className="mb-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg">
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Participants:</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {session.participants.map(participant => (
+                                                            <Link
+                                                                key={participant.id}
+                                                                to={`/coach/clients/${participant.client.id}`}
+                                                                className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-700 px-2.5 py-1 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors border border-gray-200 dark:border-slate-600"
+                                                            >
+                                                                <span>{participant.client.firstName} {participant.client.lastName}</span>
+                                                                <ChevronRight size={14} className="text-gray-400" />
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {session.notes && (
                                                 <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg text-sm text-gray-600 dark:text-gray-300 mb-3 mx-1">
