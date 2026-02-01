@@ -19,9 +19,11 @@ import {
     type OutstandingPayment,
     type WaitingListStats,
     type Utilization,
+    type LeadAnalytics,
+    type RevenueForecast,
 } from '../../services/analytics.service';
 
-type TabType = 'overview' | 'revenue' | 'clients' | 'operations' | 'financial' | 'waiting-list';
+type TabType = 'overview' | 'revenue' | 'clients' | 'operations' | 'financial' | 'waiting-list' | 'leads';
 
 const Analytics: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -39,6 +41,10 @@ const Analytics: React.FC = () => {
     const [waitingListStats, setWaitingListStats] = useState<WaitingListStats | null>(null);
     const [cashFlow, setCashFlow] = useState<CashFlow[]>([]);
     const [outstandingPayments, setOutstandingPayments] = useState<OutstandingPayment[]>([]);
+
+    // New Data State
+    const [leadAnalytics, setLeadAnalytics] = useState<LeadAnalytics | null>(null);
+    const [revenueForecast, setRevenueForecast] = useState<RevenueForecast | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -67,6 +73,8 @@ const Analytics: React.FC = () => {
                 analyticsService.getWaitingListStats(params),
                 analyticsService.getCashFlow(params),
                 analyticsService.getOutstandingPayments(),
+                analyticsService.getLeadAnalytics(params),
+                analyticsService.getRevenueForecast(),
             ]);
 
             const [
@@ -80,6 +88,8 @@ const Analytics: React.FC = () => {
                 waitingListResult,
                 cashFlowResult,
                 outstandingResult,
+                leadsResult,
+                forecastResult,
             ] = results;
 
             if (revenueResult.status === 'fulfilled') setRevenueSummary(revenueResult.value);
@@ -105,6 +115,10 @@ const Analytics: React.FC = () => {
             if (waitingListResult.status === 'fulfilled') setWaitingListStats(waitingListResult.value);
             if (cashFlowResult.status === 'fulfilled') setCashFlow(cashFlowResult.value);
             if (outstandingResult.status === 'fulfilled') setOutstandingPayments(outstandingResult.value);
+
+            if (leadsResult.status === 'fulfilled') setLeadAnalytics(leadsResult.value);
+            // Forecast might fail if not enough data, handle gracefully
+            if (forecastResult.status === 'fulfilled') setRevenueForecast(forecastResult.value);
 
         } catch (error) {
             console.error('Unexpected error fetching analytics:', error);
@@ -176,6 +190,7 @@ const Analytics: React.FC = () => {
         { id: 'revenue', label: 'Revenue', icon: <DollarSign size={16} /> },
         { id: 'financial', label: 'Financial', icon: <Wallet size={16} /> },
         { id: 'clients', label: 'Clients', icon: <Users size={16} /> },
+        { id: 'leads', label: 'Leads', icon: <UserCheck size={16} /> },
         { id: 'waiting-list', label: 'Waiting List', icon: <Hourglass size={16} /> },
         { id: 'operations', label: 'Operations', icon: <Clock size={16} /> },
     ];
@@ -336,6 +351,31 @@ const Analytics: React.FC = () => {
                         />
                     </div>
                     <RevenueChart data={revenueByPeriod} height={400} />
+
+                    {revenueForecast && (
+                        <div style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                                <TrendingUp size={20} color="var(--color-primary)" />
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Revenue Forecast</h3>
+                            </div>
+                            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                                        Projected for Next Month ({new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleString('default', { month: 'long' })})
+                                    </div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                                        €{revenueForecast.forecast.toLocaleString()}
+                                        <span style={{ fontSize: '0.875rem', color: revenueForecast.trend === 'up' ? '#10b981' : revenueForecast.trend === 'down' ? '#ef4444' : 'var(--color-text-secondary)', fontWeight: 500 }}>
+                                            {revenueForecast.trend === 'up' ? '↗' : revenueForecast.trend === 'down' ? '↘' : '→'} {Math.abs(revenueForecast.growthRate).toFixed(1)}% growth
+                                        </span>
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', maxWidth: '400px' }}>
+                                    Based on linear regression of last 6 months. Confidence: {revenueForecast.confidence === 'low' ? 'Low (insufficient data)' : 'Normal'}.
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -554,6 +594,57 @@ const Analytics: React.FC = () => {
                         }}
                     >
                         <p>Detailed waiting list management can be found in the Waiting List module.</p>
+                    </div>
+                </>
+            )}
+
+            {activeTab === 'leads' && (
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <MetricCard
+                            title="Total Leads"
+                            value={leadAnalytics?.total ?? 0}
+                            icon={<Users size={18} color="var(--color-primary)" />}
+                        />
+                        <MetricCard
+                            title="Converted Leads"
+                            value={leadAnalytics?.converted ?? 0}
+                            icon={<UserCheck size={18} color="#10b981" />}
+                        />
+                        <MetricCard
+                            title="Conversion Rate"
+                            value={`${leadAnalytics?.conversionRate ?? 0}%`}
+                            icon={<TrendingUp size={18} color="#3b82f6" />}
+                        />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                        {/* Source Breakdown */}
+                        <div
+                            style={{
+                                backgroundColor: 'var(--color-bg-secondary)',
+                                borderRadius: 'var(--border-radius-lg)',
+                                border: '1px solid var(--border-color)',
+                                padding: '1.5rem',
+                            }}
+                        >
+                            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem' }}>Lead Sources</h3>
+                            {leadAnalytics?.sources && leadAnalytics.sources.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {leadAnalytics.sources.map((source) => (
+                                        <div key={source.source} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-primary)' }}></div>
+                                                <span style={{ fontSize: '0.875rem' }}>{source.source}</span>
+                                            </div>
+                                            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{source.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>No source data available available for this period.</p>
+                            )}
+                        </div>
                     </div>
                 </>
             )}

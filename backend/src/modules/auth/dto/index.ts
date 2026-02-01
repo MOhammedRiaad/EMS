@@ -69,6 +69,11 @@ export class CreateUserDto {
     @ApiProperty({ enum: ['admin', 'coach', 'client'] })
     @IsIn(['admin', 'coach', 'client'])
     role: 'admin' | 'coach' | 'client';
+
+    @ApiPropertyOptional({ enum: ['male', 'female', 'other', 'pnts'] })
+    @IsOptional()
+    @IsIn(['male', 'female', 'other', 'pnts'])
+    gender?: 'male' | 'female' | 'other' | 'pnts';
 }
 
 export class AuthResponseDto {

@@ -68,6 +68,29 @@ const Coaches: React.FC = () => {
             )
         },
         {
+            key: 'clientPreference',
+            header: 'Client Preference',
+            render: (coach) => {
+                const labels: Record<string, string> = {
+                    male: 'Male Clients',
+                    female: 'Female Clients',
+                    any: 'Any'
+                };
+                return (
+                    <span style={{
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        backgroundColor: coach.preferredClientGender === 'any' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(168, 85, 247, 0.1)',
+                        color: coach.preferredClientGender === 'any' ? 'rgb(59, 130, 246)' : 'rgb(168, 85, 247)'
+                    }}>
+                        {labels[coach.preferredClientGender] || 'Any'}
+                    </span>
+                );
+            }
+        },
+        {
             key: 'status',
             header: 'Status',
             render: (coach) => (

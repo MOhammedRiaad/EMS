@@ -44,8 +44,14 @@ export class Lead {
     @JoinColumn({ name: 'assigned_to_id' })
     assignedTo: User;
 
-    @Column({ nullable: true })
+    @Column({ name: 'assigned_to_id', nullable: true })
     assigned_to_id: string;
+
+    @Column({ name: 'tenant_id' })
+    tenantId: string;
+
+    @Column({ name: 'studio_id', nullable: true })
+    studioId: string;
 
     @OneToMany(() => LeadActivity, activity => activity.lead)
     activities: LeadActivity[];

@@ -12,14 +12,20 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import { TenantsService } from '../tenants/tenants.service';
 import { MailerService } from '../mailer/mailer.service';
 
+import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class AuthService {
+
+    // ... (constructor remains as previous valid state, skipping to resetPassword implementation)
+
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly jwtService: JwtService,
         private readonly tenantsService: TenantsService,
         private readonly mailerService: MailerService,
+        private readonly auditService: AuditService,
     ) { }
 
     // Public registration - creates new Tenant + Tenant Owner
@@ -377,7 +383,15 @@ export class AuthService {
 
         await this.userRepository.save(user);
 
-        return { message: 'Password reset successfully' };
+        await this.auditService.log(
+            user.tenantId,
+            'RESET_PASSWORD',
+            'User',
+            user.id,
+            user.id // Self-service
+        );
+
+        return { message: 'Password has been reset successfully.' };
     }
 
     private generateTokens(user: User, tenant?: { id: string; name: string; isComplete: boolean; settings?: any }) {

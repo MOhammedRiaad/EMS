@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Building2, DoorOpen, Cpu, AlertCircle } from 'lucide-react';
 import type { Client } from '../../services/clients.service';
 import type { CoachDisplay } from '../../services/coaches.service';
@@ -39,6 +39,47 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     onSubmit,
     onCancel
 }) => {
+    // Filter clients by selected studio (hide clients without a studio)
+    const filteredClients = useMemo(() => {
+        if (!formData.studioId) return [];
+        return clients.filter(client => client.studioId === formData.studioId);
+    }, [clients, formData.studioId]);
+
+    // Get selected client's gender for coach filtering
+    const selectedClient = useMemo(() => {
+        return clients.find(c => c.id === formData.clientId);
+    }, [clients, formData.clientId]);
+
+    // Filter coaches by selected studio and gender preference
+    const filteredCoaches = useMemo(() => {
+        if (!formData.studioId) return [];
+
+        return coaches.filter(coach => {
+            // Must be linked to the selected studio
+            if (coach.studioId !== formData.studioId) return false;
+
+            // Must be active
+            if (!coach.active) return false;
+
+            // For individual sessions, check gender preference
+            if (formData.type === 'individual' && selectedClient?.user?.gender) {
+                const clientGender = selectedClient.user.gender;
+                // Coach with 'any' preference can train anyone
+                if (coach.preferredClientGender === 'any') return true;
+                // Coach with specific preference must match client gender
+                // Note: 'other' and 'pnts' genders can be trained by coaches with 'any' preference only
+                if (clientGender === 'male' && coach.preferredClientGender === 'male') return true;
+                if (clientGender === 'female' && coach.preferredClientGender === 'female') return true;
+                // For 'other' or 'pnts', only 'any' coaches are allowed (handled above)
+                if (clientGender === 'other' || clientGender === 'pnts') return false;
+                return false;
+            }
+
+            // For group sessions or when no client selected, show all coaches with matching studio
+            return true;
+        });
+    }, [coaches, formData.studioId, formData.type, selectedClient]);
+
     return (
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
             {error && (
@@ -140,11 +181,12 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                         <select
                             required
                             value={formData.clientId}
-                            onChange={e => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                            onChange={e => setFormData(prev => ({ ...prev, clientId: e.target.value, coachId: '' }))}
                             className={inputClass}
+                            disabled={!formData.studioId}
                         >
-                            <option value="">Select a Client</option>
-                            {clients.map(c => (
+                            <option value="">{formData.studioId ? (filteredClients.length > 0 ? 'Select a Client' : 'No clients for this studio') : 'Select Studio first'}</option>
+                            {filteredClients.map(c => (
                                 <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
                             ))}
                         </select>
@@ -161,9 +203,10 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                         value={formData.coachId}
                         onChange={e => setFormData(prev => ({ ...prev, coachId: e.target.value }))}
                         className={inputClass}
+                        disabled={!formData.studioId}
                     >
-                        <option value="">Select a Coach</option>
-                        {coaches.map(c => (
+                        <option value="">{formData.studioId ? (filteredCoaches.length > 0 ? 'Select a Coach' : 'No coaches available') : 'Select Studio first'}</option>
+                        {filteredCoaches.map(c => (
                             <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
                         ))}
                     </select>

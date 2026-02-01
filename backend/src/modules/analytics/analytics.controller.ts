@@ -150,4 +150,23 @@ export class AnalyticsController {
     ) {
         return this.analyticsService.getWaitingListStats(tenantId, query);
     }
+
+    // ============= Lead Endpoints =============
+
+    @Get('leads/analytics')
+    @ApiOperation({ summary: 'Get lead analytics (total, conversion, sources)' })
+    getLeadAnalytics(
+        @TenantId() tenantId: string,
+        @Query() query: DateRangeQueryDto,
+    ) {
+        return this.analyticsService.getLeadAnalytics(tenantId, query);
+    }
+
+    // ============= Predictive Endpoints =============
+
+    @Get('predictive/revenue-forecast')
+    @ApiOperation({ summary: 'Get revenue forecast for next month' })
+    getRevenueForecast(@TenantId() tenantId: string) {
+        return this.analyticsService.getRevenueForecast(tenantId);
+    }
 }

@@ -1,10 +1,12 @@
 import React from 'react';
 import { Upload, User } from 'lucide-react';
 import type { ClientFormData } from './useClientsState';
+import type { Studio } from '../../services/studios.service';
 
 interface ClientFormProps {
     formData: ClientFormData;
     setFormData: React.Dispatch<React.SetStateAction<ClientFormData>>;
+    studios: Studio[];
     uploading: boolean;
     saving: boolean;
     isEdit: boolean;
@@ -33,6 +35,7 @@ const labelStyle: React.CSSProperties = {
 export const ClientForm: React.FC<ClientFormProps> = ({
     formData,
     setFormData,
+    studios,
     uploading,
     saving,
     isEdit,
@@ -171,6 +174,24 @@ export const ClientForm: React.FC<ClientFormProps> = ({
                     onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                     style={inputStyle}
                 />
+            </div>
+
+            {/* Studio */}
+            <div>
+                <label style={labelStyle}>
+                    Studio <span style={{ color: 'var(--color-danger)' }}>*</span>
+                </label>
+                <select
+                    required
+                    value={formData.studioId}
+                    onChange={e => setFormData(prev => ({ ...prev, studioId: e.target.value }))}
+                    style={inputStyle}
+                >
+                    <option value="">Select a Studio</option>
+                    {studios.filter(s => s.isActive).map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
             </div>
 
             {/* Buttons */}

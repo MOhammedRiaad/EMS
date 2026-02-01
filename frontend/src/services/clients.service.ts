@@ -12,6 +12,7 @@ export interface Client {
     creditBalance?: number;
     healthNotes?: string;
     notes?: string;
+    studioId?: string | null;
     healthGoals?: Array<{
         id: string;
         goal: string;
@@ -24,6 +25,15 @@ export interface Client {
         conditions: string[];
         custom?: any;
     };
+    // Nested relations from backend
+    studio?: {
+        id: string;
+        name: string;
+    } | null;
+    user?: {
+        id: string;
+        gender?: 'male' | 'female' | 'other' | 'pnts';
+    } | null;
 }
 
 export interface ClientProgressPhoto {

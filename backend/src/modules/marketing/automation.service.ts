@@ -18,21 +18,27 @@ export class AutomationService {
         private mailerService: MailerService
     ) { }
 
-    async create(createDto: any): Promise<AutomationRule> {
-        const rule = this.ruleRepository.create(createDto);
+    async create(createDto: any, tenantId: string): Promise<AutomationRule> {
+        const rule = this.ruleRepository.create({
+            ...createDto,
+            tenantId
+        });
         return (await this.ruleRepository.save(rule)) as unknown as AutomationRule;
     }
 
-    async findAll(): Promise<AutomationRule[]> {
-        return this.ruleRepository.find();
+    async findAll(tenantId: string): Promise<AutomationRule[]> {
+        return this.ruleRepository.find({
+            where: { tenantId }
+        });
     }
 
-    async findAllExecutions(options: { page?: number; limit?: number } = {}): Promise<{ data: AutomationExecution[]; total: number; page: number; limit: number }> {
+    async findAllExecutions(tenantId: string, options: { page?: number; limit?: number } = {}): Promise<{ data: AutomationExecution[]; total: number; page: number; limit: number }> {
         const page = options.page || 1;
         const limit = options.limit || 50;
         const skip = (page - 1) * limit;
 
         const [data, total] = await this.executionRepository.findAndCount({
+            where: { tenantId },
             relations: ['rule'],
             order: { createdAt: 'DESC' },
             take: limit,
@@ -47,33 +53,41 @@ export class AutomationService {
         };
     }
 
-    async update(id: string, updateDto: any): Promise<AutomationRule> {
-        await this.ruleRepository.update(id, updateDto);
-        const rule = await this.ruleRepository.findOne({ where: { id } });
+    async update(id: string, updateDto: any, tenantId: string): Promise<AutomationRule> {
+        await this.ruleRepository.update({ id, tenantId }, updateDto);
+        const rule = await this.ruleRepository.findOne({ where: { id, tenantId } });
         if (!rule) {
             throw new Error(`AutomationRule with ID ${id} not found`);
         }
         return rule;
     }
 
-    async delete(id: string): Promise<void> {
-        await this.ruleRepository.delete(id);
+    async delete(id: string, tenantId: string): Promise<void> {
+        await this.ruleRepository.delete({ id, tenantId });
     }
 
     async triggerEvent(type: AutomationTriggerType, context: any) {
         this.logger.log(`Trigger event received: ${type} for entity ${context.clientId || 'unknown'}`);
 
-        // Find active rules for this trigger type
+        // Extract tenantId from context
+        const tenantId = context.tenantId || (context.client ? context.client.tenantId : null) || (context.lead ? context.lead.tenantId : null);
+
+        if (!tenantId) {
+            this.logger.warn(`Trigger event ${type} missing tenantId context. Skipping automation.`);
+            return;
+        }
+
+        // Find active rules for this trigger type and tenant
         const rules = await this.ruleRepository.find({
-            where: { triggerType: type, isActive: true }
+            where: { triggerType: type, isActive: true, tenantId }
         });
 
         for (const rule of rules) {
-            await this.createExecution(rule, context);
+            await this.createExecution(rule, context, tenantId);
         }
     }
 
-    private async createExecution(rule: AutomationRule, context: any) {
+    private async createExecution(rule: AutomationRule, context: any, tenantId: string) {
         let firstStepDelay = 0;
         if (rule.actions && rule.actions.length > 0) {
             // Sort by order just in case
@@ -83,7 +97,7 @@ export class AutomationService {
 
         const execution = this.executionRepository.create({
             ruleId: rule.id,
-            tenantId: 'default', // TODO: Extract from context
+            tenantId, // Use explicit tenantId
             entityId: context.clientId || context.leadId || 'unknown',
             context: context,
             currentStepIndex: 0,
@@ -163,7 +177,7 @@ export class AutomationService {
             // For now assume context has necessary info or payload has hardcoded receiver (unlikely for marketing)
             // But usually context comes from `context.client.email` or `context.email`.
 
-            const recipient = context.email || (context.client ? context.client.email : null);
+            const recipient = context.email || (context.client ? context.client.email : null) || (context.lead ? context.lead.email : null);
             if (recipient) {
                 await this.mailerService.sendMail(
                     recipient,

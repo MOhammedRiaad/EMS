@@ -87,18 +87,20 @@ describe('AutomationService', () => {
 
     describe('triggerEvent', () => {
         it('should create execution for active rules', async () => {
+            const tenantId = 'tenant-123';
             ruleRepository.find.mockResolvedValue([mockRule]);
             executionRepository.create.mockReturnValue(mockExecution);
             executionRepository.save.mockResolvedValue(mockExecution);
 
-            await service.triggerEvent(AutomationTriggerType.NEW_LEAD, { clientId: 'client-123' });
+            await service.triggerEvent(AutomationTriggerType.NEW_LEAD, { clientId: 'client-123', tenantId });
 
             expect(ruleRepository.find).toHaveBeenCalledWith({
-                where: { triggerType: AutomationTriggerType.NEW_LEAD, isActive: true }
+                where: { triggerType: AutomationTriggerType.NEW_LEAD, isActive: true, tenantId }
             });
             expect(executionRepository.create).toHaveBeenCalledWith(expect.objectContaining({
                 ruleId: mockRule.id,
-                entityId: 'client-123'
+                entityId: 'client-123',
+                tenantId
             }));
             expect(executionRepository.save).toHaveBeenCalled();
         });
@@ -106,12 +108,13 @@ describe('AutomationService', () => {
 
     describe('findAllExecutions', () => {
         it('should return paginated executions', async () => {
+            const tenantId = 'tenant-123';
             const expectedData = [mockExecution];
             const expectedTotal = 1;
             executionRepository.findAndCount.mockResolvedValue([expectedData, expectedTotal]);
 
             // Test default params
-            const result = await service.findAllExecutions();
+            const result = await service.findAllExecutions(tenantId);
 
             expect(result).toEqual({
                 data: expectedData,
@@ -120,6 +123,7 @@ describe('AutomationService', () => {
                 limit: 50
             });
             expect(executionRepository.findAndCount).toHaveBeenCalledWith({
+                where: { tenantId },
                 relations: ['rule'],
                 order: { createdAt: 'DESC' },
                 take: 50,
@@ -128,11 +132,12 @@ describe('AutomationService', () => {
         });
 
         it('should respect custom pagination params', async () => {
+            const tenantId = 'tenant-123';
             const expectedData = [mockExecution];
             const expectedTotal = 55;
             executionRepository.findAndCount.mockResolvedValue([expectedData, expectedTotal]);
 
-            const result = await service.findAllExecutions({ page: 2, limit: 20 });
+            const result = await service.findAllExecutions(tenantId, { page: 2, limit: 20 });
 
             expect(result).toEqual({
                 data: expectedData,
@@ -141,6 +146,7 @@ describe('AutomationService', () => {
                 limit: 20
             });
             expect(executionRepository.findAndCount).toHaveBeenCalledWith({
+                where: { tenantId },
                 relations: ['rule'],
                 order: { createdAt: 'DESC' },
                 take: 20,

@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 
 export enum AutomationTriggerType {
     NEW_LEAD = 'new_lead',
@@ -16,10 +17,7 @@ export enum AutomationActionType {
 }
 
 @Entity('automation_rules')
-export class AutomationRule {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
-
+export class AutomationRule extends TenantScopedEntityWithUpdate {
     @Column()
     name: string;
 
@@ -51,10 +49,4 @@ export class AutomationRule {
 
     @Column({ default: true })
     isActive: boolean;
-
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
-
-    @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt: Date;
 }

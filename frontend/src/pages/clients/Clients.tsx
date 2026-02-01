@@ -71,6 +71,15 @@ const Clients: React.FC = () => {
             )
         },
         {
+            key: 'studio',
+            header: 'Studio',
+            render: (client) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-secondary)' }}>
+                    {client.studio?.name || '-'}
+                </div>
+            )
+        },
+        {
             key: 'status',
             header: 'Status',
             render: (client) => (
@@ -193,6 +202,7 @@ const Clients: React.FC = () => {
                 <ClientForm
                     formData={state.formData}
                     setFormData={state.setFormData}
+                    studios={state.studios}
                     uploading={state.uploading}
                     saving={state.saving}
                     isEdit={false}
@@ -211,6 +221,7 @@ const Clients: React.FC = () => {
                 <ClientForm
                     formData={state.formData}
                     setFormData={state.setFormData}
+                    studios={state.studios}
                     uploading={state.uploading}
                     saving={state.saving}
                     isEdit={true}

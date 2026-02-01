@@ -8,12 +8,13 @@ import { AuthModule } from '../auth/auth.module';
 import { MailerModule } from '../mailer/mailer.module';
 
 import { Transaction } from '../packages/entities/transaction.entity';
+import { User } from '../auth/entities/user.entity';
 import { WaiversModule } from '../waivers/waivers.module';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto]),
+        TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto, User]),
         AuthModule,
         MailerModule,
         forwardRef(() => WaiversModule),

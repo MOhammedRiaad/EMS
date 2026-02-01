@@ -96,6 +96,11 @@ export class UpdateClientDto {
     @IsUUID()
     studioId?: string;
 
+    @ApiPropertyOptional({ enum: ['male', 'female', 'other', 'pnts'] })
+    @IsOptional()
+    @IsEnum(['male', 'female', 'other', 'pnts'])
+    gender?: 'male' | 'female' | 'other' | 'pnts';
+
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
@@ -155,6 +160,11 @@ export class CreateClientWithUserDto {
     @IsOptional()
     @IsString()
     avatarUrl?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsUUID()
+    studioId?: string;
 
     @ApiPropertyOptional({ enum: ['active', 'inactive'], default: 'active' })
     @IsOptional()

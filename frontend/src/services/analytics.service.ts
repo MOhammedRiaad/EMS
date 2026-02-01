@@ -96,6 +96,27 @@ export interface WaitingListStats {
     conversionRate: number;
 }
 
+export interface LeadSource {
+    source: string;
+    count: number;
+}
+
+export interface LeadAnalytics {
+    total: number;
+    converted: number;
+    conversionRate: number;
+    sources: LeadSource[];
+}
+
+export interface RevenueForecast {
+    period: string; // Next month YYYY-MM
+    forecast: number;
+    trend: 'up' | 'down' | 'flat' | 'insufficient_data';
+    growthRate: number;
+    history: { x: number; y: number; period: string }[];
+    confidence: string;
+}
+
 export interface DateRangeQuery {
     from?: string;
     to?: string;
@@ -191,6 +212,18 @@ class AnalyticsService {
     // Waiting List
     async getWaitingListStats(params?: DateRangeQuery): Promise<WaitingListStats> {
         const response = await api.get<WaitingListStats>(`/analytics/waiting-list/stats${this.buildQuery(params)}`);
+        return response.data;
+    }
+
+    // Leads
+    async getLeadAnalytics(params?: DateRangeQuery): Promise<LeadAnalytics> {
+        const response = await api.get<LeadAnalytics>(`/analytics/leads/analytics${this.buildQuery(params)}`);
+        return response.data;
+    }
+
+    // Predictive
+    async getRevenueForecast(): Promise<RevenueForecast> {
+        const response = await api.get<RevenueForecast>('/analytics/predictive/revenue-forecast');
         return response.data;
     }
 }

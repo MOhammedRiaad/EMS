@@ -947,7 +947,7 @@ export class SessionsService {
         }
     }
 
-    async updateStatus(id: string, tenantId: string, status: SessionStatus, deductSession?: boolean): Promise<Session> {
+    async updateStatus(id: string, tenantId: string, status: SessionStatus, deductSession?: boolean, userId: string = 'API_USER'): Promise<Session> {
         this.logger.log(`updateStatus called: id=${id}, status=${status}`);
         const session = await this.findOne(id, tenantId);
         this.logger.log(`Found session: id=${session.id}, current status=${session.status}`);
@@ -961,7 +961,7 @@ export class SessionsService {
                 'CANCEL_SESSION',
                 'Session',
                 id,
-                'API_USER', // TODO: Pass user
+                userId,
                 { previousStatus: previousStatus }
             );
         }
@@ -1165,7 +1165,39 @@ export class SessionsService {
         }
     }
 
-    async deleteSeries(id: string, tenantId: string): Promise<void> {
+    async delete(id: string, tenantId: string, userId: string = 'API_USER'): Promise<void> {
+        const session = await this.findOne(id, tenantId);
+
+        // If this session had a package deduction, refund it
+        if (session.clientPackageId && session.status === 'scheduled') {
+            try {
+                await this.packagesService.returnSession(session.clientPackageId, tenantId);
+                this.logger.log(`Refunded session for client ${session.clientId} on session delete`);
+            } catch (e) {
+                this.logger.warn(`Could not refund session on delete: ${e.message}`);
+            }
+        }
+
+        await this.sessionRepository.remove(session);
+
+        await this.auditService.log(
+            tenantId,
+            'DELETE_SESSION',
+            'Session',
+            id,
+            userId,
+            {
+                sessionType: session.type,
+                startTime: session.startTime,
+                clientId: session.clientId,
+                coachId: session.coachId
+            }
+        );
+
+        this.logger.log(`Deleted session ${id} (type: ${session.type})`);
+    }
+
+    async deleteSeries(id: string, tenantId: string, userId: string = 'API_USER'): Promise<void> {
         const targetSession = await this.findOne(id, tenantId);
 
         const parentId = targetSession.isRecurringParent ? targetSession.id : targetSession.parentSessionId;
@@ -1192,6 +1224,20 @@ export class SessionsService {
         // Strategy: Use remove() for hard delete of scheduled future sessions.
 
         await this.sessionRepository.remove(sessionsToDelete);
+
+        // Log one audit entry for the series deletion
+        await this.auditService.log(
+            tenantId,
+            'DELETE_SESSION_SERIES',
+            'Session',
+            id,
+            userId,
+            {
+                count: sessionsToDelete.length,
+                parentId: parentId,
+                message: `Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`
+            }
+        );
 
         this.logger.log(`Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`);
     }

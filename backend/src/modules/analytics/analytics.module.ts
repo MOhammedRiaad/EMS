@@ -11,6 +11,7 @@ import { Room } from '../rooms/entities/room.entity';
 import { EmsDevice } from '../devices/entities/ems-device.entity';
 import { WaitingListEntry } from '../waiting-list/entities/waiting-list.entity';
 import { ClientSessionReview } from '../reviews/entities/review.entity';
+import { Lead } from '../leads/entities/lead.entity';
 
 @Module({
     imports: [
@@ -24,6 +25,7 @@ import { ClientSessionReview } from '../reviews/entities/review.entity';
             EmsDevice,
             WaitingListEntry,
             ClientSessionReview,
+            Lead,
         ]),
     ],
     controllers: [AnalyticsController],

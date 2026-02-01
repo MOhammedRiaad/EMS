@@ -9,6 +9,7 @@ import { Transaction, TransactionType, TransactionCategory } from '../packages/e
 import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { AuditService } from '../audit/audit.service';
+import { User } from '../auth/entities/user.entity';
 
 @Injectable()
 export class ClientsService {
@@ -19,6 +20,8 @@ export class ClientsService {
         private readonly transactionRepository: Repository<Transaction>,
         @InjectRepository(ClientProgressPhoto)
         private readonly photoRepository: Repository<ClientProgressPhoto>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
         private readonly authService: AuthService,
         private readonly mailerService: MailerService,
         private readonly auditService: AuditService,
@@ -26,6 +29,8 @@ export class ClientsService {
 
     async findAll(tenantId: string, search?: string): Promise<Client[]> {
         const query = this.clientRepository.createQueryBuilder('client')
+            .leftJoinAndSelect('client.studio', 'studio')
+            .leftJoinAndSelect('client.user', 'user')
             .where('client.tenantId = :tenantId', { tenantId })
             .andWhere('client.status = :status', { status: 'active' });
 
@@ -33,7 +38,8 @@ export class ClientsService {
             query.andWhere(new Brackets(qb => {
                 qb.where('client.firstName ILIKE :search', { search: `%${search}%` })
                     .orWhere('client.lastName ILIKE :search', { search: `%${search}%` })
-                    .orWhere('client.email ILIKE :search', { search: `%${search}%` });
+                    .orWhere('client.email ILIKE :search', { search: `%${search}%` })
+                    .orWhere('client.phone ILIKE :search', { search: `%${search}%` });
             }));
         }
 
@@ -139,6 +145,7 @@ export class ClientsService {
             avatarUrl: dto.avatarUrl,
             status: dto.status || 'active',
             userId: user.id,
+            studioId: dto.studioId || null,
             tenantId,
         });
 
@@ -146,34 +153,51 @@ export class ClientsService {
     }
 
     async update(id: string, dto: UpdateClientDto, tenantId: string): Promise<Client> {
-        const client = await this.findOne(id, tenantId);
+        const client = await this.findOne(id, tenantId, ['user']);
 
-        // Calculate diff before update
-        const updatedClient = { ...client, ...dto };
+        // Extract gender from dto (it goes to the user, not client)
+        const { gender, ...clientDto } = dto;
+
+        // Calculate diff before update (excluding gender since it's on user)
+        const updatedClient = { ...client, ...clientDto };
         const { changes } = this.auditService.calculateDiff(client, updatedClient);
 
-        Object.assign(client, dto);
+        Object.assign(client, clientDto);
         const saved = await this.clientRepository.save(client);
 
-        if (Object.keys(changes).length > 0) {
+        // Update user gender if provided and client has a linked user
+        if (gender && client.userId) {
+            await this.userRepository.update(client.userId, { gender });
+        }
+
+        if (Object.keys(changes).length > 0 || gender) {
             await this.auditService.log(
                 tenantId,
                 'UPDATE_CLIENT',
                 'Client',
                 client.id,
                 'API_USER', // TODO: Pass actual user ID
-                { changes }
+                { changes, ...(gender ? { userGender: gender } : {}) }
             );
         }
 
         return saved;
     }
 
-    async remove(id: string, tenantId: string): Promise<void> {
+    async remove(id: string, tenantId: string, userId: string = 'API_USER'): Promise<void> {
         const client = await this.findOne(id, tenantId);
         // Soft delete by setting status to inactive
         client.status = 'inactive';
         await this.clientRepository.save(client);
+
+        await this.auditService.log(
+            tenantId,
+            'UPDATE_CLIENT', // Or DELETE_CLIENT if we want to distinguish soft delete
+            'Client',
+            client.id,
+            userId,
+            { changes: { status: { from: 'active', to: 'inactive' } }, message: 'Client soft deleted' }
+        );
     }
 
     async invite(id: string, tenantId: string): Promise<void> {

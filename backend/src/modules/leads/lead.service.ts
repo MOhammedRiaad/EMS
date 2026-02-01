@@ -20,10 +20,15 @@ export class LeadService {
         private readonly automationService: AutomationService,
     ) { }
 
-    async create(createLeadDto: any, user?: User): Promise<Lead> {
+    async create(createLeadDto: any, tenantId: string, user?: User): Promise<Lead> {
+        if (!tenantId) {
+            throw new BadRequestException('Tenant ID is required to create a lead');
+        }
+
         const lead = this.leadRepository.create({
             ...createLeadDto,
-            status: LeadStatus.NEW
+            status: LeadStatus.NEW,
+            tenantId,
         });
         const savedLead = (await this.leadRepository.save(lead)) as unknown as Lead;
 
@@ -36,13 +41,18 @@ export class LeadService {
         return savedLead;
     }
 
-    async findAll(filter: any): Promise<Lead[]> {
+    async findAll(filter: any, tenantId: string): Promise<Lead[]> {
         const query = this.leadRepository.createQueryBuilder('lead')
             .leftJoinAndSelect('lead.assignedTo', 'assignedTo')
+            .where('lead.tenantId = :tenantId', { tenantId })
             .orderBy('lead.createdAt', 'DESC');
 
         if (filter.status) {
             query.andWhere('lead.status = :status', { status: filter.status });
+        }
+
+        if (filter.studioId) {
+            query.andWhere('lead.studioId = :studioId', { studioId: filter.studioId });
         }
 
         if (filter.source) {
@@ -56,17 +66,19 @@ export class LeadService {
         return query.getMany();
     }
 
-    async findOne(id: string): Promise<Lead> {
+    async findOne(id: string, tenantId: string): Promise<Lead> {
         const lead = await this.leadRepository.findOne({
-            where: { id },
+            where: { id, tenantId },
             relations: ['activities', 'activities.createdBy', 'assignedTo']
         });
         if (!lead) throw new NotFoundException('Lead not found');
         return lead;
     }
 
-    async update(id: string, updateLeadDto: any, user?: User): Promise<Lead> {
-        const lead = await this.findOne(id);
+    async update(id: string, updateLeadDto: any, tenantId: string, user?: User): Promise<Lead> {
+        if (!tenantId) throw new BadRequestException('Tenant context required');
+
+        const lead = await this.findOne(id, tenantId);
 
         if (updateLeadDto.status && updateLeadDto.status !== lead.status) {
             await this.logActivity(id, LeadActivityType.STATUS_CHANGED, `Status changed from ${lead.status} to ${updateLeadDto.status}`, user);
@@ -74,13 +86,24 @@ export class LeadService {
             await this.automationService.triggerEvent(AutomationTriggerType.LEAD_STATUS_CHANGED, { lead, oldStatus: lead.status, newStatus: updateLeadDto.status });
         }
 
+        // Handle studio assignment logic if needed: "lead should be assigned to studio after contacted"
+        if (updateLeadDto.status === LeadStatus.CONTACTED && !lead.studioId && updateLeadDto.studioId) {
+            // Logic is handled by just updating the field if passed in updateLeadDto
+        }
+
         // Use update instead of save to avoid issues with loaded relations (orphaning new activities)
-        await this.leadRepository.update(id, updateLeadDto);
-        return this.findOne(id);
+        // Ensure we don't overwrite tenantId
+        delete updateLeadDto.tenantId;
+
+        await this.leadRepository.update({ id, tenantId }, updateLeadDto);
+        return this.findOne(id, tenantId);
     }
 
-    async remove(id: string): Promise<void> {
-        await this.leadRepository.delete(id);
+    async remove(id: string, tenantId: string): Promise<void> {
+        const result = await this.leadRepository.delete({ id, tenantId });
+        if (result.affected === 0) {
+            throw new NotFoundException('Lead not found');
+        }
     }
 
     async addActivity(leadId: string, type: LeadActivityType, content: string, user?: User) {
@@ -99,7 +122,10 @@ export class LeadService {
 
     // Conversion Logic
     async convertToClient(id: string, user?: User): Promise<any> {
-        const lead = await this.findOne(id);
+        if (!user || !user.tenantId) {
+            throw new BadRequestException('Cannot convert lead without tenant context');
+        }
+        const lead = await this.findOne(id, user.tenantId);
         if (lead.status === LeadStatus.CONVERTED) {
             throw new BadRequestException('Lead already converted');
         }

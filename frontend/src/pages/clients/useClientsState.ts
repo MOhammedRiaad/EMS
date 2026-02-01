@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { clientsService, type Client } from '../../services/clients.service';
+import { studiosService, type Studio } from '../../services/studios.service';
 import { storageService } from '../../services/storage.service';
 
 export interface ClientFormData {
@@ -10,6 +11,7 @@ export interface ClientFormData {
     gender: 'male' | 'female' | 'other' | 'pnts';
     phone: string;
     avatarUrl: string;
+    studioId: string;
 }
 
 export interface ClientFilters {
@@ -23,7 +25,8 @@ const initialFormState: ClientFormData = {
     password: '',
     gender: 'male',
     phone: '',
-    avatarUrl: ''
+    avatarUrl: '',
+    studioId: ''
 };
 
 const initialFilters: ClientFilters = {
@@ -33,6 +36,7 @@ const initialFilters: ClientFilters = {
 export function useClientsState() {
     // Data state
     const [clients, setClients] = useState<Client[]>([]);
+    const [studios, setStudios] = useState<Studio[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -54,8 +58,12 @@ export function useClientsState() {
     const fetchClients = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await clientsService.getAll(searchQuery);
-            setClients(data);
+            const [clientsData, studiosData] = await Promise.all([
+                clientsService.getAll(searchQuery),
+                studiosService.getAll()
+            ]);
+            setClients(clientsData);
+            setStudios(studiosData);
         } catch (error) {
             console.error('Failed to fetch clients', error);
         } finally {
@@ -115,9 +123,10 @@ export function useClientsState() {
             lastName: client.lastName,
             email: client.email || '',
             password: '',
-            gender: 'male',
+            gender: client.user?.gender || 'male',
             phone: client.phone || '',
-            avatarUrl: client.avatarUrl || ''
+            avatarUrl: client.avatarUrl || '',
+            studioId: client.studioId || ''
         });
         setIsEditModalOpen(true);
     }, []);
@@ -127,7 +136,17 @@ export function useClientsState() {
         if (!selectedClient) return;
         setSaving(true);
         try {
-            await clientsService.update(selectedClient.id, formData);
+            // Send fields allowed by UpdateClientDto (including gender which updates the linked user)
+            const updateData = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phone: formData.phone,
+                avatarUrl: formData.avatarUrl,
+                studioId: formData.studioId || undefined,
+                gender: formData.gender
+            };
+            await clientsService.update(selectedClient.id, updateData);
             setIsEditModalOpen(false);
             setSelectedClient(null);
             resetForm();
@@ -208,6 +227,7 @@ export function useClientsState() {
         // Data
         clients,
         filteredClients,
+        studios,
 
         // UI state
         loading,

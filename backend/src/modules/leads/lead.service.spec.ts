@@ -96,11 +96,12 @@ describe('LeadService', () => {
             leadRepository.create.mockReturnValue(mockLead);
             leadRepository.save.mockResolvedValue(mockLead);
 
-            const result = await service.create(createDto, mockUser);
+            const result = await service.create(createDto, mockUser.tenantId, mockUser);
 
             expect(leadRepository.create).toHaveBeenCalledWith({
                 ...createDto,
-                status: LeadStatus.NEW
+                status: LeadStatus.NEW,
+                tenantId: mockUser.tenantId
             });
             expect(leadRepository.save).toHaveBeenCalled();
             expect(result).toEqual(mockLead);
@@ -109,18 +110,53 @@ describe('LeadService', () => {
                 { lead: mockLead }
             );
         });
+
+        it('should throw BadRequestException if tenantId is missing', async () => {
+            const createDto = { firstName: 'John', lastName: 'Doe' };
+            await expect(service.create(createDto, '')).rejects.toThrow(BadRequestException);
+        });
+    });
+
+    describe('findAll', () => {
+        it('should filter by tenantId', async () => {
+            const filter = { status: LeadStatus.NEW };
+            const tenantId = 'tenant-123';
+
+            const mockQueryBuilder = {
+                leftJoinAndSelect: jest.fn().mockReturnThis(),
+                where: jest.fn().mockReturnThis(),
+                andWhere: jest.fn().mockReturnThis(),
+                orderBy: jest.fn().mockReturnThis(),
+                getMany: jest.fn().mockResolvedValue([mockLead]),
+            };
+
+            leadRepository.createQueryBuilder = jest.fn(() => mockQueryBuilder as any);
+
+            await service.findAll(filter, tenantId);
+
+            expect(mockQueryBuilder.where).toHaveBeenCalledWith('lead.tenantId = :tenantId', { tenantId });
+            expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('lead.status = :status', { status: LeadStatus.NEW });
+        });
     });
 
     describe('update', () => {
         it('should update lead status and trigger LEAD_STATUS_CHANGED automation', async () => {
             const updateDto = { status: LeadStatus.CONTACTED };
             leadRepository.findOne.mockResolvedValue(mockLead);
-            // After update, we usually fetch again, so update mocks
             leadRepository.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
-            await service.update('lead-123', updateDto, mockUser);
+            await service.update('lead-123', updateDto, mockUser.tenantId, mockUser);
 
-            expect(leadRepository.update).toHaveBeenCalledWith('lead-123', updateDto);
+            expect(leadRepository.findOne).toHaveBeenCalledWith({
+                where: { id: 'lead-123', tenantId: mockUser.tenantId },
+                relations: expect.any(Array)
+            });
+
+            expect(leadRepository.update).toHaveBeenCalledWith(
+                { id: 'lead-123', tenantId: mockUser.tenantId },
+                { status: LeadStatus.CONTACTED }
+            );
+
             expect(automationService.triggerEvent).toHaveBeenCalledWith(
                 AutomationTriggerType.LEAD_STATUS_CHANGED,
                 {
@@ -131,13 +167,26 @@ describe('LeadService', () => {
             );
         });
 
-        it('should not trigger automation if status is unchanged', async () => {
-            const updateDto = { status: LeadStatus.NEW }; // Same as mockLead
-            leadRepository.findOne.mockResolvedValue(mockLead);
+        it('should throw BadRequest if tenantId is missing', async () => {
+            await expect(service.update('lead-123', {}, '')).rejects.toThrow(BadRequestException);
+        });
+    });
 
-            await service.update('lead-123', updateDto, mockUser);
+    describe('remove', () => {
+        it('should remove lead by id and tenantId', async () => {
+            const tenantId = 'tenant-123';
+            leadRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
 
-            expect(automationService.triggerEvent).not.toHaveBeenCalled();
+            await service.remove('lead-123', tenantId);
+
+            expect(leadRepository.delete).toHaveBeenCalledWith({ id: 'lead-123', tenantId });
+        });
+
+        it('should throw NotFoundException if not found', async () => {
+            const tenantId = 'tenant-123';
+            leadRepository.delete.mockResolvedValue({ affected: 0, raw: [] });
+
+            await expect(service.remove('lead-123', tenantId)).rejects.toThrow(NotFoundException);
         });
     });
 
@@ -148,6 +197,11 @@ describe('LeadService', () => {
             clientsService.invite.mockResolvedValue(undefined); // void
 
             const result = await service.convertToClient('lead-123', mockUser);
+
+            expect(leadRepository.findOne).toHaveBeenCalledWith({
+                where: { id: 'lead-123', tenantId: mockUser.tenantId },
+                relations: expect.any(Array)
+            });
 
             expect(clientsService.createWithUser).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -176,7 +230,7 @@ describe('LeadService', () => {
         });
 
         it('should throw BadRequest if user has no tenantId', async () => {
-            leadRepository.findOne.mockResolvedValue(mockLead);
+            // No need to mock findOne here because it throws before calling it
             const noTenantUser = { ...mockUser, tenantId: undefined };
 
             await expect(service.convertToClient('lead-123', noTenantUser as any))

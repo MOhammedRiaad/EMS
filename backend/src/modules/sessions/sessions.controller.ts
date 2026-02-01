@@ -65,6 +65,12 @@ export class SessionsController {
         return this.sessionsService.updateSeries(id, dto, tenantId);
     }
 
+    @Delete(':id')
+    @ApiOperation({ summary: 'Delete a session' })
+    delete(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.sessionsService.delete(id, tenantId);
+    }
+
     @Delete(':id/series')
     @ApiOperation({ summary: 'Delete a session series' })
     deleteSeries(@Param('id') id: string, @TenantId() tenantId: string) {

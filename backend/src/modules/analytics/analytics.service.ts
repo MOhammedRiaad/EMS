@@ -10,6 +10,7 @@ import { Room } from '../rooms/entities/room.entity';
 import { EmsDevice } from '../devices/entities/ems-device.entity';
 import { WaitingListEntry, WaitingListStatus } from '../waiting-list/entities/waiting-list.entity';
 import { ClientSessionReview } from '../reviews/entities/review.entity';
+import { Lead } from '../leads/entities/lead.entity';
 import { PeriodType, DateRangeQueryDto } from './dto';
 
 interface DateRange {
@@ -38,6 +39,8 @@ export class AnalyticsService {
         private readonly waitingListRepo: Repository<WaitingListEntry>,
         @InjectRepository(ClientSessionReview)
         private readonly reviewRepo: Repository<ClientSessionReview>,
+        @InjectRepository(Lead) // New Injection
+        private readonly leadRepo: Repository<Lead>,
     ) { }
 
     // ============= Helper Methods =============
@@ -601,6 +604,126 @@ export class AnalyticsService {
             scheduled,
             total,
             completionRate: Math.round(completionRate * 10) / 10,
+        };
+    }
+
+    // ============= Lead Analytics =============
+
+    async getLeadAnalytics(tenantId: string, query: DateRangeQueryDto) {
+        const { from, to } = this.getDateRange(query);
+
+        // 1. Total Leads
+        const total = await this.leadRepo.count({
+            where: {
+                tenantId, // Filter by tenant
+                createdAt: Between(from, to),
+            }
+        });
+
+        // 2. Converted Leads
+        const converted = await this.leadRepo.count({
+            where: {
+                tenantId, // Filter by tenant
+                status: 'converted' as any,
+                createdAt: Between(from, to),
+            }
+        });
+
+        const conversionRate = total > 0 ? (converted / total) * 100 : 0;
+
+        // 3. Source Breakdown
+        const sourceBreakdown = await this.leadRepo
+            .createQueryBuilder('lead')
+            .select('lead.source', 'source')
+            .addSelect('COUNT(lead.id)', 'count')
+            .where('lead.tenantId = :tenantId', { tenantId })
+            .andWhere('lead.created_at >= :from', { from })
+            .andWhere('lead.created_at <= :to', { to })
+            .groupBy('lead.source')
+            .orderBy('count', 'DESC')
+            .getRawMany();
+
+        return {
+            total,
+            converted,
+            conversionRate: Math.round(conversionRate * 10) / 10,
+            sources: sourceBreakdown.map(s => ({
+                source: s.source || 'Unknown',
+                count: parseInt(s.count || '0', 10),
+            })),
+        };
+    }
+
+    // ============= Predictive Analytics =============
+
+    async getRevenueForecast(tenantId: string) {
+        // 1. Get Monthly Revenue for last 6 months
+        const now = new Date();
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1); // Start of 6th month back
+
+        const results = await this.clientPackageRepo
+            .createQueryBuilder('cp')
+            .leftJoin('cp.package', 'p')
+            .where('cp.tenantId = :tenantId', { tenantId })
+            .andWhere('cp.paidAt >= :from', { from: sixMonthsAgo })
+            .andWhere('cp.paidAt IS NOT NULL')
+            .select("TO_CHAR(cp.paidAt, 'YYYY-MM')", 'period')
+            .addSelect('COALESCE(SUM(p.price), 0)', 'revenue')
+            .groupBy('period')
+            .orderBy('period', 'ASC')
+            .getRawMany();
+
+        const dataPoints = results.map((r, index) => ({
+            x: index, // Time step (0, 1, 2...)
+            y: parseFloat(r.revenue || '0'),
+            period: r.period
+        }));
+
+        // Fill in missing months with 0 if needed? 
+        // Ideally we should have continuous data. For simplicity, we use what we have.
+
+        // 2. Linear Regression (Least Squares)
+        // y = mx + b
+        // m = (n*Sum(xy) - Sum(x)*Sum(y)) / (n*Sum(x^2) - (Sum(x))^2)
+        // b = (Sum(y) - m*Sum(x)) / n
+
+        const n = dataPoints.length;
+        if (n < 2) {
+            return {
+                forecast: 0,
+                trend: 'insufficient_data',
+                confidence: 'low'
+            };
+        }
+
+        let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+        for (const point of dataPoints) {
+            sumX += point.x;
+            sumY += point.y;
+            sumXY += (point.x * point.y);
+            sumXX += (point.x * point.x);
+        }
+
+        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+
+        // Predict next month (x = n)
+        const nextMonthX = n;
+        const predictedRevenue = slope * nextMonthX + intercept;
+
+        // Format next month string
+        const nextMonthDate = new Date();
+        nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+        const nextPeriod = nextMonthDate.toISOString().slice(0, 7); // YYYY-MM
+
+        return {
+            period: nextPeriod,
+            forecast: Math.max(0, Math.round(predictedRevenue * 100) / 100), // No negative revenue
+            trend: slope > 0 ? 'up' : slope < 0 ? 'down' : 'flat',
+            growthRate: dataPoints.length > 0 && dataPoints[dataPoints.length - 1].y > 0
+                ? ((predictedRevenue - dataPoints[dataPoints.length - 1].y) / dataPoints[dataPoints.length - 1].y) * 100
+                : 0,
+            history: dataPoints
         };
     }
 }
