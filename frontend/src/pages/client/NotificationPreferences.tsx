@@ -60,7 +60,7 @@ const NotificationPreferences: React.FC = () => {
 
             await clientPortalService.updateProfile({
                 consentFlags: {
-                    marketing: marketingEnabled,
+                    marketing: marketingEnabled ?? false,
                     data_processing: true // Always true if they are using the app
                 }
             });

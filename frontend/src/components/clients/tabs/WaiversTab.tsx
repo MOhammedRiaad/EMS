@@ -49,7 +49,7 @@ const WaiversTab: React.FC = () => {
         {
             key: 'actions',
             header: 'Actions',
-            render: (item) => (
+            render: (_) => (
                 <button className="text-primary-600 hover:text-primary-800" title="View Signature">
                     <Eye className="w-4 h-4" />
                 </button>

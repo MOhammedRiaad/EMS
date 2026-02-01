@@ -58,8 +58,8 @@ const PrivacySettings: React.FC = () => {
 
             await clientPortalService.updateProfile({
                 privacyPreferences: {
-                    leaderboard_visible,
-                    activity_feed_visible
+                    leaderboard_visible: leaderboard_visible ?? false,
+                    activity_feed_visible: activity_feed_visible ?? false
                 }
             });
             navigate(-1);
