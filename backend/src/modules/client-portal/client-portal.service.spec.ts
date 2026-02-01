@@ -32,6 +32,7 @@ describe('ClientPortalService', () => {
         avatarUrl: null,
         createdAt: new Date(),
         user: { id: 'user-123', email: 'john@example.com', gender: 'male' },
+        studioId: 'studio-123',
     };
 
     const mockSession = {
@@ -236,7 +237,12 @@ describe('ClientPortalService', () => {
                 roomId: 'room-123',
                 coachId: 'coach-123',
             });
+            sessionsService.autoAssignResources.mockResolvedValue({
+                roomId: 'room-123',
+                coachId: 'coach-123',
+            });
             sessionsService.create.mockResolvedValue(mockSession as any);
+            clientsService.findOne.mockResolvedValue(mockClient as any);
         });
 
         it('should book a session successfully', async () => {
@@ -260,6 +266,7 @@ describe('ClientPortalService', () => {
 
         it('should find default studio if not provided', async () => {
             const dtoNoStudio = { ...bookDto, studioId: undefined };
+            clientsService.findOne.mockResolvedValue({ ...mockClient, studioId: undefined } as any);
 
             await service.bookSession('client-123', 'tenant-123', dtoNoStudio);
 
@@ -308,7 +315,7 @@ describe('ClientPortalService', () => {
 
             const result = await service.getAvailableSlots(
                 'tenant-123',
-                { studioId: 'studio-123' },
+                'studio-123',
                 '2026-02-01'
             );
 
@@ -454,7 +461,7 @@ describe('ClientPortalService', () => {
             const result = await service.getCoaches('client-123', 'tenant-123');
 
             expect(result).toEqual(mockCoaches);
-            expect(coachesService.findActive).toHaveBeenCalledWith('tenant-123', 'male');
+            expect(coachesService.findActive).toHaveBeenCalledWith('tenant-123', 'male', 'studio-123');
         });
 
         it('should throw error if client not found', async () => {

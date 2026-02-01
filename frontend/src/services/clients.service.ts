@@ -120,5 +120,15 @@ export const clientsService = {
         return authenticatedFetch(`/clients/${id}/photos/${photoId}`, {
             method: 'DELETE'
         });
+    },
+
+    async uploadProgressPhoto(file: File): Promise<{ url: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return authenticatedFetch('/storage/upload', {
+            method: 'POST',
+            body: formData
+        });
     }
 };

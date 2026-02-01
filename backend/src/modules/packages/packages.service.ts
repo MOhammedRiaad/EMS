@@ -208,6 +208,45 @@ export class PackagesService {
         }, tenantId, userId);
     }
 
+    async adjustSessions(id: string, adjustment: number, reason: string, tenantId: string, userId: string) {
+        const cp = await this.clientPackageRepo.findOne({ where: { id, tenantId }, relations: ['package'] });
+        if (!cp) throw new NotFoundException('Client package not found');
+
+        const newRemaining = cp.sessionsRemaining + adjustment;
+
+        if (newRemaining < 0) {
+            throw new BadRequestException(`Cannot decrease sessions by ${Math.abs(adjustment)}. Client only has ${cp.sessionsRemaining} remaining.`);
+        }
+
+        const oldRemaining = cp.sessionsRemaining;
+        cp.sessionsRemaining = newRemaining;
+
+        // Update status if depleted or reactivated
+        if (cp.sessionsRemaining === 0) {
+            cp.status = ClientPackageStatus.DEPLETED;
+        } else if (cp.sessionsRemaining > 0 && cp.status === ClientPackageStatus.DEPLETED) {
+            cp.status = ClientPackageStatus.ACTIVE;
+        }
+
+        const saved = await this.clientPackageRepo.save(cp);
+
+        await this.auditService.log(
+            tenantId,
+            'ADJUST_PACKAGE_SESSIONS',
+            'ClientPackage',
+            saved.id,
+            userId,
+            {
+                adjustment,
+                reason,
+                oldRemaining,
+                newRemaining
+            }
+        );
+
+        return saved;
+    }
+
     // ===== TRANSACTIONS =====
     async createTransaction(dto: CreateTransactionDto, tenantId: string, userId: string) {
         // Get current balance

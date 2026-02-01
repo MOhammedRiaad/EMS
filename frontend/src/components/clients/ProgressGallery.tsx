@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clientsService, type ClientProgressPhoto } from '../../services/clients.service';
-import { Plus, Trash2, Calendar, Image as ImageIcon, Camera, Loader2, X } from 'lucide-react';
+import { Plus, Trash2, Calendar, Image as ImageIcon, Camera, Loader2, X, Upload } from 'lucide-react';
+import { getImageUrl } from '../../utils/imageUtils';
 
 interface ProgressGalleryProps {
     clientId: string;
@@ -28,23 +29,38 @@ export const ProgressGallery: React.FC<ProgressGalleryProps> = ({ clientId }) =>
         }
     };
 
-    const handleAddPhoto = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newPhotoUrl) return;
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            setUploadError('File size must be less than 5MB');
+            return;
+        }
 
         setUploading(true);
+        setUploadError(null);
+
         try {
+            // 1. Upload file
+            const { url } = await clientsService.uploadProgressPhoto(file);
+
+            // 2. Add record
             await clientsService.addPhoto(clientId, {
-                photoUrl: newPhotoUrl,
+                photoUrl: url,
                 notes,
-                type: 'front' // Default for now
+                type: 'front'
             });
-            setNewPhotoUrl('');
+
             setNotes('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
             loadPhotos();
         } catch (error) {
             console.error('Failed to add photo', error);
-            alert('Failed to add photo');
+            setUploadError('Failed to upload photo');
         } finally {
             setUploading(false);
         }
@@ -83,20 +99,28 @@ export const ProgressGallery: React.FC<ProgressGalleryProps> = ({ clientId }) =>
 
             <div className="space-y-6 relative">
                 {/* Upload Form */}
-                <form onSubmit={handleAddPhoto} className="group bg-gray-50 dark:bg-slate-800/50 p-5 rounded-xl border-2 border-dashed border-gray-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700/50 transition-colors">
+                {/* Upload Form */}
+                <div className="bg-gray-50 dark:bg-slate-800/50 p-5 rounded-xl border-2 border-dashed border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition-colors">
                     <div className="flex gap-4 items-end flex-wrap md:flex-nowrap">
                         <div className="flex-1 min-w-[200px]">
-                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1.5 uppercase tracking-wider">Photo URL</label>
-                            <div className="relative">
-                                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1.5 uppercase tracking-wider">Add Photo</label>
+                            <div className="flex gap-2">
                                 <input
-                                    type="text"
-                                    value={newPhotoUrl}
-                                    onChange={(e) => setNewPhotoUrl(e.target.value)}
-                                    placeholder="https://example.com/photo.jpg"
-                                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none"
-                                    required
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                    accept="image/*"
+                                    disabled={uploading}
                                 />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="flex-1 flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <Upload size={16} />
+                                    {uploading ? 'Uploading...' : 'Select Image'}
+                                </button>
                             </div>
                         </div>
                         <div className="flex-1 min-w-[200px]">
@@ -106,25 +130,20 @@ export const ProgressGallery: React.FC<ProgressGalleryProps> = ({ clientId }) =>
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="e.g. Front view, week 4"
-                                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none"
+                                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
                             />
                         </div>
-                        <button
-                            type="submit"
-                            disabled={uploading}
-                            className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 flex items-center gap-2 whitespace-nowrap"
-                        >
-                            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
-                            {uploading ? 'Adding...' : 'Add Photo'}
-                        </button>
                     </div>
-                </form>
+                    {uploadError && (
+                        <p className="mt-2 text-sm text-red-500">{uploadError}</p>
+                    )}
+                </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {photos.map(photo => (
                         <div key={photo.id} className="group relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
                             <div className="aspect-[3/4] bg-gray-100 dark:bg-slate-950 relative overflow-hidden">
-                                <img src={photo.photoUrl} alt="Progress" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                <img src={getImageUrl(photo.photoUrl) || ''} alt="Progress" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                                     <button
                                         onClick={() => handleDelete(photo.id)}

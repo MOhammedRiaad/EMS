@@ -151,6 +151,19 @@ export const packagesService = {
         return response.json();
     },
 
+    adjustSessions: async (id: string, adjustment: number, reason: string): Promise<ClientPackage> => {
+        const response = await fetch(`${API_URL}/client-packages/${id}/adjust-sessions`, {
+            method: 'PATCH',
+            headers: getHeaders(),
+            body: JSON.stringify({ adjustment, reason })
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.message || 'Failed to adjust sessions');
+        }
+        return response.json();
+    },
+
     // Transactions
     getTransactions: async (): Promise<Transaction[]> => {
         const response = await fetch(`${API_URL}/transactions`, {

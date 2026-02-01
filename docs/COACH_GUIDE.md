@@ -59,13 +59,14 @@ Your dashboard displays:
    - Session status
 
 ### Session Cards
-
-Each session shows:
-- **Client Photo** (if uploaded)
-- **Client Name** 
-- **Time Slot**
-- **Room**
-- **Status Badge**
+ 
+ Each session shows:
+ - **Client Photo** (if uploaded)
+ - **Client Name**
+   - For **Group Sessions**: Shows "Group Session (X participants)" with a list of all attending clients.
+ - **Time Slot**
+ - **Room**
+ - **Status Badge**
 
 ### Filtering Sessions
 

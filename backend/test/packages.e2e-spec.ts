@@ -156,6 +156,46 @@ describe('Packages E2E Tests', () => {
             expect(response.body.sessionsRemaining).toBe(9);
             expect(response.body.sessionsUsed).toBe(1);
         });
+        describe('PATCH /client-packages/:id/adjust-sessions', () => {
+            it('should manually increase sessions', async () => {
+                const response = await request(app.getHttpServer())
+                    .patch(`/client-packages/${clientPackageId}/adjust-sessions`)
+                    .set('Authorization', `Bearer ${accessToken}`)
+                    .send({
+                        adjustment: 2,
+                        reason: 'Admin bonus'
+                    })
+                    .expect(200);
+
+                // Previous remaining was 9 (started 10, used 1). Added 2 => 11.
+                expect(response.body.sessionsRemaining).toBe(11);
+            });
+
+            it('should manually decrease sessions', async () => {
+                const response = await request(app.getHttpServer())
+                    .patch(`/client-packages/${clientPackageId}/adjust-sessions`)
+                    .set('Authorization', `Bearer ${accessToken}`)
+                    .send({
+                        adjustment: -5,
+                        reason: 'Admin correction'
+                    })
+                    .expect(200);
+
+                // 11 - 5 = 6
+                expect(response.body.sessionsRemaining).toBe(6);
+            });
+
+            it('should fail if decreasing more than remaining', async () => {
+                await request(app.getHttpServer())
+                    .patch(`/client-packages/${clientPackageId}/adjust-sessions`)
+                    .set('Authorization', `Bearer ${accessToken}`)
+                    .send({
+                        adjustment: -20,
+                        reason: 'Error'
+                    })
+                    .expect(400);
+            });
+        });
     });
 
     describe('GET /transactions/balance', () => {

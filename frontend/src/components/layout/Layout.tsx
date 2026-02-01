@@ -235,19 +235,20 @@ const Layout: React.FC = () => {
                         <Breadcrumbs />
                     </div>
 
-                    <div className="user-profile">
-                        <div className="avatar">{getInitials()}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{getDisplayName()}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
-                                {user?.role?.replace('_', ' ') || ''}
-                            </span>
-                        </div>
-                    </div>
+
 
                     <div style={{ marginLeft: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <NotificationCenter />
                         <ThemeToggle />
+                        <div className="user-profile">
+                            <div className="avatar">{getInitials()}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{getDisplayName()}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
+                                    {user?.role?.replace('_', ' ') || ''}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </header>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import ReceiptModal from '../common/ReceiptModal';
 import { packagesService, type Package, type ClientPackage as ClientPackageType } from '../../services/packages.service';
-import { Package as PackageIcon, Plus, RefreshCw, Check, AlertTriangle, Printer } from 'lucide-react';
+import { Package as PackageIcon, Plus, RefreshCw, Check, AlertTriangle, Printer, Settings } from 'lucide-react';
 
 interface ClientPackagesProps {
     clientId: string;
@@ -23,6 +23,33 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
     });
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [receiptData, setReceiptData] = useState<any>(null);
+
+    // Adjustment State
+    const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+    const [adjustmentData, setAdjustmentData] = useState({
+        amount: 0,
+        reason: ''
+    });
+    const [selectedPackageForAdjust, setSelectedPackageForAdjust] = useState<ClientPackageType | null>(null);
+
+    const openAdjustModal = (cp: ClientPackageType) => {
+        setSelectedPackageForAdjust(cp);
+        setAdjustmentData({ amount: 0, reason: '' });
+        setIsAdjustModalOpen(true);
+    }
+
+    const handleAdjustSessions = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedPackageForAdjust) return;
+        try {
+            await packagesService.adjustSessions(selectedPackageForAdjust.id, adjustmentData.amount, adjustmentData.reason);
+            setIsAdjustModalOpen(false);
+            fetchData();
+        } catch (error: any) {
+            console.error('Error adjusting sessions:', error);
+            alert(error.message || 'Failed to adjust sessions');
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -243,6 +270,22 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
                                 >
                                     <Printer size={14} /> Receipt
                                 </button>
+                                <button
+                                    onClick={() => openAdjustModal(activePackage)}
+                                    style={{
+                                        padding: '0.5rem 0.75rem',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: 'var(--border-radius-md)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        fontSize: '0.875rem',
+                                        marginLeft: '0.5rem'
+                                    }}
+                                    title="Adjust Sessions (Admin)"
+                                >
+                                    <Settings size={14} /> Adjust
+                                </button>
                             </div>
                         </div>
 
@@ -449,6 +492,82 @@ const ClientPackages: React.FC<ClientPackagesProps> = ({ clientId, clientName })
                             }}
                         >
                             <Check size={16} style={{ marginRight: '0.25rem' }} /> Confirm Renewal
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Adjust Modal */}
+            <Modal
+                isOpen={isAdjustModalOpen}
+                onClose={() => setIsAdjustModalOpen(false)}
+                title="Adjust Sessions"
+            >
+                <form onSubmit={handleAdjustSessions} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: 'var(--border-radius-md)', fontSize: '0.875rem' }}>
+                        <p><strong>Package:</strong> {selectedPackageForAdjust?.package?.name}</p>
+                        <p><strong>Current Remaining:</strong> {selectedPackageForAdjust?.sessionsRemaining}</p>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                            Adjustment Amount
+                        </label>
+                        <input
+                            type="number"
+                            value={adjustmentData.amount}
+                            onChange={e => setAdjustmentData({ ...adjustmentData, amount: Number(e.target.value) })}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)'
+                            }}
+                            placeholder="e.g. 1 or -1"
+                            required
+                        />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                            Positive to add sessions, negative to remove.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                            Reason
+                        </label>
+                        <textarea
+                            value={adjustmentData.reason}
+                            onChange={e => setAdjustmentData({ ...adjustmentData, reason: e.target.value })}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                borderRadius: 'var(--border-radius-md)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)',
+                                minHeight: '80px'
+                            }}
+                            placeholder="Reason for adjustment..."
+                            required
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                        <button type="button" onClick={() => setIsAdjustModalOpen(false)} style={{ padding: '0.5rem 1rem' }}>
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            style={{
+                                padding: '0.5rem 1rem',
+                                backgroundColor: 'var(--color-primary)',
+                                color: 'white',
+                                borderRadius: 'var(--border-radius-md)'
+                            }}
+                        >
+                            Save Adjustment
                         </button>
                     </div>
                 </form>

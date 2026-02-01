@@ -6,7 +6,8 @@ import WaiversTab from '../../components/clients/tabs/WaiversTab';
 
 import ClientParqTab from '../../components/clients/tabs/ClientParqTab';
 import HealthAndProgressTab from '../../components/clients/tabs/HealthAndProgressTab';
-import { Activity, Heart } from 'lucide-react';
+import ClientSessionsTab from '../../components/clients/tabs/ClientSessionsTab';
+import { Activity, Heart, Calendar } from 'lucide-react';
 import { clientsService } from '../../services/clients.service';
 import { api } from '../../services/api';
 import { getImageUrl } from '../../utils/imageUtils';
@@ -114,6 +115,8 @@ const ClientDetailsPage: React.FC = () => {
                 return <ClientParqTab clientId={id!} />;
             case 'health':
                 return <HealthAndProgressTab client={client} onUpdate={async (data) => { await clientsService.update(id!, data); }} />;
+            case 'sessions':
+                return <ClientSessionsTab clientId={id!} />;
             default:
                 return null;
         }
@@ -139,6 +142,7 @@ const ClientDetailsPage: React.FC = () => {
                         { id: 'waivers', label: 'Waivers', icon: FileText },
                         { id: 'parq', label: 'PAR-Q', icon: Activity },
                         { id: 'health', label: 'Health & Progress', icon: Heart },
+                        { id: 'sessions', label: 'Sessions', icon: Calendar },
                     ].map((tab) => (
                         <button
                             key={tab.id}

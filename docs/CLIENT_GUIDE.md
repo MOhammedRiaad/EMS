@@ -54,8 +54,9 @@ Your dashboard shows:
 1. Click **Book Session** from the dashboard or navigation
 2. Select your preferred:
    - **Date**: Choose from the calendar
-   - **Time**: Available slots are shown in green
-   - **Coach** (optional): Pick your preferred trainer
+   - **Time**: Available slots are shown in green (based on your home studio)
+   - **Coach** (optional): Pick your preferred trainer.
+     > **Note**: Only coaches from your studio who match your gender preference will appear.
 3. Review your selection
 4. Click **Confirm Booking**
 

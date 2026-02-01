@@ -6,6 +6,8 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
 import { TenantsService } from '../tenants/tenants.service';
+import { MailerService } from '../mailer/mailer.service';
+import { AuditService } from '../audit/audit.service';
 import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { RegisterTenantOwnerDto, LoginDto, CreateUserDto, SetupPasswordDto } from './dto';
 
@@ -88,6 +90,16 @@ describe('AuthService', () => {
         findOne: jest.fn(),
     };
 
+    const mockMailerService = {
+        sendWelcomeEmail: jest.fn(),
+        sendPasswordReset: jest.fn(),
+        sendTeamInvitation: jest.fn(),
+    };
+
+    const mockAuditService = {
+        log: jest.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -103,6 +115,14 @@ describe('AuthService', () => {
                 {
                     provide: TenantsService,
                     useValue: mockTenantsService,
+                },
+                {
+                    provide: MailerService,
+                    useValue: mockMailerService,
+                },
+                {
+                    provide: AuditService,
+                    useValue: mockAuditService,
                 },
             ],
         }).compile();

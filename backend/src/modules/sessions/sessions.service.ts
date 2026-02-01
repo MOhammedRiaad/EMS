@@ -1216,6 +1216,21 @@ export class SessionsService {
             }
         }
 
+        // Handle Group Session Participants Refund
+        if (session.participants && session.participants.length > 0) {
+            for (const participant of session.participants) {
+                // Only refund if scheduled (not already cancelled/completed)
+                if (participant.clientPackageId && participant.status === 'scheduled') {
+                    try {
+                        await this.packagesService.returnSession(participant.clientPackageId, tenantId);
+                        this.logger.log(`Refunded session for participant ${participant.clientId} on session delete`);
+                    } catch (e) {
+                        this.logger.warn(`Could not refund participant ${participant.clientId} on delete: ${e.message}`);
+                    }
+                }
+            }
+        }
+
         await this.sessionRepository.remove(session);
 
         await this.auditService.log(

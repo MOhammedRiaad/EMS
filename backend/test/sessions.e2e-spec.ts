@@ -97,6 +97,7 @@ describe('Sessions E2E Tests', () => {
                 lastName: 'Client',
                 email: `client-${Date.now()}@example.com`,
                 phone: '123-456-7890',
+                studioId,
             })
             .expect(201);
         clientId = clientResponse.body.id;
@@ -307,6 +308,236 @@ describe('Sessions E2E Tests', () => {
                 .get(`/sessions/${parentSessionId}`)
                 .set('Authorization', `Bearer ${accessToken}`)
                 .expect(404);
+        });
+    });
+    describe('Studio Isolation', () => {
+        let studio2Id: string;
+        let coach2Id: string; // Assigned to studio 2
+        let client2Id: string; // Assigned to studio 2
+
+        beforeAll(async () => {
+            // Create Studio 2
+            const studioResponse = await request(app.getHttpServer())
+                .post('/studios')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    name: 'Isolation Test Studio',
+                    address: '456 Isolation Rd',
+                    city: 'Iso City',
+                    country: 'Iso Country',
+                    openingHours: {
+                        monday: { open: '07:00', close: '21:00' },
+                        tuesday: { open: '07:00', close: '21:00' },
+                        wednesday: { open: '07:00', close: '21:00' },
+                        thursday: { open: '07:00', close: '21:00' },
+                        friday: { open: '07:00', close: '21:00' },
+                    },
+                })
+                .expect(201);
+            studio2Id = studioResponse.body.id;
+
+            // Create Coach 2 (assigned to Studio 2)
+            const coachResponse = await request(app.getHttpServer())
+                .post('/coaches/create-with-user')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    email: `coach2-${Date.now()}@example.com`,
+                    password: testPassword,
+                    firstName: 'Coach',
+                    lastName: 'Two',
+                    gender: 'male',
+                    studioId: studio2Id,
+                })
+                .expect(201);
+            coach2Id = coachResponse.body.id;
+
+            // Create Client 2 (assigned to Studio 2)
+            const clientResponse = await request(app.getHttpServer())
+                .post('/clients/create-with-user')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    email: `client2-${Date.now()}@example.com`,
+                    password: testPassword,
+                    firstName: 'Client',
+                    lastName: 'Two',
+                    studioId: studio2Id,
+                })
+                .expect(201);
+            client2Id = clientResponse.body.id;
+        });
+
+        it('should fail when booking coach from different studio', async () => {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 2); // Use a future date
+            tomorrow.setHours(12, 0, 0, 0);
+
+            // Try to book Session in Studio 1 using Coach 2 (Studio 2)
+            await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId: studioId, // Studio 1
+                    roomId,
+                    coachId: coach2Id, // Coach from Studio 2
+                    clientId,
+                    startTime: tomorrow.toISOString(),
+                    endTime: new Date(tomorrow.getTime() + 20 * 60000).toISOString(),
+                })
+                .expect(400); // Should fail validation
+        });
+
+        it('should fail when booking client from different studio', async () => {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 2);
+            tomorrow.setHours(13, 0, 0, 0);
+
+            // Try to book Session in Studio 1 using Client 2 (Studio 2)
+            await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId: studioId, // Studio 1
+                    roomId,
+                    coachId,
+                    clientId: client2Id, // Client from Studio 2
+                    startTime: tomorrow.toISOString(),
+                    endTime: new Date(tomorrow.getTime() + 20 * 60000).toISOString(),
+                })
+                .expect(400); // Should fail validation
+        });
+    });
+
+    describe('Refunds', () => {
+        let refundClientId: string;
+        let refundPackageId: string;
+
+        beforeAll(async () => {
+            // Create dedicated client for refund tests
+            const clientResponse = await request(app.getHttpServer())
+                .post('/clients')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    firstName: 'Refund',
+                    lastName: 'Client',
+                    email: `refund-client-${Date.now()}@example.com`,
+                    phone: '000-000-0000',
+                    studioId: studioId,
+                })
+                .expect(201);
+            refundClientId = clientResponse.body.id;
+
+            // Create package
+            const packageResponse = await request(app.getHttpServer())
+                .post('/packages')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    name: 'Refund Test Package',
+                    totalSessions: 10,
+                    price: 100,
+                    validityDays: 30,
+                })
+                .expect(201);
+            refundPackageId = packageResponse.body.id;
+
+            // Assign package
+            await request(app.getHttpServer())
+                .post('/client-packages')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    clientId: refundClientId,
+                    packageId: refundPackageId,
+                })
+                .expect(201);
+        });
+
+        const getRemainingSessions = async () => {
+            const res = await request(app.getHttpServer())
+                .get(`/client-packages/client/${refundClientId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+            const activePkg = res.body.find((p: any) => p.status === 'active');
+            return activePkg ? activePkg.sessionsRemaining : 0;
+        };
+
+        it('should refund individual session on delete', async () => {
+            const initialRemaining = await getRemainingSessions();
+
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 5);
+            tomorrow.setHours(10, 0, 0, 0);
+            while (tomorrow.getDay() === 0 || tomorrow.getDay() === 6) {
+                tomorrow.setDate(tomorrow.getDate() + 1);
+            }
+
+            const createRes = await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId,
+                    roomId, // Assuming roomId is available from main scope
+                    coachId, // Assuming coachId is available from main scope
+                    clientId: refundClientId,
+                    startTime: tomorrow.toISOString(),
+                    endTime: new Date(tomorrow.getTime() + 20 * 60000).toISOString(),
+                    type: 'individual'
+                })
+                .expect(201);
+
+            const sId = createRes.body.id;
+
+            const afterBooking = await getRemainingSessions();
+            expect(afterBooking).toBe(initialRemaining - 1);
+
+            await request(app.getHttpServer())
+                .delete(`/sessions/${sId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            const afterDelete = await getRemainingSessions();
+            expect(afterDelete).toBe(initialRemaining);
+        });
+
+        it('should refund group participant on session delete', async () => {
+            const initialRemaining = await getRemainingSessions();
+
+            const dayAfter = new Date();
+            dayAfter.setDate(dayAfter.getDate() + 6);
+            dayAfter.setHours(11, 0, 0, 0);
+            while (dayAfter.getDay() === 0 || dayAfter.getDay() === 6) {
+                dayAfter.setDate(dayAfter.getDate() + 1);
+            }
+
+            const createRes = await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId,
+                    roomId,
+                    coachId,
+                    startTime: dayAfter.toISOString(),
+                    endTime: new Date(dayAfter.getTime() + 30 * 60000).toISOString(),
+                    type: 'group',
+                    capacity: 5
+                })
+                .expect(201);
+
+            const sId = createRes.body.id;
+
+            await request(app.getHttpServer())
+                .post(`/sessions/${sId}/participants/${refundClientId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(201);
+
+            const afterBooking = await getRemainingSessions();
+            expect(afterBooking).toBe(initialRemaining - 1);
+
+            await request(app.getHttpServer())
+                .delete(`/sessions/${sId}`)
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
+
+            const afterDelete = await getRemainingSessions();
+            expect(afterDelete).toBe(initialRemaining);
         });
     });
 });

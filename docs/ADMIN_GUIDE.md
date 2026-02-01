@@ -133,14 +133,17 @@ The dashboard provides a quick overview of your business:
 
 1. Navigate to **Sessions** → **New Session**
 2. Select:
-   - Client
-   - Coach
-   - Room
-   - Date & Time
-   - EMS Device (optional)
+   - **Client**: Clients are filtered by the selected studio.
+   - **Coach**: Coaches are filtered by the selected studio and client gender preference.
+   - **Room**: Rooms available in the studio.
+   - **Date & Time**
+   - **EMS Device** (optional)
 3. Click **Create Session**
 
-> The system automatically checks for conflicts with room, coach, and client availability.
+> **Validations**: The system automatically enforces:
+> - **Studio Link**: Both coach and client must belong to the selected studio.
+> - **Gender Preference**: Coach must accept the client's gender.
+> - **Availability**: Conflict checks for room, coach, and client schedules.
 
 ### Session Statuses
 

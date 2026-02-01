@@ -39,9 +39,9 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                             <AlertTriangle size={20} color="var(--color-danger)" />
                         </div>
                     )}
-                    <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                    <div style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0 }}>
                         {message}
-                    </p>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>

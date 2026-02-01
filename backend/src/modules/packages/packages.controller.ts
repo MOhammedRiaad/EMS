@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { PackagesService } from './packages.service';
-import { CreatePackageDto, UpdatePackageDto, AssignPackageDto, RenewPackageDto, CreateTransactionDto } from './dto';
+import { CreatePackageDto, UpdatePackageDto, AssignPackageDto, RenewPackageDto, CreateTransactionDto, AdjustSessionsDto } from './dto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { TenantGuard } from '../../common/guards';
@@ -73,6 +73,14 @@ export class PackagesController {
     @ApiOperation({ summary: 'Renew package (same or different)' })
     renewPackage(@Param('id') id: string, @Body() dto: RenewPackageDto, @TenantId() tenantId: string, @Request() req: any) {
         return this.packagesService.renewPackage(id, dto, tenantId, req.user.id);
+    }
+
+    @Patch('client-packages/:id/adjust-sessions')
+    @ApiOperation({ summary: 'Manually adjust remaining sessions' })
+    adjustSessions(@Param('id') id: string, @Body() dto: AdjustSessionsDto, @TenantId() tenantId: string, @Request() req: any) {
+        // TODO: check for admin role if we had a roles guard, for now relying on general auth.
+        // User request implied admin logging.
+        return this.packagesService.adjustSessions(id, dto.adjustment, dto.reason, tenantId, req.user.id);
     }
 
     // ===== TRANSACTIONS =====

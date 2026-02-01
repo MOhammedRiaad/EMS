@@ -6,6 +6,7 @@ import { Client } from './entities/client.entity';
 import { Transaction } from '../packages/entities/transaction.entity';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
+import { User } from '../auth/entities/user.entity';
 import { NotFoundException } from '@nestjs/common';
 
 describe('ClientsService', () => {
@@ -72,6 +73,7 @@ describe('ClientsService', () => {
                             orWhere: jest.fn().mockReturnThis(),
                             orderBy: jest.fn().mockReturnThis(),
                             addOrderBy: jest.fn().mockReturnThis(),
+                            leftJoinAndSelect: jest.fn().mockReturnThis(),
                             getMany: jest.fn().mockResolvedValue([mockClient]),
                         })),
                     },
@@ -92,6 +94,14 @@ describe('ClientsService', () => {
                         save: jest.fn(),
                         findOne: jest.fn(),
                         remove: jest.fn(),
+                    },
+                },
+                {
+                    provide: getRepositoryToken(User),
+                    useValue: {
+                        find: jest.fn(),
+                        findOne: jest.fn(),
+                        save: jest.fn(),
                     },
                 },
                 {
