@@ -14,6 +14,7 @@ console.log('DataSource Config:', {
 
 export const dataSourceOptions: DataSourceOptions = {
     type: 'postgres',
+    url: process.env.DATABASE_URL,
     host: process.env.POSTGRES_HOST || 'localhost',
     port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
     username: process.env.POSTGRES_USER || 'ems_user',
@@ -23,6 +24,7 @@ export const dataSourceOptions: DataSourceOptions = {
     migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
     synchronize: false,
     logging: process.env.NODE_ENV === 'development',
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 };
 
 const dataSource = new DataSource(dataSourceOptions);
