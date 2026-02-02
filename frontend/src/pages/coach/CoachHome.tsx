@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { coachPortalService, type CoachSession, type CoachDashboardStats } from '../../services/coach-portal.service';
-import { Calendar, ChevronRight, ChevronDown, CheckCircle, XCircle, Ban } from 'lucide-react';
+import { Calendar, ChevronRight, ChevronDown, CheckCircle, XCircle, Ban, MapPin, DoorOpen, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
+import ClientQuickViewModal from '../../components/coach/ClientQuickViewModal';
 
 const CoachHome = () => {
     const [stats, setStats] = useState<CoachDashboardStats | null>(null);
@@ -10,6 +11,7 @@ const CoachHome = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [visibleDays, setVisibleDays] = useState(7);
+    const [quickViewClientId, setQuickViewClientId] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
@@ -153,11 +155,38 @@ const CoachHome = () => {
                                                 </div>
 
                                                 {session.client && (
-                                                    <Link to={`/coach/clients/${session.client.id}`} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-50">
-                                                        <ChevronRight size={20} />
-                                                    </Link>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            onClick={() => setQuickViewClientId(session.client!.id)}
+                                                            className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-50 dark:hover:bg-slate-800"
+                                                            title="Quick View"
+                                                        >
+                                                            <Eye size={18} />
+                                                        </button>
+                                                        <Link to={`/coach/clients/${session.client.id}`} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-50 dark:hover:bg-slate-800">
+                                                            <ChevronRight size={20} />
+                                                        </Link>
+                                                    </div>
                                                 )}
                                             </div>
+
+                                            {/* Room & Studio Info */}
+                                            {(session.room || session.studio) && (
+                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2 ml-1">
+                                                    {session.room && (
+                                                        <span className="flex items-center gap-1">
+                                                            <DoorOpen size={12} />
+                                                            {session.room.name}
+                                                        </span>
+                                                    )}
+                                                    {session.studio && (
+                                                        <span className="flex items-center gap-1">
+                                                            <MapPin size={12} />
+                                                            {session.studio.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* Group Session Participants */}
                                             {session.type === 'group' && session.participants && session.participants.length > 0 && (
@@ -224,6 +253,13 @@ const CoachHome = () => {
                     </div>
                 )}
             </div>
+
+            {/* Client Quick View Modal */}
+            <ClientQuickViewModal
+                clientId={quickViewClientId || ''}
+                isOpen={!!quickViewClientId}
+                onClose={() => setQuickViewClientId(null)}
+            />
         </div>
     );
 };

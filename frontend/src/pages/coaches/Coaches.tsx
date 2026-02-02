@@ -112,6 +112,21 @@ const Coaches: React.FC = () => {
             render: (coach: CoachDisplay) => (
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button
+                        onClick={() => navigate(`/coaches/${coach.id}/availability`)}
+                        style={{
+                            padding: '0.375rem 0.75rem',
+                            fontSize: '0.75rem',
+                            borderRadius: 'var(--border-radius-sm)',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--color-bg-primary)',
+                            color: 'var(--color-primary)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Availability
+                    </button>
+                    <button
                         onClick={() => state.handleToggleActive(coach.id, coach.active)}
                         style={{
                             padding: '0.375rem 0.75rem',

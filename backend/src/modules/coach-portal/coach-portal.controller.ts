@@ -1,4 +1,4 @@
-import { Controller, Get, Put, UseGuards, Request, Query, Param, Patch, Body, ParseUUIDPipe, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Put, Post, UseGuards, Request, Query, Param, Patch, Body, ParseUUIDPipe, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
@@ -76,4 +76,21 @@ export class CoachPortalController {
     updateAvailability(@Request() req: any, @Body() rules: any[]) {
         return this.coachPortalService.updateAvailability(req.user.id, rules);
     }
+
+    @Get('time-off')
+    @ApiOperation({ summary: 'Get my time-off requests' })
+    getTimeOffRequests(@Request() req: any, @TenantId() tenantId: string) {
+        return this.coachPortalService.getMyTimeOffRequests(req.user.id, tenantId);
+    }
+
+    @Post('time-off')
+    @ApiOperation({ summary: 'Submit a time-off request' })
+    createTimeOffRequest(
+        @Request() req: any,
+        @TenantId() tenantId: string,
+        @Body() dto: { startDate: string; endDate: string; notes?: string }
+    ) {
+        return this.coachPortalService.createTimeOffRequest(req.user.id, tenantId, dto);
+    }
 }
+

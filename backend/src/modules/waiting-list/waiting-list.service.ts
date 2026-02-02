@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WaitingListEntry, WaitingListStatus } from './entities/waiting-list.entity';
@@ -7,6 +7,7 @@ import { CreateWaitingListEntryDto, UpdateWaitingListEntryDto } from './dto';
 import { AuditService } from '../audit/audit.service';
 import { StudiosService } from '../studios/studios.service'; // Assuming this service exists
 import { ClientsService } from '../clients/clients.service'; // Assuming this service exists
+import { SessionsService } from '../sessions/sessions.service';
 
 @Injectable()
 export class WaitingListService {
@@ -18,6 +19,8 @@ export class WaitingListService {
         private readonly studiosService: StudiosService,
         private readonly clientsService: ClientsService,
         private readonly auditService: AuditService,
+        @Inject(forwardRef(() => SessionsService))
+        private readonly sessionsService: SessionsService,
     ) { }
 
     async create(createDto: CreateWaitingListEntryDto, tenantId: string): Promise<WaitingListEntry> {
@@ -176,5 +179,44 @@ export class WaitingListService {
         const entry = await this.findOne(id, tenantId);
         entry.status = WaitingListStatus.BOOKED;
         return this.waitingListRepo.save(entry);
+    }
+
+    async convertToSession(
+        id: string,
+        dto: { coachId: string; roomId: string; startTime: string; endTime: string },
+        tenantId: string
+    ): Promise<{ entry: WaitingListEntry; session: any }> {
+        const entry = await this.findOne(id, tenantId);
+
+        if (entry.status === WaitingListStatus.BOOKED) {
+            throw new Error('Entry has already been booked');
+        }
+
+        // Create the session
+        const session = await this.sessionsService.create({
+            clientId: entry.clientId,
+            studioId: entry.studioId,
+            coachId: dto.coachId,
+            roomId: dto.roomId,
+            startTime: dto.startTime,
+            endTime: dto.endTime,
+            type: 'individual',
+        }, tenantId);
+
+        // Mark entry as booked and link to session
+        entry.status = WaitingListStatus.BOOKED;
+        entry.sessionId = session.id;
+        const updatedEntry = await this.waitingListRepo.save(entry);
+
+        await this.auditService.log(
+            tenantId,
+            'CONVERT_WAITLIST_TO_SESSION',
+            'WaitingListEntry',
+            id,
+            'API_USER',
+            { sessionId: session.id }
+        );
+
+        return { entry: updatedEntry, session };
     }
 }

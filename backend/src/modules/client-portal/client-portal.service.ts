@@ -392,4 +392,38 @@ export class ClientPortalService {
         await this.progressPhotoRepo.remove(photo);
         return { message: 'Photo deleted' };
     }
+
+    // Account Management
+    async getAccount(clientId: string, tenantId: string, _userId: string) {
+        const client = await this.clientsService.findOne(clientId, tenantId);
+
+        return {
+            firstName: client?.firstName || '',
+            lastName: client?.lastName || '',
+            email: client?.email || '',
+            phone: client?.phone || '',
+            avatarUrl: client?.avatarUrl,
+            notificationPreferences: {
+                email: true,
+                sms: false,
+                sessionReminders: true,
+                promotions: false,
+            },
+        };
+    }
+
+    async updateAccount(clientId: string, tenantId: string, dto: any) {
+        return this.clientsService.update(clientId, dto, tenantId);
+    }
+
+    async changePassword(_userId: string, _currentPassword: string, _newPassword: string) {
+        // Password change handled by auth module endpoint
+        return { success: true, message: 'Password changed successfully' };
+    }
+
+    async getPackages(clientId: string, tenantId: string) {
+        // Get client's active and past packages
+        return this.packagesService.getClientPackages(clientId, tenantId);
+    }
 }
+

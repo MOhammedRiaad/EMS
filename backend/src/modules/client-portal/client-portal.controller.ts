@@ -158,4 +158,36 @@ export class ClientPortalController {
         if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
         return this.clientPortalService.deleteProgressPhoto(clientId, tenantId, id);
     }
+
+    @Get('account')
+    @ApiOperation({ summary: 'Get account details with notification preferences' })
+    async getAccount(@Request() req: any) {
+        const { clientId, tenantId, userId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getAccount(clientId, tenantId, userId);
+    }
+
+    @Patch('account')
+    @ApiOperation({ summary: 'Update account settings' })
+    async updateAccount(@Request() req: any, @Body() dto: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.updateAccount(clientId, tenantId, dto);
+    }
+
+    @Post('change-password')
+    @ApiOperation({ summary: 'Change password' })
+    async changePassword(@Request() req: any, @Body() dto: { currentPassword: string; newPassword: string }) {
+        const { userId } = req.user;
+        return this.clientPortalService.changePassword(userId, dto.currentPassword, dto.newPassword);
+    }
+
+    @Get('packages')
+    @ApiOperation({ summary: 'Get my packages and purchase history' })
+    async getPackages(@Request() req: any) {
+        const { clientId, tenantId } = req.user;
+        if (!clientId) throw new UnauthorizedException('User is not linked to a client profile');
+        return this.clientPortalService.getPackages(clientId, tenantId);
+    }
 }
+

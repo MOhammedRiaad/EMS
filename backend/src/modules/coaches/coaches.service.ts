@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets } from 'typeorm';
 import { Coach } from './entities/coach.entity';
+import { CoachTimeOffRequest, TimeOffStatus } from './entities/coach-time-off.entity';
 import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { AuthService } from '../auth/auth.service';
 
@@ -12,6 +13,8 @@ export class CoachesService {
     constructor(
         @InjectRepository(Coach)
         private readonly coachRepository: Repository<Coach>,
+        @InjectRepository(CoachTimeOffRequest)
+        private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
         private readonly authService: AuthService,
         private readonly auditService: AuditService,
     ) { }
@@ -176,5 +179,124 @@ export class CoachesService {
             id,
             'API_USER'
         );
+    }
+
+    async getAvailability(id: string, tenantId: string): Promise<any[]> {
+        const coach = await this.findOne(id, tenantId);
+        return coach.availabilityRules || [];
+    }
+
+    async updateAvailability(id: string, rules: any[], tenantId: string): Promise<any[]> {
+        const coach = await this.findOne(id, tenantId);
+        coach.availabilityRules = rules;
+        await this.coachRepository.save(coach);
+
+        await this.auditService.log(
+            tenantId,
+            'UPDATE_COACH_AVAILABILITY',
+            'Coach',
+            id,
+            'API_USER',
+            { rulesCount: rules.length }
+        );
+
+        return coach.availabilityRules;
+    }
+
+    // ============ Time-Off Request Methods ============
+
+    async createTimeOffRequest(
+        coachId: string,
+        dto: { startDate: string; endDate: string; notes?: string },
+        tenantId: string
+    ): Promise<CoachTimeOffRequest> {
+        // Verify coach exists
+        await this.findOne(coachId, tenantId);
+
+        const request = this.timeOffRepository.create({
+            coachId,
+            tenantId,
+            startDate: new Date(dto.startDate),
+            endDate: new Date(dto.endDate),
+            notes: dto.notes || null,
+            status: 'pending',
+        });
+
+        return this.timeOffRepository.save(request);
+    }
+
+    async getTimeOffRequests(
+        tenantId: string,
+        status?: TimeOffStatus,
+        coachId?: string
+    ): Promise<CoachTimeOffRequest[]> {
+        const whereClause: any = { tenantId };
+        if (status) whereClause.status = status;
+        if (coachId) whereClause.coachId = coachId;
+
+        return this.timeOffRepository.find({
+            where: whereClause,
+            relations: ['coach', 'coach.user', 'reviewer'],
+            order: { requestedAt: 'DESC' },
+        });
+    }
+
+    async getCoachTimeOffRequests(coachId: string, tenantId: string): Promise<CoachTimeOffRequest[]> {
+        return this.timeOffRepository.find({
+            where: { coachId, tenantId },
+            order: { requestedAt: 'DESC' },
+        });
+    }
+
+    async updateTimeOffStatus(
+        requestId: string,
+        status: 'approved' | 'rejected',
+        reviewerId: string,
+        tenantId: string
+    ): Promise<CoachTimeOffRequest> {
+        const request = await this.timeOffRepository.findOne({
+            where: { id: requestId, tenantId },
+        });
+
+        if (!request) {
+            throw new NotFoundException(`Time-off request not found`);
+        }
+
+        if (request.status !== 'pending') {
+            throw new ForbiddenException(`Request has already been ${request.status}`);
+        }
+
+        request.status = status;
+        request.reviewedBy = reviewerId;
+        request.reviewedAt = new Date();
+
+        const saved = await this.timeOffRepository.save(request);
+
+        await this.auditService.log(
+            tenantId,
+            status === 'approved' ? 'APPROVE_TIME_OFF' : 'REJECT_TIME_OFF',
+            'CoachTimeOffRequest',
+            requestId,
+            reviewerId,
+            { coachId: request.coachId, startDate: request.startDate, endDate: request.endDate }
+        );
+
+        return saved;
+    }
+
+    async deleteTimeOffRequest(requestId: string, coachId: string, tenantId: string): Promise<void> {
+        const request = await this.timeOffRepository.findOne({
+            where: { id: requestId, coachId, tenantId },
+        });
+
+        if (!request) {
+            throw new NotFoundException(`Time-off request not found`);
+        }
+
+        if (request.status !== 'pending') {
+            throw new ForbiddenException(`Cannot delete a request that has been ${request.status}`);
+        }
+
+        await this.timeOffRepository.remove(request);
     }
 }

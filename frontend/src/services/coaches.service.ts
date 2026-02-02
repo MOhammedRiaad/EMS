@@ -105,5 +105,16 @@ export const coachesService = {
         return authenticatedFetch(`/coaches/${id}`, {
             method: 'DELETE'
         });
+    },
+
+    async getAvailability(id: string): Promise<any[]> {
+        return authenticatedFetch(`/coaches/${id}/availability`);
+    },
+
+    async updateAvailability(id: string, rules: any[]): Promise<any[]> {
+        return authenticatedFetch(`/coaches/${id}/availability`, {
+            method: 'PATCH',
+            body: JSON.stringify(rules)
+        });
     }
 };

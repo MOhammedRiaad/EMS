@@ -97,4 +97,14 @@ export class WaitingListController {
     markAsBooked(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.waitingListService.markAsBooked(id, tenantId);
     }
+
+    @Post(':id/convert')
+    @ApiOperation({ summary: 'Convert waitlist entry to session' })
+    convertToSession(
+        @Param('id') id: string,
+        @Body() dto: { coachId: string; roomId: string; startTime: string; endTime: string },
+        @TenantId() tenantId: string
+    ) {
+        return this.waitingListService.convertToSession(id, dto, tenantId);
+    }
 }

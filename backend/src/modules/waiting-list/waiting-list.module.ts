@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WaitingListController } from './waiting-list.controller';
 import { WaitingListService } from './waiting-list.service';
@@ -7,15 +7,16 @@ import { MailerModule } from '../mailer/mailer.module';
 import { StudiosModule } from '../studios/studios.module';
 import { ClientsModule } from '../clients/clients.module';
 import { AuditModule } from '../audit/audit.module';
+import { SessionsModule } from '../sessions/sessions.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([WaitingListEntry]),
         TypeOrmModule.forFeature([WaitingListEntry]),
         MailerModule,
         StudiosModule,
         ClientsModule,
         AuditModule,
+        forwardRef(() => SessionsModule),
     ],
     controllers: [WaitingListController],
     providers: [WaitingListService],

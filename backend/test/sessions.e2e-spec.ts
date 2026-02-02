@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { TestAppModule } from './test-app.module';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { CoachTimeOffRequest } from '../src/modules/coaches/entities/coach-time-off.entity';
 
 describe('Sessions E2E Tests', () => {
     let app: INestApplication;
@@ -13,6 +15,8 @@ describe('Sessions E2E Tests', () => {
     let clientId: string;
     let sessionId: string;
     let packageId: string;
+    let coachEmail: string;
+    let coachToken: string;
 
     const testEmail = `e2e-sessions-${Date.now()}@example.com`;
     const testPassword = 'SecurePass123!';
@@ -74,11 +78,12 @@ describe('Sessions E2E Tests', () => {
         roomId = roomResponse.body.id;
 
         // Create a coach with user account
+        coachEmail = `coach-${Date.now()}@example.com`;
         const coachResponse = await request(app.getHttpServer())
             .post('/coaches/create-with-user')
             .set('Authorization', `Bearer ${accessToken}`)
             .send({
-                email: `coach-${Date.now()}@example.com`,
+                email: coachEmail,
                 password: testPassword,
                 firstName: 'Test',
                 lastName: 'Coach',
@@ -538,6 +543,95 @@ describe('Sessions E2E Tests', () => {
 
             const afterDelete = await getRemainingSessions();
             expect(afterDelete).toBe(initialRemaining);
+        });
+    });
+
+    describe('Time-Off', () => {
+        // Use outer coachToken
+
+        beforeAll(async () => {
+            // Login as Coach to get token
+            const loginRes = await request(app.getHttpServer())
+                .post('/auth/login')
+                .send({
+                    email: coachEmail,
+                    password: testPassword,
+                })
+                .expect(201);
+            coachToken = loginRes.body.accessToken;
+        });
+
+        it('should enforce time-off constraints', async () => {
+            const timeOffStart = new Date();
+            timeOffStart.setDate(timeOffStart.getDate() + 10);
+            timeOffStart.setHours(14, 0, 0, 0);
+            // Ensure not weekend
+            while (timeOffStart.getDay() === 0 || timeOffStart.getDay() === 6) {
+                timeOffStart.setDate(timeOffStart.getDate() + 1);
+            }
+
+            const timeOffEnd = new Date(timeOffStart);
+            timeOffEnd.setHours(16, 0, 0, 0);
+
+            // 1. Submit Time Off
+            await request(app.getHttpServer())
+                .post('/coach-portal/time-off')
+                .set('Authorization', `Bearer ${coachToken}`)
+                .send({
+                    startDate: timeOffStart.toISOString(),
+                    endDate: timeOffEnd.toISOString(),
+                    notes: 'E2E Test Leave'
+                })
+                .expect(201);
+
+            // 2. Approve Time Off (Admin override via DB)
+            const timeOffRepo = app.get(getRepositoryToken(CoachTimeOffRequest));
+            // Find the request (assuming usually one per coach in this test context, or query by coachId)
+            // We need coachId. It is strictly available in the outer scope. 
+            // NOTE: coachId variable holds the ID of the coach created in the main beforeAll.
+            // AND coachEmail matches that coach.
+            const timeOff = await timeOffRepo.findOne({ where: { coachId } });
+
+            if (timeOff) {
+                timeOff.status = 'approved';
+                await timeOffRepo.save(timeOff);
+            } else {
+                throw new Error('Time off request not found');
+            }
+
+            // 3. Try to book overlapping session (14:00 - 14:20)
+            await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId,
+                    roomId,
+                    coachId,
+                    clientId,
+                    startTime: timeOffStart.toISOString(),
+                    endTime: new Date(timeOffStart.getTime() + 20 * 60000).toISOString(),
+                })
+                .expect(400) // Expect validation error due to conflicts
+                .expect((res) => {
+                    expect(JSON.stringify(res.body)).toContain('time-off'); // Ensure message mentions time-off
+                });
+
+            // 4. Try to book NON-overlapping session (13:00 - 13:20)
+            const nonOverlappingStart = new Date(timeOffStart);
+            nonOverlappingStart.setHours(13, 0, 0, 0);
+
+            await request(app.getHttpServer())
+                .post('/sessions')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .send({
+                    studioId,
+                    roomId,
+                    coachId,
+                    clientId,
+                    startTime: nonOverlappingStart.toISOString(),
+                    endTime: new Date(nonOverlappingStart.getTime() + 20 * 60000).toISOString(),
+                })
+                .expect(201);
         });
     });
 });

@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, MoreThanOrEqual } from 'typeorm';
 import { Session, SessionStatus } from '../sessions/entities/session.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InBodyScan } from '../inbody-scans/entities/inbody-scan.entity';
 import { Coach } from '../coaches/entities/coach.entity';
+import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 @Injectable()
@@ -18,6 +19,8 @@ export class CoachPortalService {
         private inBodyScansRepository: Repository<InBodyScan>,
         @InjectRepository(Coach)
         private coachesRepository: Repository<Coach>,
+        @InjectRepository(CoachTimeOffRequest)
+        private timeOffRepository: Repository<CoachTimeOffRequest>,
     ) { }
 
     private async getCoachId(userId: string): Promise<string> {
@@ -76,7 +79,7 @@ export class CoachPortalService {
 
         return this.sessionsRepository.find({
             where: whereCondition,
-            relations: ['client', 'room', 'participants', 'participants.client'],
+            relations: ['client', 'room', 'studio', 'participants', 'participants.client'],
             order: { startTime: 'ASC' }
         });
     }
@@ -159,4 +162,30 @@ export class CoachPortalService {
         coach.availabilityRules = rules;
         return this.coachesRepository.save(coach);
     }
+
+    async getMyTimeOffRequests(userId: string, tenantId: string) {
+        const coachId = await this.getCoachId(userId);
+        return this.timeOffRepository.find({
+            where: { coachId, tenantId },
+            order: { createdAt: 'DESC' }
+        });
+    }
+
+    async createTimeOffRequest(
+        userId: string,
+        tenantId: string,
+        dto: { startDate: string; endDate: string; notes?: string }
+    ) {
+        const coachId = await this.getCoachId(userId);
+        const request = this.timeOffRepository.create({
+            coachId,
+            tenantId,
+            startDate: new Date(dto.startDate),
+            endDate: new Date(dto.endDate),
+            notes: dto.notes,
+            status: 'pending',
+        });
+        return this.timeOffRepository.save(request);
+    }
 }
+

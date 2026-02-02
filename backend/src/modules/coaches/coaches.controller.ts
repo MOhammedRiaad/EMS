@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, Request } from '@nestjs/common';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -57,5 +57,78 @@ export class CoachesController {
     @ApiOperation({ summary: 'Delete a coach (soft delete)' })
     remove(@Param('id') id: string, @TenantId() tenantId: string) {
         return this.coachesService.remove(id, tenantId);
+    }
+
+    @Get(':id/availability')
+    @ApiOperation({ summary: 'Get coach availability rules' })
+    getAvailability(@Param('id') id: string, @TenantId() tenantId: string) {
+        return this.coachesService.getAvailability(id, tenantId);
+    }
+
+    @Patch(':id/availability')
+    @ApiOperation({ summary: 'Update coach availability rules' })
+    updateAvailability(
+        @Param('id') id: string,
+        @Body() rules: any[],
+        @TenantId() tenantId: string
+    ) {
+        return this.coachesService.updateAvailability(id, rules, tenantId);
+    }
+
+    // ============ Time-Off Request Endpoints ============
+
+    @Get('time-off/requests')
+    @ApiOperation({ summary: 'List all time-off requests (admin)' })
+    @ApiQuery({ name: 'status', required: false })
+    @ApiQuery({ name: 'coachId', required: false })
+    getTimeOffRequests(
+        @Query('status') status: string,
+        @Query('coachId') coachId: string,
+        @TenantId() tenantId: string
+    ) {
+        return this.coachesService.getTimeOffRequests(
+            tenantId,
+            status as 'pending' | 'approved' | 'rejected' | undefined,
+            coachId
+        );
+    }
+
+    @Post(':id/time-off')
+    @ApiOperation({ summary: 'Create a time-off request for a coach' })
+    createTimeOffRequest(
+        @Param('id') coachId: string,
+        @Body() dto: { startDate: string; endDate: string; notes?: string },
+        @TenantId() tenantId: string
+    ) {
+        return this.coachesService.createTimeOffRequest(coachId, dto, tenantId);
+    }
+
+    @Get(':id/time-off')
+    @ApiOperation({ summary: 'Get time-off requests for a specific coach' })
+    getCoachTimeOffRequests(
+        @Param('id') coachId: string,
+        @TenantId() tenantId: string
+    ) {
+        return this.coachesService.getCoachTimeOffRequests(coachId, tenantId);
+    }
+
+    @Patch('time-off/:requestId/approve')
+    @ApiOperation({ summary: 'Approve a time-off request' })
+    approveTimeOff(
+        @Param('requestId') requestId: string,
+        @Request() req: any,
+        @TenantId() tenantId: string
+    ) {
+        return this.coachesService.updateTimeOffStatus(requestId, 'approved', req.user.id, tenantId);
+    }
+
+    @Patch('time-off/:requestId/reject')
+    @ApiOperation({ summary: 'Reject a time-off request' })
+    rejectTimeOff(
+        @Param('requestId') requestId: string,
+        @Request() req: any,
+        @TenantId() tenantId: string
+    ) {
+        return this.coachesService.updateTimeOffStatus(requestId, 'rejected', req.user.id, tenantId);
     }
 }

@@ -11,6 +11,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
+import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('SessionsService', () => {
@@ -24,6 +25,7 @@ describe('SessionsService', () => {
     let clientsService: jest.Mocked<ClientsService>;
     let packagesService: jest.Mocked<PackagesService>;
     let gamificationService: jest.Mocked<GamificationService>;
+    let timeOffRepository: jest.Mocked<Repository<CoachTimeOffRequest>>;
 
     const mockSession = {
         id: 'session-123',
@@ -94,6 +96,7 @@ describe('SessionsService', () => {
         orderBy: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue(results),
         getOne: jest.fn().mockResolvedValue(results[0] || null),
+        select: jest.fn().mockReturnThis(),
     });
 
     beforeEach(async () => {
@@ -114,7 +117,7 @@ describe('SessionsService', () => {
                         softDelete: jest.fn(),
                     },
                 },
-                { provide: getRepositoryToken(Room), useValue: { findOne: jest.fn() } },
+                { provide: getRepositoryToken(Room), useValue: { findOne: jest.fn(), find: jest.fn() } },
                 { provide: getRepositoryToken(Studio), useValue: { findOne: jest.fn() } },
                 { provide: getRepositoryToken(Coach), useValue: { findOne: jest.fn(), find: jest.fn() } },
                 { provide: getRepositoryToken(Tenant), useValue: { findOne: jest.fn() } },
@@ -122,6 +125,7 @@ describe('SessionsService', () => {
                 { provide: ClientsService, useValue: { findOne: jest.fn() } },
                 { provide: PackagesService, useValue: { getActivePackageForClient: jest.fn(), getClientPackages: jest.fn(), findBestPackageForSession: jest.fn(), useSession: jest.fn(), returnSession: jest.fn() } },
                 { provide: GamificationService, useValue: { checkAndUnlockAchievements: jest.fn(), getClientAchievements: jest.fn(), getClientGoals: jest.fn() } },
+                { provide: getRepositoryToken(CoachTimeOffRequest), useValue: { createQueryBuilder: jest.fn(), find: jest.fn(), create: jest.fn(), save: jest.fn() } },
                 { provide: require('../audit/audit.service').AuditService, useValue: { log: jest.fn(), calculateDiff: jest.fn().mockReturnValue({ changes: {} }) } },
             ],
         }).compile();
@@ -136,6 +140,7 @@ describe('SessionsService', () => {
         clientsService = module.get(ClientsService);
         packagesService = module.get(PackagesService);
         gamificationService = module.get(GamificationService);
+        timeOffRepository = module.get(getRepositoryToken(CoachTimeOffRequest));
 
         roomRepository.findOne.mockResolvedValue(mockRoom);
         studioRepository.findOne.mockResolvedValue(mockStudio);
@@ -145,6 +150,7 @@ describe('SessionsService', () => {
         packagesService.getClientPackages.mockResolvedValue([mockActivePackage] as any);
         sessionRepository.count.mockResolvedValue(0);
         sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);
+        timeOffRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);
         sessionRepository.create.mockReturnValue(mockSession);
         sessionRepository.save.mockResolvedValue(mockSession);
         clientsService.findOne.mockResolvedValue({
@@ -228,6 +234,59 @@ describe('SessionsService', () => {
             const result = await service.checkConflicts(createDto, 'tenant-123');
             expect(result.hasConflicts).toBe(true);
             expect(result.conflicts[0].type).toBe('coach');
+        });
+
+        it('should detect coach time-off conflict', async () => {
+            const mockQb = {
+                where: jest.fn().mockReturnThis(),
+                andWhere: jest.fn().mockReturnThis(),
+                getOne: jest.fn()
+                    .mockResolvedValueOnce(null) // room
+                    .mockResolvedValueOnce(null) // coach session
+                    .mockResolvedValueOnce({ id: 'time-off-123' }), // time-off
+            };
+            sessionRepository.createQueryBuilder.mockReturnValue({ ...createMockQueryBuilder([]), ...mockQb } as any);
+            timeOffRepository.createQueryBuilder.mockReturnValue({ ...createMockQueryBuilder([]), ...mockQb } as any);
+
+            const result = await service.checkConflicts(createDto, 'tenant-123');
+            expect(result.hasConflicts).toBe(true);
+            expect(result.conflicts[0].type).toBe('coach');
+            expect(result.conflicts[0].message).toContain('time-off');
+        });
+    });
+
+    describe('autoAssignResources', () => {
+        const start = new Date('2026-01-27T10:00:00Z');
+        const end = new Date('2026-01-27T10:20:00Z');
+
+        beforeEach(() => {
+            sessionRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);
+            timeOffRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]) as any);
+            roomRepository.findOne.mockResolvedValue(mockRoom);
+            roomRepository.find.mockResolvedValue([mockRoom]);
+            coachRepository.find.mockResolvedValue([mockCoach]);
+        });
+
+        it('should auto-assign available resources', async () => {
+            const result = await service.autoAssignResources('tenant-123', 'studio-123', start, end);
+            expect(result.roomId).toBe(mockRoom.id);
+            expect(result.coachId).toBe(mockCoach.id);
+        });
+
+        it('should respect coach time-off during auto-assignment', async () => {
+            // Mock time-off for the coach
+            timeOffRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([{ coachId: mockCoach.id }]) as any);
+
+            // Should fail if only one coach and they are on leave
+            await expect(service.autoAssignResources('tenant-123', 'studio-123', start, end))
+                .rejects.toThrow('No coaches available');
+        });
+
+        it('should throw if preferred coach is on leave', async () => {
+            timeOffRepository.createQueryBuilder.mockReturnValue(createMockQueryBuilder([{ coachId: mockCoach.id }]) as any);
+
+            await expect(service.autoAssignResources('tenant-123', 'studio-123', start, end, mockCoach.id))
+                .rejects.toThrow('Selected coach is on leave');
         });
     });
 

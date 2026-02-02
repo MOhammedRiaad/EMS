@@ -8,6 +8,7 @@ import Clients from './pages/clients/Clients';
 import ClientDetailsPage from './pages/clients/ClientDetailsPage';
 import Coaches from './pages/coaches/Coaches';
 import CreateCoach from './pages/coaches/CreateCoach';
+import CoachAvailabilityPage from './pages/coaches/CoachAvailabilityPage';
 import Sessions from './pages/sessions/Sessions';
 import SessionCreatePage from './pages/sessions/SessionCreatePage';
 import Studios from './pages/studios/Studios';
@@ -24,6 +25,7 @@ import AdminSettings from './pages/admin/AdminSettings';
 import Analytics from './pages/admin/Analytics';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
 import Reviews from './pages/admin/Reviews';
+import TimeOffRequests from './pages/admin/TimeOffRequests';
 import ProductListPage from './pages/admin/retail/ProductListPage';
 import InventoryPage from './pages/admin/retail/InventoryPage';
 import POSPage from './pages/admin/retail/POSPage';
@@ -48,6 +50,9 @@ import ClientSchedule from './pages/client/ClientSchedule';
 import ClientProfile from './pages/client/ClientProfile';
 import ClientBooking from './pages/client/ClientBooking';
 import ClientProgress from './pages/client/ClientProgress';
+import ClientAccount from './pages/client/ClientAccount';
+import ClientPackages from './pages/client/ClientPackages';
+import ClientWaitlist from './pages/client/ClientWaitlist';
 import NotificationPreferences from './pages/client/NotificationPreferences';
 import PrivacySettings from './pages/client/PrivacySettings';
 import HelpSupport from './pages/client/HelpSupport';
@@ -56,6 +61,7 @@ import RoleGuard from './components/auth/RoleGuard';
 
 import CoachLayout from './components/layout/CoachLayout';
 import CoachHome from './pages/coach/CoachHome';
+import CoachTimeOff from './pages/coach/CoachTimeOff';
 import CoachClients from './pages/coach/CoachClients';
 import CoachClientDetails from './pages/coach/CoachClientDetails';
 import CoachAvailability from './pages/coach/CoachAvailability';
@@ -86,6 +92,9 @@ function App() {
                   <Route path="leaderboard" element={<LeaderboardPage />} />
                   <Route path="privacy" element={<PrivacySettings />} />
                   <Route path="help" element={<HelpSupport />} />
+                  <Route path="account" element={<ClientAccount />} />
+                  <Route path="packages" element={<ClientPackages />} />
+                  <Route path="waitlist" element={<ClientWaitlist />} />
                 </Route>
               </Route>
 
@@ -97,6 +106,7 @@ function App() {
                   <Route path="clients" element={<CoachClients />} />
                   <Route path="clients/:id" element={<CoachClientDetails />} />
                   <Route path="availability" element={<CoachAvailability />} />
+                  <Route path="time-off" element={<CoachTimeOff />} />
                   <Route path="inbody/new/:clientId" element={<InBodyScanForm />} />
                   <Route path="settings" element={<CoachSettings />} />
                 </Route>
@@ -114,6 +124,7 @@ function App() {
                   <Route path="clients/:id" element={<ClientDetailsPage />} />
                   <Route path="coaches" element={<Coaches />} />
                   <Route path="coaches/create" element={<CreateCoach />} />
+                  <Route path="coaches/:id/availability" element={<CoachAvailabilityPage />} />
 
                   <Route path="retail/products" element={<ProductListPage />} />
                   <Route path="retail/inventory" element={<InventoryPage />} />
@@ -139,6 +150,7 @@ function App() {
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                   <Route path="admin/announcements" element={<AnnouncementManager />} />
+                  <Route path="admin/time-off" element={<TimeOffRequests />} />
 
                   {/* Marketing Routes */}
                   <Route path="admin/marketing" element={<MarketingDashboard />}>

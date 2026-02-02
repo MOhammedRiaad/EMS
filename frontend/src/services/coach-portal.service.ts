@@ -12,6 +12,7 @@ export interface CoachSession {
     status: 'scheduled' | 'completed' | 'no_show' | 'cancelled';
     type?: 'individual' | 'group';
     room?: { name: string };
+    studio?: { name: string };
     client: {
         id: string;
         firstName: string;

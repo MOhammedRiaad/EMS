@@ -4,6 +4,7 @@ import { Session } from './entities/session.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
+import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
@@ -20,7 +21,7 @@ import { SessionParticipantsService } from './session-participants.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Session, SessionParticipant, Room, Studio, Coach, Tenant]),
+        TypeOrmModule.forFeature([Session, SessionParticipant, Room, Studio, Coach, CoachTimeOffRequest, Tenant]),
         ClientsModule,
         MailerModule,
         PackagesModule,

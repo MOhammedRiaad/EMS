@@ -5,6 +5,7 @@ import { Session, SessionStatus } from './entities/session.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
+import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { CreateSessionDto, SessionQueryDto, UpdateSessionDto, BulkCreateSessionDto } from './dto';
 import { MailerService } from '../mailer/mailer.service';
@@ -36,6 +37,8 @@ export class SessionsService {
         private readonly studioRepository: Repository<Studio>,
         @InjectRepository(Coach)
         private readonly coachRepository: Repository<Coach>,
+        @InjectRepository(CoachTimeOffRequest)
+        private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
         @InjectRepository(Tenant)
         private readonly tenantRepository: Repository<Tenant>,
         private mailerService: MailerService,
@@ -754,6 +757,24 @@ export class SessionsService {
                 sessionId: coachConflict.id,
                 message: 'Coach is already booked for this time slot',
             });
+        } else {
+            // Check for Time-Off (only if no session conflict found, although they could coexist)
+            // Strict overlap check
+            const timeOff = await this.timeOffRepository.createQueryBuilder('to')
+                .where('to.tenant_id = :tenantId', { tenantId })
+                .andWhere('to.coach_id = :coachId', { coachId: dto.coachId })
+                .andWhere('to.status = :status', { status: 'approved' })
+                .andWhere('to.start_date < :endTime', { endTime: dto.endTime })
+                .andWhere('to.end_date > :startTime', { startTime: dto.startTime })
+                .getOne();
+
+            if (timeOff) {
+                conflicts.push({
+                    type: 'coach',
+                    sessionId: timeOff.id,
+                    message: 'Coach is on approved time-off during this slot',
+                });
+            }
         }
 
         // Check client conflict (only for individual sessions or if client is specified)
@@ -1337,6 +1358,14 @@ export class SessionsService {
             .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
             .getMany();
 
+        // 3b. Get Approved Time-Offs
+        const timeOffs = await this.timeOffRepository.createQueryBuilder('to')
+            .where('to.tenant_id = :tenantId', { tenantId })
+            .andWhere('to.status = :status', { status: 'approved' })
+            .andWhere('to.start_date <= :date', { date: endOfDay }) // Overlaps with day
+            .andWhere('to.end_date >= :date', { date: startOfDay })
+            .getMany();
+
         // 4. Generate Slots (20 min intervals)
         const slots: { time: string, status: 'available' | 'full' }[] = [];
         const slotDurationMin = 20;
@@ -1370,6 +1399,15 @@ export class SessionsService {
             const availableCoaches = coaches.filter(c => !bookedCoachIds.includes(c.id));
 
             const validCoaches = availableCoaches.filter(coach => {
+                // Check Time Offs - strict overlap with slot
+                // Now using Timestamp, so we can check if leave overlaps specifically with this slot
+                const isUnavailableDueToLeave = timeOffs.some(to =>
+                    to.coachId === coach.id &&
+                    new Date(to.startDate) < slotEnd &&
+                    new Date(to.endDate) > slotStart
+                );
+                if (isUnavailableDueToLeave) return false;
+
                 if (!coach.availabilityRules?.length) return true;
 
                 // Find day rule - handle both string ("monday") and numeric (1) dayOfWeek formats
@@ -1438,6 +1476,16 @@ export class SessionsService {
         const occupiedRoomIds = overlappingSessions.map(s => s.roomId).filter(Boolean);
         const occupiedCoachIds = overlappingSessions.map(s => s.coachId).filter(Boolean);
 
+        // 1b. Check Time Offs - Strict overlap with session time
+        const timeOffs = await this.timeOffRepository.createQueryBuilder('to')
+            .where('to.tenant_id = :tenantId', { tenantId })
+            .andWhere('to.status = :status', { status: 'approved' })
+            .andWhere('to.start_date < :end', { end })
+            .andWhere('to.end_date > :start', { start })
+            .getMany();
+
+        const coachesOnLeaveIds = timeOffs.map(to => to.coachId);
+
         // 2. Find available room
         const room = await this.roomRepository.findOne({
             where: { studioId, active: true, tenantId } // Assuming simple query
@@ -1460,6 +1508,9 @@ export class SessionsService {
             if (occupiedCoachIds.includes(preferredCoachId)) {
                 throw new Error('Selected coach is already booked for this time slot');
             }
+            if (coachesOnLeaveIds.includes(preferredCoachId)) {
+                throw new Error('Selected coach is on leave during this time slot');
+            }
             availableCoach = allCoaches.find(c => c.id === preferredCoachId);
             if (!availableCoach) {
                 // Could act as validation too
@@ -1468,8 +1519,8 @@ export class SessionsService {
         } else {
             // Auto-assign any open coach
             // Filter by studio if coaches are studio-scoped? Assuming global or linked.
-            // For simplified MVP, just pick any available coach not occupied.
-            availableCoach = allCoaches.find(c => !occupiedCoachIds.includes(c.id));
+            // For simplified MVP, just pick any available coach not occupied AND not on leave.
+            availableCoach = allCoaches.find(c => !occupiedCoachIds.includes(c.id) && !coachesOnLeaveIds.includes(c.id));
         }
 
         // Coach is optional? If booking REQUIRES coach, we throw.

@@ -1,7 +1,7 @@
 # EMS Studio - Implementation Roadmap
 
 > **Last Updated**: January 30, 2026  
-> **Status**: ✅ Phase 4 Core Complete - Optimization & Analytics Implemented
+> **Status**: ✅ Phase 5 Completed - Documentation Alignment & Missing Features Implemented
 
 ---
 
@@ -227,11 +227,118 @@
 - [ ] English translations
 - [ ] RTL layout configuration
 - [ ] Date/time/currency localization
-- [x] Language selector in Admin Settings (System Preference)
+- [ ] Language selector in Admin Settings (System Preference)
 
 ---
 
-### Future Phases (Post-Launch) 🔮
+### Phase 5 - Documentation Alignment (Missing Features) 📋
+
+**Priority**: HIGH  
+**Timeline**: 3-4 weeks  
+**Goal**: Implement all features documented in user guides that are currently missing from the application.
+
+> [!IMPORTANT]
+> These features are already documented in user guides (ADMIN_GUIDE.md, CLIENT_GUIDE.md, COACH_GUIDE.md) and users expect them to work.
+
+#### 5.1 Admin Portal Gaps
+
+**Coach Availability & Schedule Management** (ADMIN_GUIDE L81-105)
+- [x] **Work Cycle Management (Availability)**: Add "Edit Availability" button on coach detail page
+  - Weekly hour selector per day (Recurring availability)
+  - Define shift patterns
+- [x] **Booking Cycle Management (Time-Off & Blocks)**:
+  - **Time-Off Requests**: Admin view to Approve/Reject requests submitted by coaches
+  - **Manual Blocks**: Capacity to block specific time slots (e.g., meetings, maintenance)
+  - **Deactivate Coach Flow**: Add confirmation modal with session reassignment options
+    - List affected upcoming sessions
+    - Bulk reassign to another coach
+
+**Client History Display** (ADMIN_GUIDE L122-128)
+- [x] **Unified Client Profile View**: Ensure all tabs are populated
+  - [x] Session history (already implemented)
+  - [x] Package balance (already implemented)
+  - [x] InBody measurements tab (verify data loading)
+  - [x] Reviews and notes display
+
+**Waitlist Management** (ADMIN_GUIDE L213)
+- [x] **Convert to Session**: One-click action from waitlist entry
+  - Pre-fill session form with waitlist data (client, preferred time)
+  - Validate time is available before conversion
+  - Remove from waitlist on successful booking
+
+**Session Time Validation** (ADMIN_GUIDE - implied)
+- [ ] **Respect Original Booked Time**: When admin edits a session, validate that the new time matches client's original request
+  - Show warning if changing from booked time
+  - Require confirmation for time changes
+
+---
+
+#### 5.2 Client Portal Gaps
+
+**Retail & Account Balance** (CLIENT_GUIDE L135)
+- [x] **My Account Page**: New page showing
+  - Current credit balance
+  - Purchase history (products + packages)
+  - Transaction log with dates and amounts
+- [-] **Retail Access**: Link to studio shop (if retail module enabled)
+  - View available products
+  - Request items (admin fulfills)
+
+**Package History** (CLIENT_GUIDE L135)
+- [x] **Package History View**: Show past packages
+  - Package name, purchase date, expiry date
+  - Status (active, expired, depleted)
+
+**Waitlist Management** (CLIENT_GUIDE L150-154)
+- [x] **My Waiting List Page**: Dedicated page for waitlist requests
+  - List all pending requests with preferred time/date
+  - Remove/cancel waitlist entry
+  - Status indicator (pending, notified)
+
+---
+
+#### 5.3 Coach Portal Gaps
+
+**Session Card Enhancements** (COACH_GUIDE L58)
+- [x] **Room Assignment Display**: Show assigned room on session cards
+  - Room name and capacity
+  - Equipment notes if applicable
+
+**Client Information Access** (COACH_GUIDE L82-88)
+- [x] **Client Quick View Modal**: On client name click
+  - Contact info (phone, email)
+  - Package status (sessions remaining)
+  - Health notes (allergies, conditions)
+  - Recent sessions with notes
+- [x] **InBody Progress Tab**: Access client's body composition data
+
+**Time-Off & Availability** (COACH_GUIDE L161-176)
+- [x] **Request Time Off**: Self-service time-off requests
+  - Date range picker
+  - Optional notes field
+  - Submit for admin approval
+  - View pending/approved requests
+- [x] **Block Specific Times**: Admin-assisted blocking (via Time-Off logic)
+  - Coach can view blocked times in their schedule
+  - Admin receives notification request for blocks
+  - Alternative: coach-initiated block request workflow
+
+---
+
+#### 5.4 Verification Plan
+
+**Automated Tests**
+- [x] E2E test: Admin edits coach availability
+- [x] E2E test: Waitlist to session conversion (Unit tested)
+- [x] E2E test: Coach time-off request flow
+- [/] Unit tests for client account balance calculations
+
+**Manual Verification**
+- [ ] Walk through all 3 user guides step-by-step
+- [ ] Document any remaining discrepancies
+- [ ] Update guides if features are intentionally deferred
+
+---
 
 **Priority**: LOW  
 **Timeline**: TBD
