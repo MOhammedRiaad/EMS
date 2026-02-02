@@ -70,7 +70,7 @@ const TimeOffRequests = () => {
         }
     };
 
-    const formatDate = (date: string) => new Date(date).toLocaleDateString();
+    const formatDate = (date: string) => new Date(date).toLocaleString();
 
     const getStatusBadge = (status: TimeOffStatus) => {
         const styles: Record<TimeOffStatus, { bg: string; text: string }> = {
