@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, AlertCircle } from 'lucide-react';
+import { Settings, Save, AlertCircle, Users } from 'lucide-react';
 import { tenantService } from '../../services/tenant.service';
 import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
@@ -19,6 +19,7 @@ const AdminSettings: React.FC = () => {
     const [language, setLanguage] = useState('en');
     const [timezone, setTimezone] = useState('UTC');
     const [reviewFilter, setReviewFilter] = useState<'all' | 'positive'>('all');
+    const [allowCoachAvailabilityEdit, setAllowCoachAvailabilityEdit] = useState(false);
 
     const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
 
@@ -35,6 +36,7 @@ const AdminSettings: React.FC = () => {
                 setLanguage(settings.localization?.language ?? 'en');
                 setTimezone(settings.localization?.timezone ?? 'UTC');
                 setReviewFilter(settings.notifications?.reviewFilter ?? 'all');
+                setAllowCoachAvailabilityEdit(settings.allowCoachSelfEditAvailability ?? false);
 
             } catch (err) {
                 console.error('Failed to fetch settings', err);
@@ -75,7 +77,8 @@ const AdminSettings: React.FC = () => {
                 notifications: {
                     ...currentSettings.notifications,
                     reviewFilter
-                }
+                },
+                allowCoachSelfEditAvailability: allowCoachAvailabilityEdit
             };
 
             await tenantService.update(user.tenantId, {
@@ -268,6 +271,35 @@ const AdminSettings: React.FC = () => {
                             <p className="text-xs text-gray-400 mt-2">
                                 Controls which reviews appear on your public landing page automatically.
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Coach Permissions */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                            <Users className="text-green-500" size={24} />
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Coach Permissions</h2>
+                                <p className="text-sm text-gray-500">Manage what coaches can do</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-medium text-gray-900 dark:text-white">Allow Availability Editing</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    If enabled, coaches can set their own working hours and time off.
+                                </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={allowCoachAvailabilityEdit}
+                                    onChange={(e) => setAllowCoachAvailabilityEdit(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                            </label>
                         </div>
                     </div>
 

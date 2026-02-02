@@ -147,3 +147,10 @@
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-muted);
 }
+
+@media (min-width: 1281px) {
+    .container {
+        width: 100vw !important;
+        max-width: 100vw !important;
+    }
+}

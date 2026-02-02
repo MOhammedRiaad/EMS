@@ -64,10 +64,12 @@ const CoachLayout: React.FC = () => {
                         <span className="text-[10px] font-medium">Home</span>
                     </NavLink>
 
-                    <NavLink to="/coach/availability" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                        <Calendar size={24} />
-                        <span className="text-[10px] font-medium">Availability</span>
-                    </NavLink>
+                    {tenant?.settings?.allowCoachSelfEditAvailability && (
+                        <NavLink to="/coach/availability" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <Calendar size={24} />
+                            <span className="text-[10px] font-medium">Availability</span>
+                        </NavLink>
+                    )}
 
                     <NavLink to="/coach/clients" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
                         <Users size={24} />
