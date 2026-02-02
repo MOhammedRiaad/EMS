@@ -20,17 +20,25 @@ import { SessionParticipant } from './entities/session-participant.entity';
 import { SessionParticipantsService } from './session-participants.service';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Session, SessionParticipant, Room, Studio, Coach, CoachTimeOffRequest, Tenant]),
-        ClientsModule,
-        MailerModule,
-        PackagesModule,
-        PackagesModule,
-        GamificationModule,
-        AuditModule,
-    ],
-    controllers: [SessionsController],
-    providers: [SessionsService, SessionParticipantsService],
-    exports: [SessionsService, SessionParticipantsService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Session,
+      SessionParticipant,
+      Room,
+      Studio,
+      Coach,
+      CoachTimeOffRequest,
+      Tenant,
+    ]),
+    ClientsModule,
+    MailerModule,
+    PackagesModule,
+    PackagesModule,
+    GamificationModule,
+    AuditModule,
+  ],
+  controllers: [SessionsController],
+  providers: [SessionsService, SessionParticipantsService],
+  exports: [SessionsService, SessionParticipantsService],
 })
-export class SessionsModule { }
+export class SessionsModule {}

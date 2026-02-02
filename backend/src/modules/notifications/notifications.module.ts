@@ -9,12 +9,22 @@ import { Notification } from './entities/notification.entity';
 import { Announcement } from './entities/announcement.entity';
 import { AnnouncementRead } from './entities/announcement-read.entity';
 
+import { CoachesModule } from '../coaches/coaches.module';
+
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Session, ClientPackage, WaitingListEntry, Notification, Announcement, AnnouncementRead]),
-    ],
-    controllers: [NotificationsController],
-    providers: [NotificationsService],
-    exports: [NotificationsService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Session,
+      ClientPackage,
+      WaitingListEntry,
+      Notification,
+      Announcement,
+      AnnouncementRead,
+    ]),
+    CoachesModule,
+  ],
+  controllers: [NotificationsController],
+  providers: [NotificationsService],
+  exports: [NotificationsService],
 })
 export class NotificationsModule { }

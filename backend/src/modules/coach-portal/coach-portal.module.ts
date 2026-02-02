@@ -9,11 +9,16 @@ import { Coach } from '../coaches/entities/coach.entity';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Session, Client, InBodyScan, Coach, CoachTimeOffRequest])
-    ],
-    controllers: [CoachPortalController],
-    providers: [CoachPortalService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Session,
+      Client,
+      InBodyScan,
+      Coach,
+      CoachTimeOffRequest,
+    ]),
+  ],
+  controllers: [CoachPortalController],
+  providers: [CoachPortalService],
 })
-export class CoachPortalModule { }
-
+export class CoachPortalModule {}

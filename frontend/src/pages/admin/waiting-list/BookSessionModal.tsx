@@ -139,7 +139,7 @@ export const BookSessionModal: React.FC<BookSessionModalProps> = ({
                                     value={bookingData.recurrencePattern}
                                     onChange={(e) => setBookingData(prev => ({
                                         ...prev,
-                                        recurrencePattern: e.target.value as any
+                                        recurrencePattern: e.target.value as BookingData['recurrencePattern']
                                     }))}
                                     style={inputStyle}
                                 >
@@ -177,7 +177,7 @@ export const BookSessionModal: React.FC<BookSessionModalProps> = ({
                         <option value="">Select Coach...</option>
                         {coaches.map((coach: any) => (
                             <option key={coach.id} value={coach.id}>
-                                {coach.user?.firstName} {coach.user?.lastName}
+                                {coach.firstName} {coach.lastName}
                             </option>
                         ))}
                     </select>

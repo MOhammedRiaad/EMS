@@ -59,71 +59,90 @@ import { AuditLog } from '../src/modules/audit/entities/audit-log.entity';
 import { AuditModule } from '../src/modules/audit/audit.module';
 
 const ALL_ENTITIES = [
-    User, Tenant, Studio, Room, Coach, Client, Session,
-    EmsDevice, ClientSessionReview, InBodyScan, WaitingListEntry,
-    Package, ClientPackage, Transaction,
-    Product, ProductStock, Sale, SaleItem,
-    Waiver, ClientWaiver,
-    Notification, Announcement, AnnouncementRead,
-    SessionParticipant, AutomationRule, AutomationExecution,
-    AuditLog,
+  User,
+  Tenant,
+  Studio,
+  Room,
+  Coach,
+  Client,
+  Session,
+  EmsDevice,
+  ClientSessionReview,
+  InBodyScan,
+  WaitingListEntry,
+  Package,
+  ClientPackage,
+  Transaction,
+  Product,
+  ProductStock,
+  Sale,
+  SaleItem,
+  Waiver,
+  ClientWaiver,
+  Notification,
+  Announcement,
+  AnnouncementRead,
+  SessionParticipant,
+  AutomationRule,
+  AutomationExecution,
+  AuditLog,
 ];
 
 @Module({
-    imports: [
-        // Load test environment variables
-        ConfigModule.forRoot({
-            isGlobal: true,
-            envFilePath: path.join(__dirname, '..', '.env.test'),
-        }),
+  imports: [
+    // Load test environment variables
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: path.join(__dirname, '..', '.env.test'),
+    }),
 
-        // In-memory cache for tests
-        CacheModule.register({
-            isGlobal: true,
-            ttl: 60000,
-        }),
+    // In-memory cache for tests
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60000,
+    }),
 
-        // PostgreSQL connection to Docker test database
-        TypeOrmModule.forRootAsync({
-            imports: [ConfigModule],
-            useFactory: () => ({
-                type: 'postgres',
-                host: process.env.POSTGRES_HOST || '127.0.0.1',
-                port: parseInt(process.env.POSTGRES_PORT || '5433', 10),
-                username: process.env.POSTGRES_USER || 'ems_user',
-                password: process.env.POSTGRES_PASSWORD || 'ems_secret',
-                database: process.env.POSTGRES_DB || 'ems_studio_test',
-                entities: ALL_ENTITIES,
-                synchronize: true, // Auto-create tables for tests
-                dropSchema: true,  // Drop schema before each test run for clean state
-                logging: false,
-            }),
-            inject: [ConfigService],
-        }),
+    // PostgreSQL connection to Docker test database
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: () => ({
+        type: 'postgres',
+        host: process.env.POSTGRES_HOST || '127.0.0.1',
+        port: parseInt(process.env.POSTGRES_PORT || '5433', 10),
+        username: process.env.POSTGRES_USER || 'ems_user',
+        password: process.env.POSTGRES_PASSWORD || 'ems_secret',
+        database: process.env.POSTGRES_DB || 'ems_studio_test',
+        entities: ALL_ENTITIES,
+        synchronize: true, // Auto-create tables for tests
+        dropSchema: true, // Drop schema before each test run for clean state
+        logging: false,
+      }),
+      inject: [ConfigService],
+    }),
 
-        // Feature Modules
-        AuthModule,
-        TenantsModule,
-        StudiosModule,
-        RoomsModule,
-        CoachesModule,
-        ClientsModule,
-        SessionsModule,
-        DevicesModule,
-        PackagesModule,
-        MailerModule,
-        WaitingListModule,
-        InBodyScansModule,
-        ReviewsModule,
-        DashboardModule,
-        ClientPortalModule,
-        CoachPortalModule,
-        RetailModule,
-        WaiversModule,
-        NotificationsModule,
-        MarketingModule,
-        AuditModule,
-    ],
-    controllers: [HealthController],
+    // Feature Modules
+    AuthModule,
+    TenantsModule,
+    StudiosModule,
+    RoomsModule,
+    CoachesModule,
+    ClientsModule,
+    SessionsModule,
+    DevicesModule,
+    PackagesModule,
+    MailerModule,
+    WaitingListModule,
+    InBodyScansModule,
+    ReviewsModule,
+    DashboardModule,
+    ClientPortalModule,
+    CoachPortalModule,
+    RetailModule,
+    WaiversModule,
+    NotificationsModule,
+    MarketingModule,
+    AuditModule,
+  ],
+  controllers: [HealthController],
 })
-export class TestAppModule { }
+export class TestAppModule {}

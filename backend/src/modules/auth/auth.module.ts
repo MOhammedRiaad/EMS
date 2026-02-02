@@ -10,24 +10,23 @@ import { User } from './entities/user.entity';
 import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([User]),
-        PassportModule.register({ defaultStrategy: 'jwt' }),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET') || 'default-dev-secret',
-                signOptions: {
-                    expiresIn: 604800, // 7 days in seconds
-                },
-            }),
-            inject: [ConfigService],
-        }),
-        TenantsModule,
-    ],
-    controllers: [AuthController],
-    providers: [AuthService, JwtStrategy],
-    exports: [AuthService, JwtStrategy, PassportModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'default-dev-secret',
+        signOptions: {
+          expiresIn: 604800, // 7 days in seconds
+        },
+      }),
+      inject: [ConfigService],
+    }),
+    TenantsModule,
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy],
+  exports: [AuthService, JwtStrategy, PassportModule],
 })
-export class AuthModule { }
-
+export class AuthModule {}

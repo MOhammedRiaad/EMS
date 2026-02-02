@@ -7,10 +7,8 @@ import { Coach } from '../coaches/entities/coach.entity';
 import { Session } from '../sessions/entities/session.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Client, Coach, Session]),
-    ],
-    controllers: [DashboardController],
-    providers: [DashboardService],
+  imports: [TypeOrmModule.forFeature([Client, Coach, Session])],
+  controllers: [DashboardController],
+  providers: [DashboardService],
 })
-export class DashboardModule { }
+export class DashboardModule {}

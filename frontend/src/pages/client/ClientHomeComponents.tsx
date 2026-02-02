@@ -337,11 +337,9 @@ export const ActivePackageCard: React.FC<ActivePackageCardProps> = ({ activePack
                 )}
             </div>
 
-            {!activePackage && (
-                <Link to="/client/profile" className="text-sm text-purple-600 font-medium mt-4 inline-flex items-center gap-1 hover:gap-2 transition-all">
-                    View packages <ChevronRight size={14} />
-                </Link>
-            )}
+            <Link to="/client/packages" className="text-sm text-purple-600 font-medium mt-4 inline-flex items-center gap-1 hover:gap-2 transition-all">
+                {activePackage ? 'View Details' : 'View packages'} <ChevronRight size={14} />
+            </Link>
         </div>
     );
 };
@@ -394,6 +392,9 @@ export const WaitingListCard: React.FC<WaitingListCardProps> = ({ entries, onCan
                     </div>
                 ))}
             </div>
+            <Link to="/client/waitlist" className="text-sm text-orange-600 font-medium mt-3 inline-flex items-center gap-1 hover:gap-2 transition-all">
+                View All Requests <ChevronRight size={14} />
+            </Link>
         </div>
     );
 };

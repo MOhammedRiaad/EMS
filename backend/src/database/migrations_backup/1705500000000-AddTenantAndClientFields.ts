@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddTenantAndClientFields1705500000000 implements MigrationInterface {
-    name = 'AddTenantAndClientFields1705500000000';
+  name = 'AddTenantAndClientFields1705500000000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Add tenant fields if they don't exist
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Add tenant fields if they don't exist
+    await queryRunner.query(`
             DO $$ 
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
@@ -40,8 +40,8 @@ export class AddTenantAndClientFields1705500000000 implements MigrationInterface
             END $$;
         `);
 
-        // Add avatar_url to clients if it doesn't exist
-        await queryRunner.query(`
+    // Add avatar_url to clients if it doesn't exist
+    await queryRunner.query(`
             DO $$ 
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
@@ -51,8 +51,8 @@ export class AddTenantAndClientFields1705500000000 implements MigrationInterface
             END $$;
         `);
 
-        // Add tenant_owner role if it doesn't exist
-        await queryRunner.query(`
+    // Add tenant_owner role if it doesn't exist
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'tenant_owner' 
@@ -61,16 +61,24 @@ export class AddTenantAndClientFields1705500000000 implements MigrationInterface
                 END IF;
             END $$;
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Note: Removing enum values is complex in PostgreSQL, so we'll leave tenant_owner
-        await queryRunner.query(`ALTER TABLE clients DROP COLUMN IF EXISTS avatar_url`);
-        await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS is_complete`);
-        await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS zip_code`);
-        await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS state`);
-        await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS city`);
-        await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS phone`);
-        await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS address`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Note: Removing enum values is complex in PostgreSQL, so we'll leave tenant_owner
+    await queryRunner.query(
+      `ALTER TABLE clients DROP COLUMN IF EXISTS avatar_url`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE tenants DROP COLUMN IF EXISTS is_complete`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE tenants DROP COLUMN IF EXISTS zip_code`,
+    );
+    await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS state`);
+    await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS city`);
+    await queryRunner.query(`ALTER TABLE tenants DROP COLUMN IF EXISTS phone`);
+    await queryRunner.query(
+      `ALTER TABLE tenants DROP COLUMN IF EXISTS address`,
+    );
+  }
 }

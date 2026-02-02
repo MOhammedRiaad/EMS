@@ -13,15 +13,15 @@ import { WaiversModule } from '../waivers/waivers.module';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto, User]),
-        AuthModule,
-        MailerModule,
-        forwardRef(() => WaiversModule),
-        AuditModule
-    ],
-    controllers: [ClientsController],
-    providers: [ClientsService],
-    exports: [ClientsService],
+  imports: [
+    TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto, User]),
+    AuthModule,
+    MailerModule,
+    forwardRef(() => WaiversModule),
+    AuditModule,
+  ],
+  controllers: [ClientsController],
+  providers: [ClientsService],
+  exports: [ClientsService],
 })
-export class ClientsModule { }
+export class ClientsModule {}

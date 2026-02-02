@@ -21,11 +21,11 @@ import { Client } from '../clients/entities/client.entity';
       ClientChallengeProgress,
       Session,
       ClientSessionReview,
-      Client
-    ])
+      Client,
+    ]),
   ],
   providers: [GamificationService],
   controllers: [GamificationController],
-  exports: [GamificationService]
+  exports: [GamificationService],
 })
-export class GamificationModule { }
+export class GamificationModule {}

@@ -35,6 +35,8 @@ const NotificationsWidget: React.FC = () => {
             case 'package_expiring':
             case 'package_low':
                 return <Package size={16} />;
+            case 'time_off_request':
+                return <Calendar size={16} />;
             default:
                 return <Bell size={16} />;
         }

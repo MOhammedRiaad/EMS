@@ -7,12 +7,12 @@ import { Session } from '../sessions/entities/session.entity';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([ClientSessionReview, Session]),
-        AuditModule,
-    ],
-    controllers: [ReviewsController],
-    providers: [ReviewsService],
-    exports: [ReviewsService],
+  imports: [
+    TypeOrmModule.forFeature([ClientSessionReview, Session]),
+    AuditModule,
+  ],
+  controllers: [ReviewsController],
+  providers: [ReviewsService],
+  exports: [ReviewsService],
 })
-export class ReviewsModule { }
+export class ReviewsModule {}

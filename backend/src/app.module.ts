@@ -42,10 +42,12 @@ import { AuditModule } from './modules/audit/audit.module';
   imports: [
     // Configuration
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     LoggerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -57,11 +59,11 @@ import { AuditModule } from './modules/audit/audit.module';
             transport: isProduction
               ? undefined
               : {
-                target: 'pino-pretty',
-                options: {
-                  singleLine: true,
+                  target: 'pino-pretty',
+                  options: {
+                    singleLine: true,
+                  },
                 },
-              },
           },
         };
       },
@@ -92,7 +94,10 @@ import { AuditModule } from './modules/audit/audit.module';
         migrationsRun: true, // Auto-run migrations on startup
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         logging: configService.get('NODE_ENV') === 'development',
-        ssl: configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+        ssl:
+          configService.get('NODE_ENV') === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
       inject: [ConfigService],
     }),
@@ -137,4 +142,4 @@ import { AuditModule } from './modules/audit/audit.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

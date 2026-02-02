@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session, SessionStatus } from './entities/session.entity';
@@ -7,1529 +12,1940 @@ import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { CreateSessionDto, SessionQueryDto, UpdateSessionDto, BulkCreateSessionDto } from './dto';
+import {
+  CreateSessionDto,
+  SessionQueryDto,
+  UpdateSessionDto,
+  BulkCreateSessionDto,
+} from './dto';
 import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
 
 export interface ConflictResult {
-    hasConflicts: boolean;
-    conflicts: Array<{
-        type: 'room' | 'coach' | 'client' | 'device';
-        sessionId: string;
-        message: string;
-    }>;
+  hasConflicts: boolean;
+  conflicts: Array<{
+    type: 'room' | 'coach' | 'client' | 'device';
+    sessionId: string;
+    message: string;
+  }>;
 }
 
 import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class SessionsService {
-    private readonly logger = new Logger(SessionsService.name);
+  private readonly logger = new Logger(SessionsService.name);
 
-    constructor(
-        @InjectRepository(Session)
-        private readonly sessionRepository: Repository<Session>,
-        @InjectRepository(Room)
-        private readonly roomRepository: Repository<Room>,
-        @InjectRepository(Studio)
-        private readonly studioRepository: Repository<Studio>,
-        @InjectRepository(Coach)
-        private readonly coachRepository: Repository<Coach>,
-        @InjectRepository(CoachTimeOffRequest)
-        private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
-        @InjectRepository(Tenant)
-        private readonly tenantRepository: Repository<Tenant>,
-        private mailerService: MailerService,
-        private clientsService: ClientsService,
-        private packagesService: PackagesService,
-        private gamificationService: GamificationService,
-        private readonly auditService: AuditService,
-    ) { }
+  constructor(
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
+    @InjectRepository(Room)
+    private readonly roomRepository: Repository<Room>,
+    @InjectRepository(Studio)
+    private readonly studioRepository: Repository<Studio>,
+    @InjectRepository(Coach)
+    private readonly coachRepository: Repository<Coach>,
+    @InjectRepository(CoachTimeOffRequest)
+    private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
+    private mailerService: MailerService,
+    private clientsService: ClientsService,
+    private packagesService: PackagesService,
+    private gamificationService: GamificationService,
+    private readonly auditService: AuditService,
+  ) {}
 
+  async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
+    const qb = this.sessionRepository
+      .createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .leftJoinAndSelect('s.room', 'room')
+      .leftJoinAndSelect('s.coach', 'coach')
+      .leftJoinAndSelect('coach.user', 'coachUser')
+      .leftJoinAndSelect('s.client', 'client')
+      .leftJoinAndSelect('s.review', 'review')
+      .leftJoinAndSelect('s.participants', 'participants')
+      .leftJoinAndSelect('participants.client', 'participantClient');
 
-
-    async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
-        const qb = this.sessionRepository.createQueryBuilder('s')
-            .where('s.tenant_id = :tenantId', { tenantId })
-            .leftJoinAndSelect('s.room', 'room')
-            .leftJoinAndSelect('s.coach', 'coach')
-            .leftJoinAndSelect('coach.user', 'coachUser')
-            .leftJoinAndSelect('s.client', 'client')
-            .leftJoinAndSelect('s.review', 'review')
-            .leftJoinAndSelect('s.participants', 'participants')
-            .leftJoinAndSelect('participants.client', 'participantClient');
-
-        if (query.studioId) {
-            qb.andWhere('s.studio_id = :studioId', { studioId: query.studioId });
-        }
-
-        if (query.coachId) {
-            qb.andWhere('s.coach_id = :coachId', { coachId: query.coachId });
-        }
-
-        if (query.clientId) {
-            qb.andWhere('s.client_id = :clientId', { clientId: query.clientId });
-        }
-
-        if (query.from) {
-            qb.andWhere('s.start_time >= :from', { from: query.from });
-        }
-
-        if (query.to) {
-            qb.andWhere('s.end_time <= :to', { to: query.to });
-        }
-
-        if (query.status) {
-            qb.andWhere('s.status = :status', { status: query.status });
-        }
-
-        return qb.orderBy('s.start_time', 'ASC').getMany();
+    if (query.studioId) {
+      qb.andWhere('s.studio_id = :studioId', { studioId: query.studioId });
     }
 
-    async findOne(id: string, tenantId: string): Promise<Session> {
-        const session = await this.sessionRepository.findOne({
-            where: { id, tenantId },
-            relations: ['room', 'coach', 'coach.user', 'client', 'participants', 'participants.client'],
-        });
-        if (!session) {
-            throw new NotFoundException(`Session ${id} not found`);
-        }
-        return session;
+    if (query.coachId) {
+      qb.andWhere('s.coach_id = :coachId', { coachId: query.coachId });
     }
 
-    async create(dto: CreateSessionDto, tenantId: string): Promise<Session> {
-        const startTime = new Date(dto.startTime);
-        const endTime = new Date(dto.endTime);
+    if (query.clientId) {
+      qb.andWhere('s.client_id = :clientId', { clientId: query.clientId });
+    }
 
-        // Validate room is active
-        await this.validateRoomAvailability(dto.roomId, tenantId);
+    if (query.from) {
+      qb.andWhere('s.start_time >= :from', { from: query.from });
+    }
 
-        // Validate studio opening hours
-        await this.validateStudioHours(dto.studioId, startTime, endTime, tenantId);
+    if (query.to) {
+      qb.andWhere('s.end_time <= :to', { to: query.to });
+    }
 
-        // Validate coach availability
-        await this.validateCoachAvailability(dto.coachId, startTime, endTime, tenantId);
+    if (query.status) {
+      qb.andWhere('s.status = :status', { status: query.status });
+    }
 
-        // Validate coach belongs to the selected studio
-        await this.validateCoachStudioLink(dto.coachId, dto.studioId, tenantId);
+    return qb.orderBy('s.start_time', 'ASC').getMany();
+  }
 
-        // Validate client belongs to the selected studio (if client specified)
-        if (dto.clientId) {
-            await this.validateClientStudioLink(dto.clientId, dto.studioId, tenantId);
+  async findOne(id: string, tenantId: string): Promise<Session> {
+    const session = await this.sessionRepository.findOne({
+      where: { id, tenantId },
+      relations: [
+        'room',
+        'coach',
+        'coach.user',
+        'client',
+        'participants',
+        'participants.client',
+      ],
+    });
+    if (!session) {
+      throw new NotFoundException(`Session ${id} not found`);
+    }
+    return session;
+  }
+
+  async create(dto: CreateSessionDto, tenantId: string): Promise<Session> {
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+
+    // Validate room is active
+    await this.validateRoomAvailability(dto.roomId, tenantId);
+
+    // Validate studio opening hours
+    await this.validateStudioHours(dto.studioId, startTime, endTime, tenantId);
+
+    // Validate coach availability
+    await this.validateCoachAvailability(
+      dto.coachId,
+      startTime,
+      endTime,
+      tenantId,
+    );
+
+    // Validate coach belongs to the selected studio
+    await this.validateCoachStudioLink(dto.coachId, dto.studioId, tenantId);
+
+    // Validate client belongs to the selected studio (if client specified)
+    if (dto.clientId) {
+      await this.validateClientStudioLink(dto.clientId, dto.studioId, tenantId);
+    }
+
+    // Validate gender preference
+    if (dto.clientId) {
+      await this.validateCoachGenderPreference(
+        dto.coachId,
+        dto.clientId,
+        tenantId,
+      );
+    }
+
+    // Deduct session from package immediately (Consume-on-Book)
+    let clientPackageId: string | null = null;
+    if (dto.clientId && (!dto.type || dto.type === 'individual')) {
+      const bestPackage = await this.packagesService.findBestPackageForSession(
+        dto.clientId,
+        tenantId,
+      );
+
+      if (!bestPackage) {
+        throw new BadRequestException(
+          'Client does not have an active package with remaining sessions. Please renew.',
+        );
+      }
+
+      await this.packagesService.useSession(bestPackage.id, tenantId);
+      clientPackageId = bestPackage.id;
+    }
+
+    // Check for conflicts
+    const conflicts = await this.checkConflicts(dto, tenantId);
+    if (conflicts.hasConflicts) {
+      // Rollback deduction if conflict?
+      // Since we awaited useSession, we must return it if we fail here.
+      if (clientPackageId) {
+        await this.packagesService.returnSession(clientPackageId, tenantId);
+      }
+      throw new BadRequestException({
+        message: 'Scheduling conflict detected',
+        conflicts: conflicts.conflicts,
+      });
+    }
+
+    // Create the parent/first session
+    const isRecurring = !!dto.recurrencePattern && !!dto.recurrenceEndDate;
+    const session = this.sessionRepository.create({
+      ...dto,
+      type: dto.type || 'individual',
+      capacity: dto.capacity || 1,
+      tenantId,
+      isRecurringParent: isRecurring,
+      recurrencePattern: dto.recurrencePattern || null,
+      recurrenceEndDate: dto.recurrenceEndDate
+        ? new Date(dto.recurrenceEndDate)
+        : null,
+      clientPackageId, // Link session to package
+    });
+
+    const savedSession = await this.sessionRepository.save(session);
+
+    // Generate recurring sessions if pattern is set
+    if (isRecurring) {
+      await this.generateRecurringSessions(savedSession, dto, tenantId);
+    }
+
+    // Send confirmation email (only for individual sessions)
+    if (dto.clientId) {
+      try {
+        const client = await this.clientsService.findOne(
+          dto.clientId,
+          tenantId,
+        );
+        if (client && client.email) {
+          const recurrenceText = isRecurring
+            ? ` (recurring ${dto.recurrencePattern})`
+            : '';
+          await this.mailerService.sendMail(
+            client.email,
+            'Session Confirmed - EMS Studio',
+            `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}${recurrenceText}.`,
+            `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>${recurrenceText}.</p><p>See you there!</p>`,
+          );
         }
+      } catch (error) {
+        this.logger.error('Failed to send session confirmation email', error);
+      }
+    }
 
-        // Validate gender preference
-        if (dto.clientId) {
-            await this.validateCoachGenderPreference(dto.coachId, dto.clientId, tenantId);
-        }
+    const finalSession = await this.sessionRepository.save(savedSession);
 
-        // Deduct session from package immediately (Consume-on-Book)
-        let clientPackageId: string | null = null;
-        if (dto.clientId && (!dto.type || dto.type === 'individual')) {
-            const bestPackage = await this.packagesService.findBestPackageForSession(dto.clientId, tenantId);
+    // Log Booking
+    await this.auditService.log(
+      tenantId,
+      'BOOK_SESSION',
+      'Session',
+      finalSession.id,
+      'API_USER',
+      {
+        clientId: dto.clientId,
+        coachId: dto.coachId,
+        startTime: finalSession.startTime,
+        room: dto.roomId,
+      },
+    );
 
-            if (!bestPackage) {
-                throw new BadRequestException('Client does not have an active package with remaining sessions. Please renew.');
-            }
+    return finalSession;
+  }
 
-            await this.packagesService.useSession(bestPackage.id, tenantId);
-            clientPackageId = bestPackage.id;
-        }
+  async createBulk(
+    bulkDto: BulkCreateSessionDto,
+    tenantId: string,
+  ): Promise<{ created: number; errors: any[] }> {
+    const results = { created: 0, errors: [] as any[] };
 
-        // Check for conflicts
-        const conflicts = await this.checkConflicts(dto, tenantId);
-        if (conflicts.hasConflicts) {
-            // Rollback deduction if conflict?
-            // Since we awaited useSession, we must return it if we fail here.
-            if (clientPackageId) {
-                await this.packagesService.returnSession(clientPackageId, tenantId);
-            }
-            throw new BadRequestException({
-                message: 'Scheduling conflict detected',
-                conflicts: conflicts.conflicts,
-            });
-        }
+    for (const [index, dto] of bulkDto.sessions.entries()) {
+      try {
+        await this.create(dto, tenantId);
+        results.created++;
+      } catch (error) {
+        this.logger.error(
+          `Failed to create session at index ${index} in bulk operation`,
+          error,
+        );
+        results.errors.push({
+          index,
+          startTime: dto.startTime,
+          error: error.message,
+        });
+      }
+    }
 
-        // Create the parent/first session
-        const isRecurring = !!dto.recurrencePattern && !!dto.recurrenceEndDate;
-        const session = this.sessionRepository.create({
-            ...dto,
-            type: dto.type || 'individual',
-            capacity: dto.capacity || 1,
+    return results;
+  }
+
+  private async generateRecurringSessions(
+    parentSession: Session,
+    dto: CreateSessionDto,
+    tenantId: string,
+  ): Promise<void> {
+    let recurrenceEndDate = new Date(dto.recurrenceEndDate!);
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+    const sessionDuration = endTime.getTime() - startTime.getTime();
+    const sessionHour = startTime.getHours();
+    const sessionMinutes = startTime.getMinutes();
+
+    // Check client's active package for limits (only if client exists)
+    let maxSessionsFromPackage = Infinity;
+    if (dto.clientId) {
+      const clientPackages = await this.packagesService.getClientPackages(
+        dto.clientId,
+        tenantId,
+      );
+      const activePackage = clientPackages.find((cp) => cp.status === 'active');
+
+      if (activePackage) {
+        // Count already scheduled sessions to calculate true remaining count
+        const scheduledSessionsCount = await this.sessionRepository.count({
+          where: {
+            clientId: dto.clientId,
             tenantId,
-            isRecurringParent: isRecurring,
-            recurrencePattern: dto.recurrencePattern || null,
-            recurrenceEndDate: dto.recurrenceEndDate ? new Date(dto.recurrenceEndDate) : null,
-            clientPackageId, // Link session to package
+            status: 'scheduled' as any,
+          },
         });
 
-        const savedSession = await this.sessionRepository.save(session);
-
-        // Generate recurring sessions if pattern is set
-        if (isRecurring) {
-            await this.generateRecurringSessions(savedSession, dto, tenantId);
-        }
-
-        // Send confirmation email (only for individual sessions)
-        if (dto.clientId) {
-            try {
-                const client = await this.clientsService.findOne(dto.clientId, tenantId);
-                if (client && client.email) {
-                    const recurrenceText = isRecurring ? ` (recurring ${dto.recurrencePattern})` : '';
-                    await this.mailerService.sendMail(
-                        client.email,
-                        'Session Confirmed - EMS Studio',
-                        `Your session has been scheduled for ${savedSession.startTime.toLocaleString()}${recurrenceText}.`,
-                        `<p>Hi ${client.firstName},</p><p>Your session has been scheduled for <strong>${savedSession.startTime.toLocaleString()}</strong>${recurrenceText}.</p><p>See you there!</p>`
-                    );
-                }
-            } catch (error) {
-                this.logger.error('Failed to send session confirmation email', error);
-            }
-        }
-
-        const finalSession = await this.sessionRepository.save(savedSession);
-
-        // Log Booking
-        await this.auditService.log(
-            tenantId,
-            'BOOK_SESSION',
-            'Session',
-            finalSession.id,
-            'API_USER',
-            {
-                clientId: dto.clientId,
-                coachId: dto.coachId,
-                startTime: finalSession.startTime,
-                room: dto.roomId
-            }
+        // Limit by remaining sessions (subtract 1 for the parent session which is already saved/validated)
+        const remainingInPackage = Math.max(
+          0,
+          activePackage.sessionsRemaining - scheduledSessionsCount,
         );
 
-        return finalSession;
+        // If parent session took the last spot, maxSessionsFromPackage for recurrence is 0
+        // But we already saved parent.
+        // If we are checking BEFORE parent save, logic differs. Here parent IS saved.
+        // scheduledSessionsCount INCLUDES the parent session we just saved?
+        // "savedSession" is saved at line 136. `scheduled` status is default.
+
+        // If parent is newly saved, it contributes to count.
+        // If we had 10 rem. Parent saved. Rem is 10-1 = 9.
+        // maxSessionsFromPackage = 9.
+
+        maxSessionsFromPackage = remainingInPackage;
+
+        // Limit by package expiry date
+        if (activePackage.expiryDate) {
+          const packageExpiry = new Date(activePackage.expiryDate);
+          if (packageExpiry < recurrenceEndDate) {
+            recurrenceEndDate = packageExpiry;
+            this.logger.log(
+              `Limiting recurrence end date to package expiry: ${recurrenceEndDate.toISOString()}`,
+            );
+          }
+        }
+      }
     }
 
-    async createBulk(bulkDto: BulkCreateSessionDto, tenantId: string): Promise<{ created: number, errors: any[] }> {
-        const results = { created: 0, errors: [] as any[] };
+    const sessionsToCreate: Partial<Session>[] = [];
 
-        for (const [index, dto] of bulkDto.sessions.entries()) {
-            try {
-                await this.create(dto, tenantId);
-                results.created++;
-            } catch (error) {
-                this.logger.error(`Failed to create session at index ${index} in bulk operation`, error);
-                results.errors.push({
-                    index,
-                    startTime: dto.startTime,
-                    error: error.message
-                });
-            }
-        }
+    // Get recurrence days or default to the parent session's day
+    const recurrenceDays = dto.recurrenceDays?.length
+      ? dto.recurrenceDays.map((d) => Number(d))
+      : [startTime.getDay()];
 
-        return results;
+    // Calculate week interval based on pattern
+    const isMonthly = dto.recurrencePattern === 'monthly';
+    const isDaily = dto.recurrencePattern === 'daily';
+    const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
+
+    // Start from the beginning of the week after the start date
+    const currentWeekStart = new Date(startTime);
+    currentWeekStart.setDate(
+      currentWeekStart.getDate() - currentWeekStart.getDay(),
+    ); // Go to Sunday
+    currentWeekStart.setHours(0, 0, 0, 0);
+
+    // Move to next week to skip the parent session's week
+    if (!isMonthly) {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
     }
 
-    private async generateRecurringSessions(parentSession: Session, dto: CreateSessionDto, tenantId: string): Promise<void> {
-        let recurrenceEndDate = new Date(dto.recurrenceEndDate!);
-        const startTime = new Date(dto.startTime);
-        const endTime = new Date(dto.endTime);
-        const sessionDuration = endTime.getTime() - startTime.getTime();
-        const sessionHour = startTime.getHours();
-        const sessionMinutes = startTime.getMinutes();
-
-        // Check client's active package for limits (only if client exists)
-        let maxSessionsFromPackage = Infinity;
-        if (dto.clientId) {
-            const clientPackages = await this.packagesService.getClientPackages(dto.clientId, tenantId);
-            const activePackage = clientPackages.find(cp => cp.status === 'active');
-
-            if (activePackage) {
-
-                // Count already scheduled sessions to calculate true remaining count
-                const scheduledSessionsCount = await this.sessionRepository.count({
-                    where: {
-                        clientId: dto.clientId,
-                        tenantId,
-                        status: 'scheduled' as any
-                    }
-                });
-
-                // Limit by remaining sessions (subtract 1 for the parent session which is already saved/validated)
-                const remainingInPackage = Math.max(0, activePackage.sessionsRemaining - scheduledSessionsCount);
-
-                // If parent session took the last spot, maxSessionsFromPackage for recurrence is 0
-                // But we already saved parent.
-                // If we are checking BEFORE parent save, logic differs. Here parent IS saved.
-                // scheduledSessionsCount INCLUDES the parent session we just saved?
-                // "savedSession" is saved at line 136. `scheduled` status is default.
-
-                // If parent is newly saved, it contributes to count.
-                // If we had 10 rem. Parent saved. Rem is 10-1 = 9.
-                // maxSessionsFromPackage = 9.
-
-                maxSessionsFromPackage = remainingInPackage;
-
-                // Limit by package expiry date
-                if (activePackage.expiryDate) {
-                    const packageExpiry = new Date(activePackage.expiryDate);
-                    if (packageExpiry < recurrenceEndDate) {
-                        recurrenceEndDate = packageExpiry;
-                        this.logger.log(`Limiting recurrence end date to package expiry: ${recurrenceEndDate.toISOString()}`);
-                    }
-                }
-            }
-        }
-
-        const sessionsToCreate: Partial<Session>[] = [];
-
-        // Get recurrence days or default to the parent session's day
-        const recurrenceDays = dto.recurrenceDays?.length
-            ? dto.recurrenceDays.map(d => Number(d))
-            : [startTime.getDay()];
-
-        // Calculate week interval based on pattern
-        const isMonthly = dto.recurrencePattern === 'monthly';
-        const isDaily = dto.recurrencePattern === 'daily';
-        const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
-
-        // Start from the beginning of the week after the start date
-        let currentWeekStart = new Date(startTime);
-        currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay()); // Go to Sunday
-        currentWeekStart.setHours(0, 0, 0, 0);
-
-        // Move to next week to skip the parent session's week
-        if (!isMonthly) {
-            currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
-        }
-
-        while (sessionsToCreate.length < maxSessionsFromPackage) {
-            if (isMonthly) {
-                // For monthly, just add one month to the start date
-                const nextDate = new Date(startTime);
-                nextDate.setMonth(nextDate.getMonth() + sessionsToCreate.length + 1);
-
-                if (nextDate > recurrenceEndDate) break;
-
-                const conflicts = await this.checkConflicts({
-                    ...dto,
-                    startTime: nextDate.toISOString(),
-                    endTime: new Date(nextDate.getTime() + sessionDuration).toISOString(),
-                }, tenantId, parentSession.id);
-
-                if (!conflicts.hasConflicts) {
-                    sessionsToCreate.push(this.createRecurringSessionData(dto, nextDate, sessionDuration, tenantId, parentSession.id));
-                }
-            } else if (isDaily) {
-                // For daily, iterate through each day
-                const nextDate = new Date(startTime);
-                nextDate.setDate(nextDate.getDate() + sessionsToCreate.length + 1);
-
-                if (nextDate > recurrenceEndDate) break;
-
-                const conflicts = await this.checkConflicts({
-                    ...dto,
-                    startTime: nextDate.toISOString(),
-                    endTime: new Date(nextDate.getTime() + sessionDuration).toISOString(),
-                }, tenantId, parentSession.id);
-
-                if (!conflicts.hasConflicts) {
-                    sessionsToCreate.push(this.createRecurringSessionData(dto, nextDate, sessionDuration, tenantId, parentSession.id));
-                }
-            } else if (dto.recurrencePattern === 'variable' && dto.recurrenceSlots?.length) {
-                // Variable pattern: iterate weeks, then iterate slots
-                // recurrenceSlots has { dayOfWeek: number, startTime: "HH:MM" }
-
-                for (const slot of dto.recurrenceSlots) {
-                    if (sessionsToCreate.length >= maxSessionsFromPackage) break;
-
-                    const sessionDate = new Date(currentWeekStart);
-                    sessionDate.setDate(sessionDate.getDate() + slot.dayOfWeek);
-
-                    const [h, m] = slot.startTime.split(':').map(Number);
-                    sessionDate.setHours(h, m, 0, 0);
-
-                    // Skip if before start time (e.g. earlier in same week) or after end date
-                    if (sessionDate <= startTime) continue;
-                    if (sessionDate > recurrenceEndDate) continue;
-
-                    const conflicts = await this.checkConflicts({
-                        ...dto,
-                        startTime: sessionDate.toISOString(),
-                        endTime: new Date(sessionDate.getTime() + sessionDuration).toISOString(),
-                    }, tenantId, parentSession.id);
-
-                    if (!conflicts.hasConflicts) {
-                        sessionsToCreate.push(this.createRecurringSessionData(dto, sessionDate, sessionDuration, tenantId, parentSession.id));
-                    } else {
-                        this.logger.warn(`Skipping recurring variable session on ${sessionDate.toISOString()} due to conflict`);
-                    }
-                }
-                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-
-            } else {
-                // For weekly/biweekly, iterate through selected days
-                for (const dayOfWeek of recurrenceDays) {
-                    if (sessionsToCreate.length >= maxSessionsFromPackage) break;
-
-                    const sessionDate = new Date(currentWeekStart);
-                    sessionDate.setDate(sessionDate.getDate() + dayOfWeek);
-                    sessionDate.setHours(sessionHour, sessionMinutes, 0, 0);
-
-                    // Skip if before start time or after end date
-                    if (sessionDate <= startTime) continue;
-                    if (sessionDate > recurrenceEndDate) continue;
-
-                    const conflicts = await this.checkConflicts({
-                        ...dto,
-                        startTime: sessionDate.toISOString(),
-                        endTime: new Date(sessionDate.getTime() + sessionDuration).toISOString(),
-                    }, tenantId, parentSession.id);
-
-                    if (!conflicts.hasConflicts) {
-                        sessionsToCreate.push(this.createRecurringSessionData(dto, sessionDate, sessionDuration, tenantId, parentSession.id));
-                    } else {
-                        this.logger.warn(`Skipping recurring session on ${sessionDate.toISOString()} due to conflict`);
-                    }
-                }
-
-                currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
-            }
-
-            // Safety check to prevent infinite loops
-            if (currentWeekStart > recurrenceEndDate && !isMonthly && !isDaily && dto.recurrencePattern !== 'variable') break;
-            if (dto.recurrencePattern === 'variable' && currentWeekStart > recurrenceEndDate) break;
-            if ((isMonthly || isDaily) && sessionsToCreate.length >= 365) break;
-        }
-
-        if (sessionsToCreate.length > 0) {
-            await this.sessionRepository.save(sessionsToCreate);
-            this.logger.log(`Created ${sessionsToCreate.length} recurring sessions for parent ${parentSession.id}`);
-        }
-    }
-
-    async validateRecurrence(dto: CreateSessionDto, tenantId: string): Promise<{ validSessions: Date[], conflicts: Array<{ date: Date, conflict: string }> }> {
-        const validSessions: Date[] = [];
-        const conflicts: Array<{ date: Date, conflict: string }> = [];
-
-        // Determine recurrence dates similar to generateRecurringSessions logic
-        const recurrenceDates: Date[] = [];
-        let recurrenceEndDate = new Date(dto.recurrenceEndDate!);
-        const startTime = new Date(dto.startTime);
-        const sessionHour = startTime.getHours();
-        const sessionMinutes = startTime.getMinutes();
-
-        // Basic validation of recurrence fields
-        if (!dto.recurrencePattern || !dto.recurrenceEndDate) {
-            throw new BadRequestException('Recurrence pattern and end date are required for validation');
-        }
-
-        const isDaily = dto.recurrencePattern === 'daily';
-        const isMonthly = dto.recurrencePattern === 'monthly';
-        const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
-
-        // Add the initial session (parent) to check
-        recurrenceDates.push(startTime);
-
-        let maxValidSessions = Infinity;
-
-        if (dto.clientId) {
-            const clientPackages = await this.packagesService.getClientPackages(dto.clientId, tenantId);
-            const activePackage = clientPackages.find(cp => cp.status === 'active');
-
-            if (activePackage) {
-                // Check limits for validation too
-                // Count scheduled.
-                const scheduled = await this.sessionRepository.count({ where: { clientId: dto.clientId, tenantId, status: 'scheduled' as any } });
-
-                // For validation, we are PRE-booking. So scheduled count matches DB.
-                // But we include "startTime" (parent) in validation.
-                // Parent is NOT in DB yet.
-                // So allowed = remaining - scheduled.
-                // We consume from allowed.
-
-                let sessionsRemaining = activePackage.sessionsRemaining - scheduled;
-
-                if (activePackage.expiryDate) {
-                    const expiry = new Date(activePackage.expiryDate);
-                    // Update recurrenceEndDate if expiry is sooner
-                    if (expiry < recurrenceEndDate) {
-                        recurrenceEndDate = expiry;
-                    }
-                }
-
-                // If package empty, we can't book ANY, including parent.
-                if (sessionsRemaining <= 0) {
-                    // Technically parent session validation will fail earlier in 'validateClientHasRemainingSessions'
-                    // But for recurrence validation, we should mark all as invalid or return empty?
-                    // Or simply limit generation?
-                    return { validSessions: [], conflicts: [] };
-                }
-
-                // Limit loop
-                // Logic below uses validSessions.length to stop?
-                // Or we iterate dates and stop when remaining == 0?
-                // Let's create a limit
-
-                maxValidSessions = sessionsRemaining;
-            }
-        }
-
-        let validCount = 0;
-
-        if (isDaily) {
-            // Daily logic
-            let nextDate = new Date(startTime);
-            nextDate.setDate(nextDate.getDate() + 1);
-            while (nextDate <= recurrenceEndDate && recurrenceDates.length < 365) {
-                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
-                recurrenceDates.push(new Date(nextDate));
-                nextDate.setDate(nextDate.getDate() + 1);
-            }
-        } else if (isMonthly) {
-            // Monthly logic
-            let nextDate = new Date(startTime);
-            nextDate.setMonth(nextDate.getMonth() + 1);
-            while (nextDate <= recurrenceEndDate && recurrenceDates.length < 12) {
-                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
-                recurrenceDates.push(new Date(nextDate));
-                nextDate.setMonth(nextDate.getMonth() + 1);
-            }
-        } else if (dto.recurrencePattern === 'variable' && dto.recurrenceSlots?.length) {
-            // Variable logic
-            let currentWeekStart = new Date(startTime);
-            currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
-            currentWeekStart.setHours(0, 0, 0, 0);
-
-            // Move to including current week if variable time is later?
-            // "Variable" means we specified slots.
-            // If we book for "Mon 10am". Slot Mon 16pm.
-            // We want that SAME DAY to be potentially included if it's separate?
-            // But standard recurrence usually starts NEXT week or NEXT instance.
-            // Let's assume standard behavior: Start checking from next "logical" week or continue current week?
-            // "Weekly" logic in `generate` does: `currentWeekStart + 7*interval`.
-            // But `recurrenceDays` logic uses `currentWeekStart`.
-
-            // If we use standard logic:
-            // "Weekly" typically skips the *immediate* parent week for "next occurrence",
-            // BUT implementation checks: `if (sessionDate <= startTime) continue;`
-            // So we can start from current week!
-
-            while (currentWeekStart <= recurrenceEndDate && recurrenceDates.length < 100) {
-                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
-
-                for (const slot of dto.recurrenceSlots) {
-                    if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
-
-                    const sessionDate = new Date(currentWeekStart);
-                    sessionDate.setDate(sessionDate.getDate() + slot.dayOfWeek);
-                    const [h, m] = slot.startTime.split(':').map(Number);
-                    sessionDate.setHours(h, m, 0, 0);
-
-                    if (sessionDate <= startTime) continue;
-                    if (sessionDate > recurrenceEndDate) continue;
-
-                    recurrenceDates.push(new Date(sessionDate));
-                }
-                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-            }
-
-        } else {
-            // Weekly/Biweekly logic
-            const recurrenceDays = dto.recurrenceDays?.length
-                ? dto.recurrenceDays.map(d => Number(d))
-                : [startTime.getDay()];
-
-            let currentWeekStart = new Date(startTime);
-            currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
-            currentWeekStart.setHours(0, 0, 0, 0);
-
-            // Move to next week
-            currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
-
-            while (currentWeekStart <= recurrenceEndDate && recurrenceDates.length < 100) { // Safety limit
-                if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
-
-                for (const dayOfWeek of recurrenceDays) {
-                    if (maxValidSessions !== undefined && recurrenceDates.length >= maxValidSessions) break;
-
-                    const sessionDate = new Date(currentWeekStart);
-                    sessionDate.setDate(sessionDate.getDate() + dayOfWeek);
-                    sessionDate.setHours(sessionHour, sessionMinutes, 0, 0);
-
-                    if (sessionDate <= startTime) continue;
-                    if (sessionDate > recurrenceEndDate) continue;
-
-                    recurrenceDates.push(new Date(sessionDate));
-                }
-                currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
-            }
-        }
-
-        const sessionDuration = new Date(dto.endTime).getTime() - startTime.getTime();
-
-        // Validate each date
-        for (const date of recurrenceDates) {
-            const checkDto = {
-                ...dto,
-                startTime: date.toISOString(),
-                endTime: new Date(date.getTime() + sessionDuration).toISOString()
-            };
-
-            const conflictResult = await this.checkConflicts(checkDto, tenantId);
-
-            if (conflictResult.hasConflicts) {
-                conflicts.push({
-                    date: date,
-                    conflict: conflictResult.conflicts[0].message // Just take the first conflict message
-                });
-            } else {
-                validSessions.push(date);
-            }
-        }
-
-        return { validSessions, conflicts };
-    }
-
-    private createRecurringSessionData(dto: CreateSessionDto, startTime: Date, durationMs: number, tenantId: string, parentSessionId: string): Partial<Session> {
-        return {
-            studioId: dto.studioId,
-            roomId: dto.roomId,
-            coachId: dto.coachId,
-            clientId: dto.clientId,
-            emsDeviceId: dto.emsDeviceId || null,
-            startTime: startTime,
-            endTime: new Date(startTime.getTime() + durationMs),
-            programType: dto.programType || null,
-            intensityLevel: dto.intensityLevel || null,
-            notes: dto.notes || null,
-            status: 'scheduled',
-            tenantId,
-            type: dto.type || 'individual',
-            capacity: dto.capacity || 1,
-            parentSessionId,
-            isRecurringParent: false,
-            recurrencePattern: null,
-            recurrenceEndDate: null,
-            recurrenceDays: null,
-        };
-    }
-
-    private getNextOccurrence(date: Date, pattern: 'daily' | 'weekly' | 'biweekly' | 'monthly'): Date {
-        const next = new Date(date);
-        switch (pattern) {
-            case 'daily':
-                next.setDate(next.getDate() + 1);
-                break;
-            case 'weekly':
-                next.setDate(next.getDate() + 7);
-                break;
-            case 'biweekly':
-                next.setDate(next.getDate() + 14);
-                break;
-            case 'monthly':
-                next.setMonth(next.getMonth() + 1);
-                break;
-        }
-        return next;
-    }
-
-    async update(id: string, dto: UpdateSessionDto, tenantId: string): Promise<Session> {
-        const session = await this.findOne(id, tenantId);
-
-        // Validate room is active if room is being changed
-        if (dto.roomId && dto.roomId !== session.roomId) {
-            await this.validateRoomAvailability(dto.roomId, tenantId);
-        }
-
-        // Merge existing session with new data to check conflicts correctly
-        // We need to construct a "would-be" session object for conflict checking
-        const mergedData = {
-            ...session,
+    while (sessionsToCreate.length < maxSessionsFromPackage) {
+      if (isMonthly) {
+        // For monthly, just add one month to the start date
+        const nextDate = new Date(startTime);
+        nextDate.setMonth(nextDate.getMonth() + sessionsToCreate.length + 1);
+
+        if (nextDate > recurrenceEndDate) break;
+
+        const conflicts = await this.checkConflicts(
+          {
             ...dto,
-            // Ensure IDs are strings
-            studioId: dto.studioId || session.studioId,
-            roomId: dto.roomId || session.roomId,
-            coachId: dto.coachId || session.coachId,
-            clientId: dto.clientId || session.clientId,
-            startTime: dto.startTime ? new Date(dto.startTime) : session.startTime,
-            endTime: dto.endTime ? new Date(dto.endTime) : session.endTime,
-            emsDeviceId: dto.emsDeviceId !== undefined ? dto.emsDeviceId : session.emsDeviceId,
-        };
+            startTime: nextDate.toISOString(),
+            endTime: new Date(
+              nextDate.getTime() + sessionDuration,
+            ).toISOString(),
+          },
+          tenantId,
+          parentSession.id,
+        );
 
-        // Validate studio hours and coach availability if time or resources changed
-        if (dto.startTime || dto.endTime || dto.studioId || dto.coachId) {
-            await this.validateStudioHours(
-                mergedData.studioId,
-                mergedData.startTime,
-                mergedData.endTime,
-                tenantId
-            );
-            await this.validateCoachAvailability(
-                mergedData.coachId,
-                mergedData.startTime,
-                mergedData.endTime,
-                tenantId
-            );
+        if (!conflicts.hasConflicts) {
+          sessionsToCreate.push(
+            this.createRecurringSessionData(
+              dto,
+              nextDate,
+              sessionDuration,
+              tenantId,
+              parentSession.id,
+            ),
+          );
         }
+      } else if (isDaily) {
+        // For daily, iterate through each day
+        const nextDate = new Date(startTime);
+        nextDate.setDate(nextDate.getDate() + sessionsToCreate.length + 1);
 
-        // If time or resources changed, check for conflicts
-        if (dto.startTime || dto.endTime || dto.roomId || dto.coachId || dto.clientId || dto.emsDeviceId) {
-            const checkDto: CreateSessionDto = {
-                studioId: mergedData.studioId,
-                roomId: mergedData.roomId,
-                coachId: mergedData.coachId,
-                clientId: mergedData.clientId ?? undefined,
-                startTime: mergedData.startTime.toISOString(),
-                endTime: mergedData.endTime.toISOString(),
-                emsDeviceId: mergedData.emsDeviceId || undefined,
-                // other fields irrelevant for conflict check
-            };
+        if (nextDate > recurrenceEndDate) break;
 
-            const conflicts = await this.checkConflicts(checkDto, tenantId, id);
-            if (conflicts.hasConflicts) {
-                throw new BadRequestException({
-                    message: 'Scheduling conflict detected',
-                    conflicts: conflicts.conflicts,
-                });
-            }
+        const conflicts = await this.checkConflicts(
+          {
+            ...dto,
+            startTime: nextDate.toISOString(),
+            endTime: new Date(
+              nextDate.getTime() + sessionDuration,
+            ).toISOString(),
+          },
+          tenantId,
+          parentSession.id,
+        );
+
+        if (!conflicts.hasConflicts) {
+          sessionsToCreate.push(
+            this.createRecurringSessionData(
+              dto,
+              nextDate,
+              sessionDuration,
+              tenantId,
+              parentSession.id,
+            ),
+          );
         }
+      } else if (
+        dto.recurrencePattern === 'variable' &&
+        dto.recurrenceSlots?.length
+      ) {
+        // Variable pattern: iterate weeks, then iterate slots
+        // recurrenceSlots has { dayOfWeek: number, startTime: "HH:MM" }
 
-        const originalTime = session.startTime.getTime();
-        Object.assign(session, dto);
-        const saved = await this.sessionRepository.save(session);
+        for (const slot of dto.recurrenceSlots) {
+          if (sessionsToCreate.length >= maxSessionsFromPackage) break;
 
-        if (dto.startTime && new Date(dto.startTime).getTime() !== originalTime) {
-            await this.auditService.log(
+          const sessionDate = new Date(currentWeekStart);
+          sessionDate.setDate(sessionDate.getDate() + slot.dayOfWeek);
+
+          const [h, m] = slot.startTime.split(':').map(Number);
+          sessionDate.setHours(h, m, 0, 0);
+
+          // Skip if before start time (e.g. earlier in same week) or after end date
+          if (sessionDate <= startTime) continue;
+          if (sessionDate > recurrenceEndDate) continue;
+
+          const conflicts = await this.checkConflicts(
+            {
+              ...dto,
+              startTime: sessionDate.toISOString(),
+              endTime: new Date(
+                sessionDate.getTime() + sessionDuration,
+              ).toISOString(),
+            },
+            tenantId,
+            parentSession.id,
+          );
+
+          if (!conflicts.hasConflicts) {
+            sessionsToCreate.push(
+              this.createRecurringSessionData(
+                dto,
+                sessionDate,
+                sessionDuration,
                 tenantId,
-                'RESCHEDULE_SESSION',
-                'Session',
-                saved.id,
-                'API_USER',
-                { oldTime: new Date(originalTime), newTime: saved.startTime }
+                parentSession.id,
+              ),
             );
+          } else {
+            this.logger.warn(
+              `Skipping recurring variable session on ${sessionDate.toISOString()} due to conflict`,
+            );
+          }
+        }
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      } else {
+        // For weekly/biweekly, iterate through selected days
+        for (const dayOfWeek of recurrenceDays) {
+          if (sessionsToCreate.length >= maxSessionsFromPackage) break;
+
+          const sessionDate = new Date(currentWeekStart);
+          sessionDate.setDate(sessionDate.getDate() + dayOfWeek);
+          sessionDate.setHours(sessionHour, sessionMinutes, 0, 0);
+
+          // Skip if before start time or after end date
+          if (sessionDate <= startTime) continue;
+          if (sessionDate > recurrenceEndDate) continue;
+
+          const conflicts = await this.checkConflicts(
+            {
+              ...dto,
+              startTime: sessionDate.toISOString(),
+              endTime: new Date(
+                sessionDate.getTime() + sessionDuration,
+              ).toISOString(),
+            },
+            tenantId,
+            parentSession.id,
+          );
+
+          if (!conflicts.hasConflicts) {
+            sessionsToCreate.push(
+              this.createRecurringSessionData(
+                dto,
+                sessionDate,
+                sessionDuration,
+                tenantId,
+                parentSession.id,
+              ),
+            );
+          } else {
+            this.logger.warn(
+              `Skipping recurring session on ${sessionDate.toISOString()} due to conflict`,
+            );
+          }
         }
 
-        return saved;
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+      }
+
+      // Safety check to prevent infinite loops
+      if (
+        currentWeekStart > recurrenceEndDate &&
+        !isMonthly &&
+        !isDaily &&
+        dto.recurrencePattern !== 'variable'
+      )
+        break;
+      if (
+        dto.recurrencePattern === 'variable' &&
+        currentWeekStart > recurrenceEndDate
+      )
+        break;
+      if ((isMonthly || isDaily) && sessionsToCreate.length >= 365) break;
     }
 
+    if (sessionsToCreate.length > 0) {
+      await this.sessionRepository.save(sessionsToCreate);
+      this.logger.log(
+        `Created ${sessionsToCreate.length} recurring sessions for parent ${parentSession.id}`,
+      );
+    }
+  }
 
+  async validateRecurrence(
+    dto: CreateSessionDto,
+    tenantId: string,
+  ): Promise<{
+    validSessions: Date[];
+    conflicts: Array<{ date: Date; conflict: string }>;
+  }> {
+    const validSessions: Date[] = [];
+    const conflicts: Array<{ date: Date; conflict: string }> = [];
 
-    async checkConflicts(dto: CreateSessionDto, tenantId: string, excludeSessionId?: string): Promise<ConflictResult> {
-        const conflicts: ConflictResult['conflicts'] = [];
-        const excludedStatuses = ['cancelled'];
+    // Determine recurrence dates similar to generateRecurringSessions logic
+    const recurrenceDates: Date[] = [];
+    let recurrenceEndDate = new Date(dto.recurrenceEndDate!);
+    const startTime = new Date(dto.startTime);
+    const sessionHour = startTime.getHours();
+    const sessionMinutes = startTime.getMinutes();
 
-        const baseQuery = () => {
-            const qb = this.sessionRepository.createQueryBuilder('s')
-                .where('s.tenant_id = :tenantId', { tenantId })
-                .andWhere('s.start_time < :endTime', { endTime: dto.endTime })
-                .andWhere('s.end_time > :startTime', { startTime: dto.startTime })
-                .andWhere('s.status NOT IN (:...excludedStatuses)', { excludedStatuses });
+    // Basic validation of recurrence fields
+    if (!dto.recurrencePattern || !dto.recurrenceEndDate) {
+      throw new BadRequestException(
+        'Recurrence pattern and end date are required for validation',
+      );
+    }
 
-            if (excludeSessionId) {
-                qb.andWhere('s.id != :excludeSessionId', { excludeSessionId });
-            }
+    const isDaily = dto.recurrencePattern === 'daily';
+    const isMonthly = dto.recurrencePattern === 'monthly';
+    const weekInterval = dto.recurrencePattern === 'biweekly' ? 2 : 1;
 
-            return qb;
-        };
+    // Add the initial session (parent) to check
+    recurrenceDates.push(startTime);
 
-        // Check room conflict
-        const roomConflict = await baseQuery()
-            .andWhere('s.room_id = :roomId', { roomId: dto.roomId })
-            .getOne();
+    let maxValidSessions = Infinity;
 
-        if (roomConflict) {
-            conflicts.push({
-                type: 'room',
-                sessionId: roomConflict.id,
-                message: 'Room is already booked for this time slot',
-            });
+    if (dto.clientId) {
+      const clientPackages = await this.packagesService.getClientPackages(
+        dto.clientId,
+        tenantId,
+      );
+      const activePackage = clientPackages.find((cp) => cp.status === 'active');
+
+      if (activePackage) {
+        // Check limits for validation too
+        // Count scheduled.
+        const scheduled = await this.sessionRepository.count({
+          where: {
+            clientId: dto.clientId,
+            tenantId,
+            status: 'scheduled' as any,
+          },
+        });
+
+        // For validation, we are PRE-booking. So scheduled count matches DB.
+        // But we include "startTime" (parent) in validation.
+        // Parent is NOT in DB yet.
+        // So allowed = remaining - scheduled.
+        // We consume from allowed.
+
+        const sessionsRemaining = activePackage.sessionsRemaining - scheduled;
+
+        if (activePackage.expiryDate) {
+          const expiry = new Date(activePackage.expiryDate);
+          // Update recurrenceEndDate if expiry is sooner
+          if (expiry < recurrenceEndDate) {
+            recurrenceEndDate = expiry;
+          }
         }
 
-        // Check coach conflict
-        const coachConflict = await baseQuery()
-            .andWhere('s.coach_id = :coachId', { coachId: dto.coachId })
-            .getOne();
+        // If package empty, we can't book ANY, including parent.
+        if (sessionsRemaining <= 0) {
+          // Technically parent session validation will fail earlier in 'validateClientHasRemainingSessions'
+          // But for recurrence validation, we should mark all as invalid or return empty?
+          // Or simply limit generation?
+          return { validSessions: [], conflicts: [] };
+        }
 
-        if (coachConflict) {
-            conflicts.push({
-                type: 'coach',
-                sessionId: coachConflict.id,
-                message: 'Coach is already booked for this time slot',
-            });
+        // Limit loop
+        // Logic below uses validSessions.length to stop?
+        // Or we iterate dates and stop when remaining == 0?
+        // Let's create a limit
+
+        maxValidSessions = sessionsRemaining;
+      }
+    }
+
+    const validCount = 0;
+
+    if (isDaily) {
+      // Daily logic
+      const nextDate = new Date(startTime);
+      nextDate.setDate(nextDate.getDate() + 1);
+      while (nextDate <= recurrenceEndDate && recurrenceDates.length < 365) {
+        if (
+          maxValidSessions !== undefined &&
+          recurrenceDates.length >= maxValidSessions
+        )
+          break;
+        recurrenceDates.push(new Date(nextDate));
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+    } else if (isMonthly) {
+      // Monthly logic
+      const nextDate = new Date(startTime);
+      nextDate.setMonth(nextDate.getMonth() + 1);
+      while (nextDate <= recurrenceEndDate && recurrenceDates.length < 12) {
+        if (
+          maxValidSessions !== undefined &&
+          recurrenceDates.length >= maxValidSessions
+        )
+          break;
+        recurrenceDates.push(new Date(nextDate));
+        nextDate.setMonth(nextDate.getMonth() + 1);
+      }
+    } else if (
+      dto.recurrencePattern === 'variable' &&
+      dto.recurrenceSlots?.length
+    ) {
+      // Variable logic
+      const currentWeekStart = new Date(startTime);
+      currentWeekStart.setDate(
+        currentWeekStart.getDate() - currentWeekStart.getDay(),
+      );
+      currentWeekStart.setHours(0, 0, 0, 0);
+
+      // Move to including current week if variable time is later?
+      // "Variable" means we specified slots.
+      // If we book for "Mon 10am". Slot Mon 16pm.
+      // We want that SAME DAY to be potentially included if it's separate?
+      // But standard recurrence usually starts NEXT week or NEXT instance.
+      // Let's assume standard behavior: Start checking from next "logical" week or continue current week?
+      // "Weekly" logic in `generate` does: `currentWeekStart + 7*interval`.
+      // But `recurrenceDays` logic uses `currentWeekStart`.
+
+      // If we use standard logic:
+      // "Weekly" typically skips the *immediate* parent week for "next occurrence",
+      // BUT implementation checks: `if (sessionDate <= startTime) continue;`
+      // So we can start from current week!
+
+      while (
+        currentWeekStart <= recurrenceEndDate &&
+        recurrenceDates.length < 100
+      ) {
+        if (
+          maxValidSessions !== undefined &&
+          recurrenceDates.length >= maxValidSessions
+        )
+          break;
+
+        for (const slot of dto.recurrenceSlots) {
+          if (
+            maxValidSessions !== undefined &&
+            recurrenceDates.length >= maxValidSessions
+          )
+            break;
+
+          const sessionDate = new Date(currentWeekStart);
+          sessionDate.setDate(sessionDate.getDate() + slot.dayOfWeek);
+          const [h, m] = slot.startTime.split(':').map(Number);
+          sessionDate.setHours(h, m, 0, 0);
+
+          if (sessionDate <= startTime) continue;
+          if (sessionDate > recurrenceEndDate) continue;
+
+          recurrenceDates.push(new Date(sessionDate));
+        }
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      }
+    } else {
+      // Weekly/Biweekly logic
+      const recurrenceDays = dto.recurrenceDays?.length
+        ? dto.recurrenceDays.map((d) => Number(d))
+        : [startTime.getDay()];
+
+      const currentWeekStart = new Date(startTime);
+      currentWeekStart.setDate(
+        currentWeekStart.getDate() - currentWeekStart.getDay(),
+      );
+      currentWeekStart.setHours(0, 0, 0, 0);
+
+      // Move to next week
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+
+      while (
+        currentWeekStart <= recurrenceEndDate &&
+        recurrenceDates.length < 100
+      ) {
+        // Safety limit
+        if (
+          maxValidSessions !== undefined &&
+          recurrenceDates.length >= maxValidSessions
+        )
+          break;
+
+        for (const dayOfWeek of recurrenceDays) {
+          if (
+            maxValidSessions !== undefined &&
+            recurrenceDates.length >= maxValidSessions
+          )
+            break;
+
+          const sessionDate = new Date(currentWeekStart);
+          sessionDate.setDate(sessionDate.getDate() + dayOfWeek);
+          sessionDate.setHours(sessionHour, sessionMinutes, 0, 0);
+
+          if (sessionDate <= startTime) continue;
+          if (sessionDate > recurrenceEndDate) continue;
+
+          recurrenceDates.push(new Date(sessionDate));
+        }
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7 * weekInterval);
+      }
+    }
+
+    const sessionDuration =
+      new Date(dto.endTime).getTime() - startTime.getTime();
+
+    // Validate each date
+    for (const date of recurrenceDates) {
+      const checkDto = {
+        ...dto,
+        startTime: date.toISOString(),
+        endTime: new Date(date.getTime() + sessionDuration).toISOString(),
+      };
+
+      const conflictResult = await this.checkConflicts(checkDto, tenantId);
+
+      if (conflictResult.hasConflicts) {
+        conflicts.push({
+          date: date,
+          conflict: conflictResult.conflicts[0].message, // Just take the first conflict message
+        });
+      } else {
+        validSessions.push(date);
+      }
+    }
+
+    return { validSessions, conflicts };
+  }
+
+  private createRecurringSessionData(
+    dto: CreateSessionDto,
+    startTime: Date,
+    durationMs: number,
+    tenantId: string,
+    parentSessionId: string,
+  ): Partial<Session> {
+    return {
+      studioId: dto.studioId,
+      roomId: dto.roomId,
+      coachId: dto.coachId,
+      clientId: dto.clientId,
+      emsDeviceId: dto.emsDeviceId || null,
+      startTime: startTime,
+      endTime: new Date(startTime.getTime() + durationMs),
+      programType: dto.programType || null,
+      intensityLevel: dto.intensityLevel || null,
+      notes: dto.notes || null,
+      status: 'scheduled',
+      tenantId,
+      type: dto.type || 'individual',
+      capacity: dto.capacity || 1,
+      parentSessionId,
+      isRecurringParent: false,
+      recurrencePattern: null,
+      recurrenceEndDate: null,
+      recurrenceDays: null,
+    };
+  }
+
+  private getNextOccurrence(
+    date: Date,
+    pattern: 'daily' | 'weekly' | 'biweekly' | 'monthly',
+  ): Date {
+    const next = new Date(date);
+    switch (pattern) {
+      case 'daily':
+        next.setDate(next.getDate() + 1);
+        break;
+      case 'weekly':
+        next.setDate(next.getDate() + 7);
+        break;
+      case 'biweekly':
+        next.setDate(next.getDate() + 14);
+        break;
+      case 'monthly':
+        next.setMonth(next.getMonth() + 1);
+        break;
+    }
+    return next;
+  }
+
+  async update(
+    id: string,
+    dto: UpdateSessionDto,
+    tenantId: string,
+  ): Promise<Session> {
+    const session = await this.findOne(id, tenantId);
+
+    // Validate room is active if room is being changed
+    if (dto.roomId && dto.roomId !== session.roomId) {
+      await this.validateRoomAvailability(dto.roomId, tenantId);
+    }
+
+    // Merge existing session with new data to check conflicts correctly
+    // We need to construct a "would-be" session object for conflict checking
+    const mergedData = {
+      ...session,
+      ...dto,
+      // Ensure IDs are strings
+      studioId: dto.studioId || session.studioId,
+      roomId: dto.roomId || session.roomId,
+      coachId: dto.coachId || session.coachId,
+      clientId: dto.clientId || session.clientId,
+      startTime: dto.startTime ? new Date(dto.startTime) : session.startTime,
+      endTime: dto.endTime ? new Date(dto.endTime) : session.endTime,
+      emsDeviceId:
+        dto.emsDeviceId !== undefined ? dto.emsDeviceId : session.emsDeviceId,
+    };
+
+    // Validate studio hours and coach availability if time or resources changed
+    if (dto.startTime || dto.endTime || dto.studioId || dto.coachId) {
+      await this.validateStudioHours(
+        mergedData.studioId,
+        mergedData.startTime,
+        mergedData.endTime,
+        tenantId,
+      );
+      await this.validateCoachAvailability(
+        mergedData.coachId,
+        mergedData.startTime,
+        mergedData.endTime,
+        tenantId,
+      );
+    }
+
+    // If time or resources changed, check for conflicts
+    if (
+      dto.startTime ||
+      dto.endTime ||
+      dto.roomId ||
+      dto.coachId ||
+      dto.clientId ||
+      dto.emsDeviceId
+    ) {
+      const checkDto: CreateSessionDto = {
+        studioId: mergedData.studioId,
+        roomId: mergedData.roomId,
+        coachId: mergedData.coachId,
+        clientId: mergedData.clientId ?? undefined,
+        startTime: mergedData.startTime.toISOString(),
+        endTime: mergedData.endTime.toISOString(),
+        emsDeviceId: mergedData.emsDeviceId || undefined,
+        // other fields irrelevant for conflict check
+      };
+
+      const conflicts = await this.checkConflicts(checkDto, tenantId, id);
+      if (conflicts.hasConflicts) {
+        throw new BadRequestException({
+          message: 'Scheduling conflict detected',
+          conflicts: conflicts.conflicts,
+        });
+      }
+    }
+
+    const originalTime = session.startTime.getTime();
+    Object.assign(session, dto);
+    const saved = await this.sessionRepository.save(session);
+
+    if (dto.startTime && new Date(dto.startTime).getTime() !== originalTime) {
+      await this.auditService.log(
+        tenantId,
+        'RESCHEDULE_SESSION',
+        'Session',
+        saved.id,
+        'API_USER',
+        { oldTime: new Date(originalTime), newTime: saved.startTime },
+      );
+    }
+
+    return saved;
+  }
+
+  async checkConflicts(
+    dto: CreateSessionDto,
+    tenantId: string,
+    excludeSessionId?: string,
+  ): Promise<ConflictResult> {
+    const conflicts: ConflictResult['conflicts'] = [];
+    const excludedStatuses = ['cancelled'];
+
+    const baseQuery = () => {
+      const qb = this.sessionRepository
+        .createQueryBuilder('s')
+        .where('s.tenant_id = :tenantId', { tenantId })
+        .andWhere('s.start_time < :endTime', { endTime: dto.endTime })
+        .andWhere('s.end_time > :startTime', { startTime: dto.startTime })
+        .andWhere('s.status NOT IN (:...excludedStatuses)', {
+          excludedStatuses,
+        });
+
+      if (excludeSessionId) {
+        qb.andWhere('s.id != :excludeSessionId', { excludeSessionId });
+      }
+
+      return qb;
+    };
+
+    // Check room conflict
+    const roomConflict = await baseQuery()
+      .andWhere('s.room_id = :roomId', { roomId: dto.roomId })
+      .getOne();
+
+    if (roomConflict) {
+      conflicts.push({
+        type: 'room',
+        sessionId: roomConflict.id,
+        message: 'Room is already booked for this time slot',
+      });
+    }
+
+    // Check coach conflict
+    const coachConflict = await baseQuery()
+      .andWhere('s.coach_id = :coachId', { coachId: dto.coachId })
+      .getOne();
+
+    if (coachConflict) {
+      conflicts.push({
+        type: 'coach',
+        sessionId: coachConflict.id,
+        message: 'Coach is already booked for this time slot',
+      });
+    } else {
+      // Check for Time-Off (only if no session conflict found, although they could coexist)
+      // Strict overlap check
+      const timeOff = await this.timeOffRepository
+        .createQueryBuilder('to')
+        .where('to.tenant_id = :tenantId', { tenantId })
+        .andWhere('to.coach_id = :coachId', { coachId: dto.coachId })
+        .andWhere('to.status = :status', { status: 'approved' })
+        .andWhere('to.start_date < :endTime', { endTime: dto.endTime })
+        .andWhere('to.end_date > :startTime', { startTime: dto.startTime })
+        .getOne();
+
+      if (timeOff) {
+        conflicts.push({
+          type: 'coach',
+          sessionId: timeOff.id,
+          message: 'Coach is on approved time-off during this slot',
+        });
+      }
+    }
+
+    // Check client conflict (only for individual sessions or if client is specified)
+    if (dto.clientId) {
+      const clientConflict = await baseQuery()
+        .andWhere('s.client_id = :clientId', { clientId: dto.clientId })
+        .getOne();
+
+      if (clientConflict) {
+        conflicts.push({
+          type: 'client',
+          sessionId: clientConflict.id,
+          message: 'Client already has a session at this time',
+        });
+      }
+    }
+
+    // Check EMS device conflict (if specified)
+    if (dto.emsDeviceId) {
+      const deviceConflict = await baseQuery()
+        .andWhere('s.ems_device_id = :emsDeviceId', {
+          emsDeviceId: dto.emsDeviceId,
+        })
+        .getOne();
+
+      if (deviceConflict) {
+        conflicts.push({
+          type: 'device',
+          sessionId: deviceConflict.id,
+          message: 'EMS device is already in use for this time slot',
+        });
+      }
+    }
+
+    return {
+      hasConflicts: conflicts.length > 0,
+      conflicts,
+    };
+  }
+
+  private async validateStudioHours(
+    studioId: string,
+    startTime: Date,
+    endTime: Date,
+    tenantId: string,
+  ): Promise<void> {
+    const studio = await this.studioRepository.findOne({
+      where: { id: studioId, tenantId },
+    });
+
+    if (!studio) {
+      throw new NotFoundException(`Studio ${studioId} not found`);
+    }
+
+    // If studio has no opening hours defined, allow all times
+    if (!studio.openingHours || Object.keys(studio.openingHours).length === 0) {
+      return;
+    }
+
+    const dayOfWeek = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ][startTime.getDay()];
+    const hours = studio.openingHours[dayOfWeek];
+
+    // If this day is not configured or is null (closed), reject
+    if (!hours) {
+      throw new BadRequestException(
+        `Studio "${studio.name}" is closed on ${dayOfWeek}s`,
+      );
+    }
+
+    // Parse opening and closing times
+    const [openHour, openMin] = hours.open.split(':').map(Number);
+    const [closeHour, closeMin] = hours.close.split(':').map(Number);
+
+    const sessionStart = startTime.getHours() * 60 + startTime.getMinutes();
+    const sessionEnd = endTime.getHours() * 60 + endTime.getMinutes();
+    const studioOpen = openHour * 60 + openMin;
+    const studioClose = closeHour * 60 + closeMin;
+
+    if (sessionStart < studioOpen || sessionEnd > studioClose) {
+      throw new BadRequestException(
+        `Session time (${hours.open}-${hours.close}) is outside studio hours for ${dayOfWeek}s (${hours.open}-${hours.close})`,
+      );
+    }
+  }
+
+  private async validateCoachAvailability(
+    coachId: string,
+    startTime: Date,
+    endTime: Date,
+    tenantId: string,
+  ): Promise<void> {
+    const coach = await this.coachRepository.findOne({
+      where: { id: coachId, tenantId },
+    });
+
+    if (!coach) {
+      throw new NotFoundException(`Coach ${coachId} not found`);
+    }
+
+    // If coach has no availability rules defined, allow all times
+    if (!coach.availabilityRules || coach.availabilityRules.length === 0) {
+      return;
+    }
+
+    const dayOfWeek = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ][startTime.getDay()];
+    const dayIndex = startTime.getDay(); // 0-6 where 0 is Sunday
+
+    // Find rule for this day of week - handle both string ("monday") and numeric (1) formats
+    const dayRule = coach.availabilityRules.find((rule) => {
+      if (rule.dayOfWeek === undefined || rule.dayOfWeek === null) return false;
+      // Handle numeric dayOfWeek (0-6)
+      if (typeof rule.dayOfWeek === 'number') {
+        return rule.dayOfWeek === dayIndex;
+      }
+      // Handle string dayOfWeek ("sunday", "monday", etc.)
+      if (typeof rule.dayOfWeek === 'string') {
+        return rule.dayOfWeek.toLowerCase() === dayOfWeek;
+      }
+      return false;
+    });
+
+    // If no rule for this day, coach is unavailable
+    if (!dayRule || !dayRule.available) {
+      throw new BadRequestException(`Coach is not available on ${dayOfWeek}s`);
+    }
+
+    // If rule has time ranges, validate against them
+    if (dayRule.startTime && dayRule.endTime) {
+      const [startHour, startMin] = dayRule.startTime.split(':').map(Number);
+      const [endHour, endMin] = dayRule.endTime.split(':').map(Number);
+
+      const sessionStart = startTime.getHours() * 60 + startTime.getMinutes();
+      const sessionEnd = endTime.getHours() * 60 + endTime.getMinutes();
+      const coachStart = startHour * 60 + startMin;
+      const coachEnd = endHour * 60 + endMin;
+
+      if (sessionStart < coachStart || sessionEnd > coachEnd) {
+        throw new BadRequestException(
+          `Coach is only available on ${dayOfWeek}s from ${dayRule.startTime} to ${dayRule.endTime}`,
+        );
+      }
+    }
+  }
+
+  private async validateRoomAvailability(
+    roomId: string,
+    tenantId: string,
+  ): Promise<void> {
+    const room = await this.roomRepository.findOne({
+      where: { id: roomId, tenantId },
+    });
+
+    if (!room) {
+      throw new NotFoundException(`Room ${roomId} not found`);
+    }
+
+    if (!room.active) {
+      throw new BadRequestException(
+        `Room "${room.name}" is currently unavailable (maintenance or closed)`,
+      );
+    }
+  }
+
+  private async validateClientHasRemainingSessions(
+    clientId: string,
+    tenantId: string,
+  ): Promise<void> {
+    const activePackage = await this.packagesService.getActivePackageForClient(
+      clientId,
+      tenantId,
+    );
+
+    if (!activePackage) {
+      throw new BadRequestException(
+        'Client does not have an active package. Please assign a package before scheduling sessions.',
+      );
+    }
+
+    // Count already scheduled sessions for this client that haven't been completed yet
+    const scheduledSessionsCount = await this.sessionRepository.count({
+      where: {
+        clientId,
+        tenantId,
+        status: 'scheduled' as any,
+      },
+    });
+
+    // Calculate available sessions: remaining - already scheduled
+    const availableSessions =
+      activePackage.sessionsRemaining - scheduledSessionsCount;
+
+    this.logger.log(
+      `Client ${clientId}: Package has ${activePackage.sessionsRemaining} remaining, ${scheduledSessionsCount} already scheduled, ${availableSessions} available for new bookings`,
+    );
+
+    if (availableSessions <= 0) {
+      throw new BadRequestException(
+        `Client has no available sessions for booking. ` +
+          `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+          `Already scheduled: ${scheduledSessionsCount}. ` +
+          `Please complete existing sessions or renew the package.`,
+      );
+    }
+  }
+
+  private async validateCoachGenderPreference(
+    coachId: string,
+    clientId: string,
+    tenantId: string,
+  ): Promise<void> {
+    const coach = await this.coachRepository.findOne({
+      where: { id: coachId, tenantId },
+      relations: ['user'], // Need user relation if coach gender matters (for future), but preference is on Coach entity
+    });
+    const client = await this.clientsService.findOne(clientId, tenantId);
+
+    if (!coach || !client || !client.user) return; // Skip if data missing
+
+    // 'preferredClientGender' is on Coach entity now.
+    // Assuming client.user.gender was added to User entity
+
+    // Types might be tricky if entity update not propagated to type system yet in IDE context,
+    // but it should work at runtime. Casting as necessary.
+    const coachPreference = (coach as any).preferredClientGender;
+    const clientGender = (client.user as any).gender;
+
+    if (coachPreference && coachPreference !== 'any') {
+      if (
+        clientGender &&
+        clientGender !== 'pnts' &&
+        coachPreference !== clientGender
+      ) {
+        throw new BadRequestException(
+          `This coach prefers to work with ${coachPreference} clients.`,
+        );
+      }
+    }
+  }
+
+  private async validateCoachStudioLink(
+    coachId: string,
+    studioId: string,
+    tenantId: string,
+  ): Promise<void> {
+    const coach = await this.coachRepository.findOne({
+      where: { id: coachId, tenantId },
+    });
+
+    if (!coach) {
+      throw new NotFoundException(`Coach ${coachId} not found`);
+    }
+
+    if (coach.studioId !== studioId) {
+      throw new BadRequestException(
+        `Coach is not linked to the selected studio. Please select a coach from the same studio.`,
+      );
+    }
+  }
+
+  private async validateClientStudioLink(
+    clientId: string,
+    studioId: string,
+    tenantId: string,
+  ): Promise<void> {
+    const client = await this.clientsService.findOne(clientId, tenantId);
+
+    if (!client) {
+      throw new NotFoundException(`Client ${clientId} not found`);
+    }
+
+    if (client.studioId !== studioId) {
+      throw new BadRequestException(
+        `Client is not linked to the selected studio. Please select a client from the same studio.`,
+      );
+    }
+  }
+
+  async updateStatus(
+    id: string,
+    tenantId: string,
+    status: SessionStatus,
+    deductSession?: boolean,
+    userId: string = 'API_USER',
+  ): Promise<Session> {
+    this.logger.log(`updateStatus called: id=${id}, status=${status}`);
+    const session = await this.findOne(id, tenantId);
+    this.logger.log(
+      `Found session: id=${session.id}, current status=${session.status}`,
+    );
+    const previousStatus = session.status;
+    session.status = status;
+
+    if (status === 'cancelled') {
+      session.cancelledAt = new Date();
+      await this.auditService.log(
+        tenantId,
+        'CANCEL_SESSION',
+        'Session',
+        id,
+        userId,
+        { previousStatus: previousStatus },
+      );
+    }
+
+    // Handle Individual Session Package Logic
+    // For group sessions, this logic is in SessionParticipantsService (or should be invoked from there)
+    if (session.type !== 'group' && session.clientId) {
+      const isCancelled = status === 'cancelled';
+      const wasCancelled = previousStatus === 'cancelled';
+
+      if (isCancelled && !wasCancelled) {
+        // Session Cancelled -> Check if we should refund
+        let shouldRefund = false;
+
+        if (deductSession === false) {
+          // Explicitly told NOT to deduct (which means REFUND, since we deducted at booking)
+          shouldRefund = true;
+        } else if (deductSession === true) {
+          // Explicitly told to deduct (keep deduction) -> No refund
+          shouldRefund = false;
         } else {
-            // Check for Time-Off (only if no session conflict found, although they could coexist)
-            // Strict overlap check
-            const timeOff = await this.timeOffRepository.createQueryBuilder('to')
-                .where('to.tenant_id = :tenantId', { tenantId })
-                .andWhere('to.coach_id = :coachId', { coachId: dto.coachId })
-                .andWhere('to.status = :status', { status: 'approved' })
-                .andWhere('to.start_date < :endTime', { endTime: dto.endTime })
-                .andWhere('to.end_date > :startTime', { startTime: dto.startTime })
-                .getOne();
+          // Check Policy
+          const tenant = await this.tenantRepository.findOne({
+            where: { id: tenantId },
+          });
+          const cancellationWindowHours =
+            tenant?.settings?.cancellationWindowHours || 48; // Default 48h
 
-            if (timeOff) {
-                conflicts.push({
-                    type: 'coach',
-                    sessionId: timeOff.id,
-                    message: 'Coach is on approved time-off during this slot',
-                });
-            }
+          const now = new Date();
+          const sessionTime = new Date(session.startTime);
+          const hoursUntilSession =
+            (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+          if (hoursUntilSession >= cancellationWindowHours) {
+            shouldRefund = true; // Early enough to refund
+          } else {
+            this.logger.log(`Late cancellation for session ${id}. No refund.`);
+            shouldRefund = false;
+          }
         }
 
-        // Check client conflict (only for individual sessions or if client is specified)
-        if (dto.clientId) {
-            const clientConflict = await baseQuery()
-                .andWhere('s.client_id = :clientId', { clientId: dto.clientId })
-                .getOne();
-
-            if (clientConflict) {
-                conflicts.push({
-                    type: 'client',
-                    sessionId: clientConflict.id,
-                    message: 'Client already has a session at this time',
-                });
-            }
+        if (shouldRefund && session.clientPackageId) {
+          await this.packagesService.returnSession(
+            session.clientPackageId,
+            tenantId,
+          );
+          this.logger.log(
+            `Refunded session for client ${session.clientId} (Package: ${session.clientPackageId})`,
+          );
         }
-
-        // Check EMS device conflict (if specified)
-        if (dto.emsDeviceId) {
-            const deviceConflict = await baseQuery()
-                .andWhere('s.ems_device_id = :emsDeviceId', { emsDeviceId: dto.emsDeviceId })
-                .getOne();
-
-            if (deviceConflict) {
-                conflicts.push({
-                    type: 'device',
-                    sessionId: deviceConflict.id,
-                    message: 'EMS device is already in use for this time slot',
-                });
-            }
-        }
-
-        return {
-            hasConflicts: conflicts.length > 0,
-            conflicts,
-        };
-    }
-
-    private async validateStudioHours(studioId: string, startTime: Date, endTime: Date, tenantId: string): Promise<void> {
-        const studio = await this.studioRepository.findOne({
-            where: { id: studioId, tenantId }
-        });
-
-        if (!studio) {
-            throw new NotFoundException(`Studio ${studioId} not found`);
-        }
-
-        // If studio has no opening hours defined, allow all times
-        if (!studio.openingHours || Object.keys(studio.openingHours).length === 0) {
-            return;
-        }
-
-        const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][startTime.getDay()];
-        const hours = studio.openingHours[dayOfWeek];
-
-        // If this day is not configured or is null (closed), reject
-        if (!hours) {
-            throw new BadRequestException(`Studio "${studio.name}" is closed on ${dayOfWeek}s`);
-        }
-
-        // Parse opening and closing times
-        const [openHour, openMin] = hours.open.split(':').map(Number);
-        const [closeHour, closeMin] = hours.close.split(':').map(Number);
-
-        const sessionStart = startTime.getHours() * 60 + startTime.getMinutes();
-        const sessionEnd = endTime.getHours() * 60 + endTime.getMinutes();
-        const studioOpen = openHour * 60 + openMin;
-        const studioClose = closeHour * 60 + closeMin;
-
-        if (sessionStart < studioOpen || sessionEnd > studioClose) {
-            throw new BadRequestException(
-                `Session time (${hours.open}-${hours.close}) is outside studio hours for ${dayOfWeek}s (${hours.open}-${hours.close})`
+      } else if (!isCancelled && wasCancelled) {
+        // Resurrecting a cancelled session? -> Deduct again!
+        // "Un-cancel"
+        // We need to find a package again because the old one might be expired or full?
+        // Or we re-use the old ID if valid.
+        // Simplest: Try reusing clientPackageId.
+        if (session.clientPackageId) {
+          // Check if package is valid?
+          // For simplicity, just try to use it.
+          try {
+            await this.packagesService.useSession(
+              session.clientPackageId,
+              tenantId,
             );
+            this.logger.log(
+              `Re-deducted session for client ${session.clientId} (Un-cancelled)`,
+            );
+          } catch (e) {
+            // If fails (e.g. package expired), throw error?
+            // "Cannot uncancel session: package invalid"
+            throw new BadRequestException(
+              'Cannot restore session: Linked package is no longer valid for deduction.',
+            );
+          }
+        } else {
+          // If no package linked (legacy?), try find best.
+          const bestPackage =
+            await this.packagesService.findBestPackageForSession(
+              session.clientId,
+              tenantId,
+            );
+          if (!bestPackage)
+            throw new BadRequestException(
+              'No active package to cover this session.',
+            );
+          await this.packagesService.useSession(bestPackage.id, tenantId);
+          session.clientPackageId = bestPackage.id;
         }
+      }
+
+      // Gamification still triggers on completion
+      if (status === 'completed' && previousStatus !== 'completed') {
+        this.gamificationService
+          .checkAndUnlockAchievements(session.clientId, tenantId)
+          .catch((err) =>
+            this.logger.error(
+              `Failed to check achievements for client ${session.clientId}`,
+              err,
+            ),
+          );
+      }
     }
 
-    private async validateCoachAvailability(coachId: string, startTime: Date, endTime: Date, tenantId: string): Promise<void> {
-        const coach = await this.coachRepository.findOne({
-            where: { id: coachId, tenantId }
+    return this.sessionRepository.save(session);
+  }
+
+  async updateSeries(
+    id: string,
+    dto: UpdateSessionDto,
+    tenantId: string,
+  ): Promise<void> {
+    const targetSession = await this.findOne(id, tenantId);
+
+    // Determine the series parent
+    const parentId = targetSession.isRecurringParent
+      ? targetSession.id
+      : targetSession.parentSessionId;
+
+    if (!parentId) {
+      throw new BadRequestException(
+        'This session is not part of a recurring series',
+      );
+    }
+
+    // Find all sessions in the series starting from this session (this and future)
+    const sessionsToUpdate = await this.sessionRepository
+      .createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('(s.id = :parentId OR s.parent_session_id = :parentId)', {
+        parentId,
+      })
+      .andWhere('s.start_time >= :startTime', {
+        startTime: targetSession.startTime,
+      })
+      .andWhere('s.status != :cancelled', { cancelled: 'cancelled' }) // Do not resurrect cancelled sessions
+      .orderBy('s.start_time', 'ASC')
+      .getMany();
+
+    if (sessionsToUpdate.length === 0) {
+      return;
+    }
+
+    // Validate Package Limits if client is involved
+    // We are updating existing sessions, so count shouldn't increase,
+    // BUT if we are shifting dates, we must check expiry.
+    if (targetSession.clientId) {
+      const activePackage =
+        await this.packagesService.getActivePackageForClient(
+          targetSession.clientId,
+          tenantId,
+        );
+
+      if (activePackage && activePackage.expiryDate) {
+        const expiry = new Date(activePackage.expiryDate);
+        // Check if any updated session would move beyond expiry?
+        // We need to calculate new times first.
+      }
+    }
+
+    const updates: Partial<Session>[] = [];
+
+    // Calculate time shift if time is changed
+    let timeShiftMs = 0;
+    if (dto.startTime) {
+      const newStart = new Date(dto.startTime);
+      const oldStart = new Date(targetSession.startTime);
+      // We only care about the TIME of day change usually, but standard updateSeries might imply shifting everything by delta?
+      // Or setting all to the same Time of Day?
+      // "Edit Series" usually means "Change 10am to 11am for all".
+      // Let's assume we align all sessions to the NEW Time of Day of the target session.
+
+      // Actually, simplest is calculating the delta between target's OLD start and NEW start, and applying that to all.
+      timeShiftMs = newStart.getTime() - oldStart.getTime();
+    }
+
+    for (const session of sessionsToUpdate) {
+      // Prepare update object
+      const update: Partial<Session> = { id: session.id };
+      let shouldUpdate = false;
+
+      // Update simple fields
+      if (dto.coachId && dto.coachId !== session.coachId) {
+        update.coachId = dto.coachId;
+        shouldUpdate = true;
+      }
+      if (dto.roomId && dto.roomId !== session.roomId) {
+        update.roomId = dto.roomId;
+        shouldUpdate = true;
+      }
+      if (dto.notes !== undefined) {
+        update.notes = dto.notes;
+        shouldUpdate = true;
+      }
+      if (dto.emsDeviceId !== undefined) {
+        update.emsDeviceId = dto.emsDeviceId;
+        shouldUpdate = true;
+      }
+
+      // Update Time if changed
+      if (timeShiftMs !== 0) {
+        const newStart = new Date(session.startTime.getTime() + timeShiftMs);
+        const newEnd = new Date(session.endTime.getTime() + timeShiftMs);
+
+        update.startTime = newStart;
+        update.endTime = newEnd;
+        shouldUpdate = true;
+
+        // Validate Expiry
+        if (targetSession.clientId) {
+          const activePackage = await this.packagesService
+            .getClientPackages(targetSession.clientId, tenantId)
+            .then((pkgs) => pkgs.find((p) => p.status === 'active'));
+          if (activePackage && activePackage.expiryDate) {
+            if (newStart > new Date(activePackage.expiryDate)) {
+              throw new BadRequestException(
+                `Updating series would move session on ${newStart.toDateString()} beyond package expiry (${new Date(activePackage.expiryDate).toDateString()})`,
+              );
+            }
+          }
+        }
+
+        // Validate Conflicts for EACH session
+        // We can't check conflicts in bulk easily without a dedicated method or loop
+        // This might be slow for long series, but safe.
+        const conflictCheckDto: CreateSessionDto = {
+          studioId: dto.studioId || session.studioId,
+          roomId: update.roomId || session.roomId,
+          coachId: update.coachId || session.coachId,
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+          clientId: session.clientId || undefined,
+          // ...
+        } as any;
+
+        const conflict = await this.checkConflicts(
+          conflictCheckDto,
+          tenantId,
+          session.id,
+        );
+        if (conflict.hasConflicts) {
+          throw new BadRequestException(
+            `Update causes conflict on ${newStart.toDateString()}: ${conflict.conflicts[0].message}`,
+          );
+        }
+      }
+
+      if (shouldUpdate) {
+        updates.push(update);
+      }
+    }
+
+    if (updates.length > 0) {
+      // Save one by one or bulk? TypeORM allows save array.
+      await this.sessionRepository.save(updates);
+    }
+  }
+
+  async delete(
+    id: string,
+    tenantId: string,
+    userId: string = 'API_USER',
+  ): Promise<void> {
+    const session = await this.findOne(id, tenantId);
+
+    // If this session had a package deduction, refund it
+    if (session.clientPackageId && session.status === 'scheduled') {
+      try {
+        await this.packagesService.returnSession(
+          session.clientPackageId,
+          tenantId,
+        );
+        this.logger.log(
+          `Refunded session for client ${session.clientId} on session delete`,
+        );
+      } catch (e) {
+        this.logger.warn(`Could not refund session on delete: ${e.message}`);
+      }
+    }
+
+    // Handle Group Session Participants Refund
+    if (session.participants && session.participants.length > 0) {
+      for (const participant of session.participants) {
+        // Only refund if scheduled (not already cancelled/completed)
+        if (participant.clientPackageId && participant.status === 'scheduled') {
+          try {
+            await this.packagesService.returnSession(
+              participant.clientPackageId,
+              tenantId,
+            );
+            this.logger.log(
+              `Refunded session for participant ${participant.clientId} on session delete`,
+            );
+          } catch (e) {
+            this.logger.warn(
+              `Could not refund participant ${participant.clientId} on delete: ${e.message}`,
+            );
+          }
+        }
+      }
+    }
+
+    await this.sessionRepository.remove(session);
+
+    await this.auditService.log(
+      tenantId,
+      'DELETE_SESSION',
+      'Session',
+      id,
+      userId,
+      {
+        sessionType: session.type,
+        startTime: session.startTime,
+        clientId: session.clientId,
+        coachId: session.coachId,
+      },
+    );
+
+    this.logger.log(`Deleted session ${id} (type: ${session.type})`);
+  }
+
+  async deleteSeries(
+    id: string,
+    tenantId: string,
+    userId: string = 'API_USER',
+  ): Promise<void> {
+    const targetSession = await this.findOne(id, tenantId);
+
+    const parentId = targetSession.isRecurringParent
+      ? targetSession.id
+      : targetSession.parentSessionId;
+    if (!parentId) {
+      throw new BadRequestException(
+        'This session is not part of a recurring series',
+      );
+    }
+
+    // Find all sessions in the series (this and future)
+    const sessionsToDelete = await this.sessionRepository
+      .createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('(s.id = :parentId OR s.parent_session_id = :parentId)', {
+        parentId,
+      })
+      .andWhere('s.start_time >= :startTime', {
+        startTime: targetSession.startTime,
+      })
+      .getMany();
+
+    // We should "Cancel" them or "Delete" them?
+    // If they are scheduled, hard delete is often cleaner for "Oh I made a mistake".
+    // If they are historical, we keep them.
+    // The query filters `startTime >= targetSession.startTime`, so effectively future.
+    // Existing logic for 'cancelled' sessions might be preferred if we want audit.
+    // But map says "Delete Series".
+    // Let's Soft Delete (Cancel) them to be safe and maintain history if needed,
+    // OR hard delete if status is 'scheduled'.
+
+    // Strategy: Use remove() for hard delete of scheduled future sessions.
+
+    await this.sessionRepository.remove(sessionsToDelete);
+
+    // Log one audit entry for the series deletion
+    await this.auditService.log(
+      tenantId,
+      'DELETE_SESSION_SERIES',
+      'Session',
+      id,
+      userId,
+      {
+        count: sessionsToDelete.length,
+        parentId: parentId,
+        message: `Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`,
+      },
+    );
+
+    this.logger.log(
+      `Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`,
+    );
+  }
+  async getAvailableSlots(
+    tenantId: string,
+    studioId: string,
+    dateStr: string,
+    coachId?: string,
+  ): Promise<{ time: string; status: 'available' | 'full' }[]> {
+    const date = new Date(dateStr);
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 1. Get Studio info (Opening Hours)
+    const studio = await this.studioRepository.findOne({
+      where: { id: studioId, tenantId },
+      relations: ['rooms'],
+    });
+
+    if (!studio) throw new NotFoundException('Studio not found');
+    if (!studio.active) return [];
+
+    // Check if studio is open on this day
+    const dayOfWeek = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ][date.getDay()];
+    const hours = studio.openingHours?.[dayOfWeek];
+    if (!hours) return []; // Closed
+
+    const [openH, openM] = hours.open.split(':').map(Number);
+    const [closeH, closeM] = hours.close.split(':').map(Number);
+
+    // 2. Get Resources
+    const rooms = studio.rooms.filter((r) => r.active);
+    let coaches = await this.coachRepository.find({
+      where: { tenantId, active: true },
+    });
+
+    // Filter by specific coach if requested
+    if (coachId) {
+      coaches = coaches.filter((c) => c.id === coachId);
+      // If requested coach is not found/active, coaches will be empty -> no slots
+    }
+
+    // 3. Get Existing Sessions
+    const sessions = await this.sessionRepository
+      .createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('s.studio_id = :studioId', { studioId })
+      .andWhere('s.start_time >= :start', { start: startOfDay })
+      .andWhere('s.end_time <= :end', { end: endOfDay })
+      .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
+      .getMany();
+
+    // 3b. Get Approved Time-Offs
+    const timeOffs = await this.timeOffRepository
+      .createQueryBuilder('to')
+      .where('to.tenant_id = :tenantId', { tenantId })
+      .andWhere('to.status = :status', { status: 'approved' })
+      .andWhere('to.start_date <= :date', { date: endOfDay }) // Overlaps with day
+      .andWhere('to.end_date >= :date', { date: startOfDay })
+      .getMany();
+
+    // 4. Generate Slots (20 min intervals)
+    const slots: { time: string; status: 'available' | 'full' }[] = [];
+    const slotDurationMin = 20;
+
+    // Start from opening time
+    const currentHook = new Date(date);
+    currentHook.setHours(openH, openM, 0, 0);
+
+    const closeTime = new Date(date);
+    closeTime.setHours(closeH, closeM, 0, 0);
+
+    while (
+      currentHook.getTime() + slotDurationMin * 60000 <=
+      closeTime.getTime()
+    ) {
+      const slotStart = new Date(currentHook);
+      const slotEnd = new Date(currentHook.getTime() + slotDurationMin * 60000);
+
+      // Filter out past slots if date is today
+      if (slotStart < new Date()) {
+        currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
+        continue;
+      }
+
+      // Check Rooms
+      const activeSessionsInSlot = sessions.filter(
+        (s) =>
+          new Date(s.startTime) < slotEnd && new Date(s.endTime) > slotStart,
+      );
+
+      const bookedRoomIds = activeSessionsInSlot
+        .map((s) => s.roomId)
+        .filter(Boolean);
+      const availableRooms = rooms.filter((r) => !bookedRoomIds.includes(r.id));
+
+      const bookedCoachIds = activeSessionsInSlot
+        .map((s) => s.coachId)
+        .filter(Boolean);
+      const availableCoaches = coaches.filter(
+        (c) => !bookedCoachIds.includes(c.id),
+      );
+
+      const validCoaches = availableCoaches.filter((coach) => {
+        // Check Time Offs - strict overlap with slot
+        // Now using Timestamp, so we can check if leave overlaps specifically with this slot
+        const isUnavailableDueToLeave = timeOffs.some(
+          (to) =>
+            to.coachId === coach.id &&
+            new Date(to.startDate) < slotEnd &&
+            new Date(to.endDate) > slotStart,
+        );
+        if (isUnavailableDueToLeave) return false;
+
+        if (!coach.availabilityRules?.length) return true;
+
+        // Find day rule - handle both string ("monday") and numeric (1) dayOfWeek formats
+        const dayIndex = date.getDay(); // 0-6 where 0 is Sunday
+        const dayRule = coach.availabilityRules.find((r) => {
+          if (r.dayOfWeek === undefined || r.dayOfWeek === null) return false;
+          // Handle numeric dayOfWeek (0-6)
+          if (typeof r.dayOfWeek === 'number') {
+            return r.dayOfWeek === dayIndex;
+          }
+          // Handle string dayOfWeek ("sunday", "monday", etc.)
+          if (typeof r.dayOfWeek === 'string') {
+            return r.dayOfWeek.toLowerCase() === dayOfWeek;
+          }
+          return false;
         });
 
-        if (!coach) {
-            throw new NotFoundException(`Coach ${coachId} not found`);
-        }
-
-        // If coach has no availability rules defined, allow all times
-        if (!coach.availabilityRules || coach.availabilityRules.length === 0) {
-            return;
-        }
-
-        const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][startTime.getDay()];
-        const dayIndex = startTime.getDay(); // 0-6 where 0 is Sunday
-
-        // Find rule for this day of week - handle both string ("monday") and numeric (1) formats
-        const dayRule = coach.availabilityRules.find(rule => {
-            if (rule.dayOfWeek === undefined || rule.dayOfWeek === null) return false;
-            // Handle numeric dayOfWeek (0-6)
-            if (typeof rule.dayOfWeek === 'number') {
-                return rule.dayOfWeek === dayIndex;
-            }
-            // Handle string dayOfWeek ("sunday", "monday", etc.)
-            if (typeof rule.dayOfWeek === 'string') {
-                return rule.dayOfWeek.toLowerCase() === dayOfWeek;
-            }
-            return false;
-        });
-
-        // If no rule for this day, coach is unavailable
-        if (!dayRule || !dayRule.available) {
-            throw new BadRequestException(`Coach is not available on ${dayOfWeek}s`);
-        }
+        // If no rule for this day OR rule says not available, coach is unavailable
+        if (!dayRule || !dayRule.available) return false;
 
         // If rule has time ranges, validate against them
         if (dayRule.startTime && dayRule.endTime) {
-            const [startHour, startMin] = dayRule.startTime.split(':').map(Number);
-            const [endHour, endMin] = dayRule.endTime.split(':').map(Number);
-
-            const sessionStart = startTime.getHours() * 60 + startTime.getMinutes();
-            const sessionEnd = endTime.getHours() * 60 + endTime.getMinutes();
-            const coachStart = startHour * 60 + startMin;
-            const coachEnd = endHour * 60 + endMin;
-
-            if (sessionStart < coachStart || sessionEnd > coachEnd) {
-                throw new BadRequestException(
-                    `Coach is only available on ${dayOfWeek}s from ${dayRule.startTime} to ${dayRule.endTime}`
-                );
-            }
+          const [sH, sM] = dayRule.startTime.split(':').map(Number);
+          const [eH, eM] = dayRule.endTime.split(':').map(Number);
+          const cStart = new Date(date);
+          cStart.setHours(sH, sM, 0, 0);
+          const cEnd = new Date(date);
+          cEnd.setHours(eH, eM, 0, 0);
+          return slotStart >= cStart && slotEnd <= cEnd;
         }
+        return true;
+      });
+
+      const hoursStr = slotStart.getHours().toString().padStart(2, '0');
+      const minsStr = slotStart.getMinutes().toString().padStart(2, '0');
+      const timeStr = `${hoursStr}:${minsStr}`;
+
+      if (availableRooms.length > 0 && validCoaches.length > 0) {
+        slots.push({ time: timeStr, status: 'available' });
+      } else {
+        slots.push({ time: timeStr, status: 'full' });
+      }
+
+      currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
     }
 
-    private async validateRoomAvailability(roomId: string, tenantId: string): Promise<void> {
-        const room = await this.roomRepository.findOne({
-            where: { id: roomId, tenantId }
-        });
+    return slots;
+  }
 
-        if (!room) {
-            throw new NotFoundException(`Room ${roomId} not found`);
-        }
+  async findFirstActiveStudio(tenantId: string): Promise<string | null> {
+    const studio = await this.studioRepository.findOne({
+      where: { tenantId, active: true },
+      order: { createdAt: 'ASC' },
+    });
+    return studio ? studio.id : null;
+  }
 
-        if (!room.active) {
-            throw new BadRequestException(`Room "${room.name}" is currently unavailable (maintenance or closed)`);
-        }
+  async autoAssignResources(
+    tenantId: string,
+    studioId: string,
+    start: Date,
+    end: Date,
+    preferredCoachId?: string,
+  ): Promise<{ roomId: string; coachId: string }> {
+    // 1. Get overlapping sessions to find occupied resources
+    const overlappingSessions = await this.sessionRepository
+      .createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('s.studio_id = :studioId', { studioId })
+      .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
+      .andWhere('s.start_time < :end', { end })
+      .andWhere('s.end_time > :start', { start })
+      .getMany();
+
+    const occupiedRoomIds = overlappingSessions
+      .map((s) => s.roomId)
+      .filter(Boolean);
+    const occupiedCoachIds = overlappingSessions
+      .map((s) => s.coachId)
+      .filter(Boolean);
+
+    // 1b. Check Time Offs - Strict overlap with session time
+    const timeOffs = await this.timeOffRepository
+      .createQueryBuilder('to')
+      .where('to.tenant_id = :tenantId', { tenantId })
+      .andWhere('to.status = :status', { status: 'approved' })
+      .andWhere('to.start_date < :end', { end })
+      .andWhere('to.end_date > :start', { start })
+      .getMany();
+
+    const coachesOnLeaveIds = timeOffs.map((to) => to.coachId);
+
+    // 2. Find available room
+    const room = await this.roomRepository.findOne({
+      where: { studioId, active: true, tenantId }, // Assuming simple query
+    });
+    // Ideally we fetch ALL active rooms and pick one not in occupied list
+    const allRooms = await this.roomRepository.find({
+      where: { studioId, active: true, tenantId },
+    });
+    const availableRoom = allRooms.find((r) => !occupiedRoomIds.includes(r.id));
+
+    if (!availableRoom) {
+      throw new Error('No rooms available for this time slot');
     }
 
-    private async validateClientHasRemainingSessions(clientId: string, tenantId: string): Promise<void> {
-        const activePackage = await this.packagesService.getActivePackageForClient(clientId, tenantId);
+    // 3. Find available coach
+    const allCoaches = await this.coachRepository.find({
+      where: { active: true, tenantId },
+    });
 
-        if (!activePackage) {
-            throw new BadRequestException('Client does not have an active package. Please assign a package before scheduling sessions.');
-        }
+    let availableCoach;
 
-        // Count already scheduled sessions for this client that haven't been completed yet
-        const scheduledSessionsCount = await this.sessionRepository.count({
-            where: {
-                clientId,
-                tenantId,
-                status: 'scheduled' as any
-            }
-        });
-
-        // Calculate available sessions: remaining - already scheduled
-        const availableSessions = activePackage.sessionsRemaining - scheduledSessionsCount;
-
-        this.logger.log(`Client ${clientId}: Package has ${activePackage.sessionsRemaining} remaining, ${scheduledSessionsCount} already scheduled, ${availableSessions} available for new bookings`);
-
-        if (availableSessions <= 0) {
-            throw new BadRequestException(
-                `Client has no available sessions for booking. ` +
-                `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
-                `Already scheduled: ${scheduledSessionsCount}. ` +
-                `Please complete existing sessions or renew the package.`
-            );
-        }
+    if (preferredCoachId) {
+      // If user selected a specific coach, check availability
+      if (occupiedCoachIds.includes(preferredCoachId)) {
+        throw new Error('Selected coach is already booked for this time slot');
+      }
+      if (coachesOnLeaveIds.includes(preferredCoachId)) {
+        throw new Error('Selected coach is on leave during this time slot');
+      }
+      availableCoach = allCoaches.find((c) => c.id === preferredCoachId);
+      if (!availableCoach) {
+        // Could act as validation too
+        throw new Error('Selected coach not found or inactive');
+      }
+    } else {
+      // Auto-assign any open coach
+      // Filter by studio if coaches are studio-scoped? Assuming global or linked.
+      // For simplified MVP, just pick any available coach not occupied AND not on leave.
+      availableCoach = allCoaches.find(
+        (c) =>
+          !occupiedCoachIds.includes(c.id) && !coachesOnLeaveIds.includes(c.id),
+      );
     }
 
-    private async validateCoachGenderPreference(coachId: string, clientId: string, tenantId: string): Promise<void> {
-        const coach = await this.coachRepository.findOne({
-            where: { id: coachId, tenantId },
-            relations: ['user'] // Need user relation if coach gender matters (for future), but preference is on Coach entity
-        });
-        const client = await this.clientsService.findOne(clientId, tenantId);
-
-        if (!coach || !client || !client.user) return; // Skip if data missing
-
-        // 'preferredClientGender' is on Coach entity now.
-        // Assuming client.user.gender was added to User entity
-
-        // Types might be tricky if entity update not propagated to type system yet in IDE context,
-        // but it should work at runtime. Casting as necessary.
-        const coachPreference = (coach as any).preferredClientGender;
-        const clientGender = (client.user as any).gender;
-
-        if (coachPreference && coachPreference !== 'any') {
-            if (clientGender && clientGender !== 'pnts' && coachPreference !== clientGender) {
-                throw new BadRequestException(
-                    `This coach prefers to work with ${coachPreference} clients.`
-                );
-            }
-        }
+    // Coach is optional? If booking REQUIRES coach, we throw.
+    // Schema says coachId is UUID (required in DTO).
+    if (!availableCoach) {
+      // If strictly required
+      throw new Error('No coaches available for this time slot');
     }
 
-    private async validateCoachStudioLink(coachId: string, studioId: string, tenantId: string): Promise<void> {
-        const coach = await this.coachRepository.findOne({
-            where: { id: coachId, tenantId }
-        });
-
-        if (!coach) {
-            throw new NotFoundException(`Coach ${coachId} not found`);
-        }
-
-        if (coach.studioId !== studioId) {
-            throw new BadRequestException(
-                `Coach is not linked to the selected studio. Please select a coach from the same studio.`
-            );
-        }
-    }
-
-    private async validateClientStudioLink(clientId: string, studioId: string, tenantId: string): Promise<void> {
-        const client = await this.clientsService.findOne(clientId, tenantId);
-
-        if (!client) {
-            throw new NotFoundException(`Client ${clientId} not found`);
-        }
-
-        if (client.studioId !== studioId) {
-            throw new BadRequestException(
-                `Client is not linked to the selected studio. Please select a client from the same studio.`
-            );
-        }
-    }
-
-    async updateStatus(id: string, tenantId: string, status: SessionStatus, deductSession?: boolean, userId: string = 'API_USER'): Promise<Session> {
-        this.logger.log(`updateStatus called: id=${id}, status=${status}`);
-        const session = await this.findOne(id, tenantId);
-        this.logger.log(`Found session: id=${session.id}, current status=${session.status}`);
-        const previousStatus = session.status;
-        session.status = status;
-
-        if (status === 'cancelled') {
-            session.cancelledAt = new Date();
-            await this.auditService.log(
-                tenantId,
-                'CANCEL_SESSION',
-                'Session',
-                id,
-                userId,
-                { previousStatus: previousStatus }
-            );
-        }
-
-        // Handle Individual Session Package Logic
-        // For group sessions, this logic is in SessionParticipantsService (or should be invoked from there)
-        if (session.type !== 'group' && session.clientId) {
-            const isCancelled = status === 'cancelled';
-            const wasCancelled = previousStatus === 'cancelled';
-
-            if (isCancelled && !wasCancelled) {
-                // Session Cancelled -> Check if we should refund
-                let shouldRefund = false;
-
-                if (deductSession === false) {
-                    // Explicitly told NOT to deduct (which means REFUND, since we deducted at booking)
-                    shouldRefund = true;
-                } else if (deductSession === true) {
-                    // Explicitly told to deduct (keep deduction) -> No refund
-                    shouldRefund = false;
-                } else {
-                    // Check Policy
-                    const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
-                    const cancellationWindowHours = tenant?.settings?.cancellationWindowHours || 48; // Default 48h
-
-                    const now = new Date();
-                    const sessionTime = new Date(session.startTime);
-                    const hoursUntilSession = (sessionTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-                    if (hoursUntilSession >= cancellationWindowHours) {
-                        shouldRefund = true; // Early enough to refund
-                    } else {
-                        this.logger.log(`Late cancellation for session ${id}. No refund.`);
-                        shouldRefund = false;
-                    }
-                }
-
-                if (shouldRefund && session.clientPackageId) {
-                    await this.packagesService.returnSession(session.clientPackageId, tenantId);
-                    this.logger.log(`Refunded session for client ${session.clientId} (Package: ${session.clientPackageId})`);
-                }
-            } else if (!isCancelled && wasCancelled) {
-                // Resurrecting a cancelled session? -> Deduct again!
-                // "Un-cancel"
-                // We need to find a package again because the old one might be expired or full? 
-                // Or we re-use the old ID if valid.
-                // Simplest: Try reusing clientPackageId.
-                if (session.clientPackageId) {
-                    // Check if package is valid?
-                    // For simplicity, just try to use it.
-                    try {
-                        await this.packagesService.useSession(session.clientPackageId, tenantId);
-                        this.logger.log(`Re-deducted session for client ${session.clientId} (Un-cancelled)`);
-                    } catch (e) {
-                        // If fails (e.g. package expired), throw error?
-                        // "Cannot uncancel session: package invalid"
-                        throw new BadRequestException('Cannot restore session: Linked package is no longer valid for deduction.');
-                    }
-                } else {
-                    // If no package linked (legacy?), try find best.
-                    const bestPackage = await this.packagesService.findBestPackageForSession(session.clientId, tenantId);
-                    if (!bestPackage) throw new BadRequestException('No active package to cover this session.');
-                    await this.packagesService.useSession(bestPackage.id, tenantId);
-                    session.clientPackageId = bestPackage.id;
-                }
-            }
-
-            // Gamification still triggers on completion
-            if (status === 'completed' && previousStatus !== 'completed') {
-                this.gamificationService.checkAndUnlockAchievements(session.clientId, tenantId)
-                    .catch(err => this.logger.error(`Failed to check achievements for client ${session.clientId}`, err));
-            }
-        }
-
-
-
-        return this.sessionRepository.save(session);
-    }
-
-    async updateSeries(id: string, dto: UpdateSessionDto, tenantId: string): Promise<void> {
-        const targetSession = await this.findOne(id, tenantId);
-
-        // Determine the series parent
-        const parentId = targetSession.isRecurringParent ? targetSession.id : targetSession.parentSessionId;
-
-        if (!parentId) {
-            throw new BadRequestException('This session is not part of a recurring series');
-        }
-
-        // Find all sessions in the series starting from this session (this and future)
-        const sessionsToUpdate = await this.sessionRepository.createQueryBuilder('s')
-            .where('s.tenant_id = :tenantId', { tenantId })
-            .andWhere('(s.id = :parentId OR s.parent_session_id = :parentId)', { parentId })
-            .andWhere('s.start_time >= :startTime', { startTime: targetSession.startTime })
-            .andWhere('s.status != :cancelled', { cancelled: 'cancelled' }) // Do not resurrect cancelled sessions
-            .orderBy('s.start_time', 'ASC')
-            .getMany();
-
-        if (sessionsToUpdate.length === 0) {
-            return;
-        }
-
-        // Validate Package Limits if client is involved
-        // We are updating existing sessions, so count shouldn't increase, 
-        // BUT if we are shifting dates, we must check expiry.
-        if (targetSession.clientId) {
-            const activePackage = await this.packagesService.getActivePackageForClient(targetSession.clientId, tenantId);
-
-            if (activePackage && activePackage.expiryDate) {
-                const expiry = new Date(activePackage.expiryDate);
-                // Check if any updated session would move beyond expiry?
-                // We need to calculate new times first.
-            }
-        }
-
-        const updates: Partial<Session>[] = [];
-
-        // Calculate time shift if time is changed
-        let timeShiftMs = 0;
-        if (dto.startTime) {
-            const newStart = new Date(dto.startTime);
-            const oldStart = new Date(targetSession.startTime);
-            // We only care about the TIME of day change usually, but standard updateSeries might imply shifting everything by delta?
-            // Or setting all to the same Time of Day?
-            // "Edit Series" usually means "Change 10am to 11am for all".
-            // Let's assume we align all sessions to the NEW Time of Day of the target session.
-
-            // Actually, simplest is calculating the delta between target's OLD start and NEW start, and applying that to all.
-            timeShiftMs = newStart.getTime() - oldStart.getTime();
-        }
-
-        for (const session of sessionsToUpdate) {
-            // Prepare update object
-            const update: Partial<Session> = { id: session.id };
-            let shouldUpdate = false;
-
-            // Update simple fields
-            if (dto.coachId && dto.coachId !== session.coachId) {
-                update.coachId = dto.coachId;
-                shouldUpdate = true;
-            }
-            if (dto.roomId && dto.roomId !== session.roomId) {
-                update.roomId = dto.roomId;
-                shouldUpdate = true;
-            }
-            if (dto.notes !== undefined) {
-                update.notes = dto.notes;
-                shouldUpdate = true;
-            }
-            if (dto.emsDeviceId !== undefined) {
-                update.emsDeviceId = dto.emsDeviceId;
-                shouldUpdate = true;
-            }
-
-            // Update Time if changed
-            if (timeShiftMs !== 0) {
-                const newStart = new Date(session.startTime.getTime() + timeShiftMs);
-                const newEnd = new Date(session.endTime.getTime() + timeShiftMs);
-
-                update.startTime = newStart;
-                update.endTime = newEnd;
-                shouldUpdate = true;
-
-                // Validate Expiry
-                if (targetSession.clientId) {
-                    const activePackage = await this.packagesService.getClientPackages(targetSession.clientId, tenantId).then(pkgs => pkgs.find(p => p.status === 'active'));
-                    if (activePackage && activePackage.expiryDate) {
-                        if (newStart > new Date(activePackage.expiryDate)) {
-                            throw new BadRequestException(`Updating series would move session on ${newStart.toDateString()} beyond package expiry (${new Date(activePackage.expiryDate).toDateString()})`);
-                        }
-                    }
-                }
-
-                // Validate Conflicts for EACH session
-                // We can't check conflicts in bulk easily without a dedicated method or loop
-                // This might be slow for long series, but safe.
-                const conflictCheckDto: CreateSessionDto = {
-                    studioId: dto.studioId || session.studioId,
-                    roomId: update.roomId || session.roomId,
-                    coachId: update.coachId || session.coachId,
-                    startTime: newStart.toISOString(),
-                    endTime: newEnd.toISOString(),
-                    clientId: session.clientId || undefined,
-                    // ...
-                } as any;
-
-                const conflict = await this.checkConflicts(conflictCheckDto, tenantId, session.id);
-                if (conflict.hasConflicts) {
-                    throw new BadRequestException(`Update causes conflict on ${newStart.toDateString()}: ${conflict.conflicts[0].message}`);
-                }
-            }
-
-            if (shouldUpdate) {
-                updates.push(update);
-            }
-        }
-
-        if (updates.length > 0) {
-            // Save one by one or bulk? TypeORM allows save array.
-            await this.sessionRepository.save(updates);
-        }
-    }
-
-    async delete(id: string, tenantId: string, userId: string = 'API_USER'): Promise<void> {
-        const session = await this.findOne(id, tenantId);
-
-        // If this session had a package deduction, refund it
-        if (session.clientPackageId && session.status === 'scheduled') {
-            try {
-                await this.packagesService.returnSession(session.clientPackageId, tenantId);
-                this.logger.log(`Refunded session for client ${session.clientId} on session delete`);
-            } catch (e) {
-                this.logger.warn(`Could not refund session on delete: ${e.message}`);
-            }
-        }
-
-        // Handle Group Session Participants Refund
-        if (session.participants && session.participants.length > 0) {
-            for (const participant of session.participants) {
-                // Only refund if scheduled (not already cancelled/completed)
-                if (participant.clientPackageId && participant.status === 'scheduled') {
-                    try {
-                        await this.packagesService.returnSession(participant.clientPackageId, tenantId);
-                        this.logger.log(`Refunded session for participant ${participant.clientId} on session delete`);
-                    } catch (e) {
-                        this.logger.warn(`Could not refund participant ${participant.clientId} on delete: ${e.message}`);
-                    }
-                }
-            }
-        }
-
-        await this.sessionRepository.remove(session);
-
-        await this.auditService.log(
-            tenantId,
-            'DELETE_SESSION',
-            'Session',
-            id,
-            userId,
-            {
-                sessionType: session.type,
-                startTime: session.startTime,
-                clientId: session.clientId,
-                coachId: session.coachId
-            }
-        );
-
-        this.logger.log(`Deleted session ${id} (type: ${session.type})`);
-    }
-
-    async deleteSeries(id: string, tenantId: string, userId: string = 'API_USER'): Promise<void> {
-        const targetSession = await this.findOne(id, tenantId);
-
-        const parentId = targetSession.isRecurringParent ? targetSession.id : targetSession.parentSessionId;
-        if (!parentId) {
-            throw new BadRequestException('This session is not part of a recurring series');
-        }
-
-        // Find all sessions in the series (this and future)
-        const sessionsToDelete = await this.sessionRepository.createQueryBuilder('s')
-            .where('s.tenant_id = :tenantId', { tenantId })
-            .andWhere('(s.id = :parentId OR s.parent_session_id = :parentId)', { parentId })
-            .andWhere('s.start_time >= :startTime', { startTime: targetSession.startTime })
-            .getMany();
-
-        // We should "Cancel" them or "Delete" them?
-        // If they are scheduled, hard delete is often cleaner for "Oh I made a mistake".
-        // If they are historical, we keep them.
-        // The query filters `startTime >= targetSession.startTime`, so effectively future.
-        // Existing logic for 'cancelled' sessions might be preferred if we want audit.
-        // But map says "Delete Series".
-        // Let's Soft Delete (Cancel) them to be safe and maintain history if needed, 
-        // OR hard delete if status is 'scheduled'.
-
-        // Strategy: Use remove() for hard delete of scheduled future sessions.
-
-        await this.sessionRepository.remove(sessionsToDelete);
-
-        // Log one audit entry for the series deletion
-        await this.auditService.log(
-            tenantId,
-            'DELETE_SESSION_SERIES',
-            'Session',
-            id,
-            userId,
-            {
-                count: sessionsToDelete.length,
-                parentId: parentId,
-                message: `Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`
-            }
-        );
-
-        this.logger.log(`Deleted ${sessionsToDelete.length} sessions in series starting from ${targetSession.startTime}`);
-    }
-    async getAvailableSlots(tenantId: string, studioId: string, dateStr: string, coachId?: string): Promise<{ time: string, status: 'available' | 'full' }[]> {
-        const date = new Date(dateStr);
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        // 1. Get Studio info (Opening Hours)
-        const studio = await this.studioRepository.findOne({
-            where: { id: studioId, tenantId },
-            relations: ['rooms']
-        });
-
-        if (!studio) throw new NotFoundException('Studio not found');
-        if (!studio.active) return [];
-
-        // Check if studio is open on this day
-        const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
-        const hours = studio.openingHours?.[dayOfWeek];
-        if (!hours) return []; // Closed
-
-        const [openH, openM] = hours.open.split(':').map(Number);
-        const [closeH, closeM] = hours.close.split(':').map(Number);
-
-        // 2. Get Resources
-        const rooms = studio.rooms.filter(r => r.active);
-        let coaches = await this.coachRepository.find({ where: { tenantId, active: true } });
-
-        // Filter by specific coach if requested
-        if (coachId) {
-            coaches = coaches.filter(c => c.id === coachId);
-            // If requested coach is not found/active, coaches will be empty -> no slots
-        }
-
-        // 3. Get Existing Sessions
-        const sessions = await this.sessionRepository.createQueryBuilder('s')
-            .where('s.tenant_id = :tenantId', { tenantId })
-            .andWhere('s.studio_id = :studioId', { studioId })
-            .andWhere('s.start_time >= :start', { start: startOfDay })
-            .andWhere('s.end_time <= :end', { end: endOfDay })
-            .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
-            .getMany();
-
-        // 3b. Get Approved Time-Offs
-        const timeOffs = await this.timeOffRepository.createQueryBuilder('to')
-            .where('to.tenant_id = :tenantId', { tenantId })
-            .andWhere('to.status = :status', { status: 'approved' })
-            .andWhere('to.start_date <= :date', { date: endOfDay }) // Overlaps with day
-            .andWhere('to.end_date >= :date', { date: startOfDay })
-            .getMany();
-
-        // 4. Generate Slots (20 min intervals)
-        const slots: { time: string, status: 'available' | 'full' }[] = [];
-        const slotDurationMin = 20;
-
-        // Start from opening time
-        const currentHook = new Date(date);
-        currentHook.setHours(openH, openM, 0, 0);
-
-        const closeTime = new Date(date);
-        closeTime.setHours(closeH, closeM, 0, 0);
-
-        while (currentHook.getTime() + slotDurationMin * 60000 <= closeTime.getTime()) {
-            const slotStart = new Date(currentHook);
-            const slotEnd = new Date(currentHook.getTime() + slotDurationMin * 60000);
-
-            // Filter out past slots if date is today
-            if (slotStart < new Date()) {
-                currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
-                continue;
-            }
-
-            // Check Rooms
-            const activeSessionsInSlot = sessions.filter(s =>
-                (new Date(s.startTime) < slotEnd) && (new Date(s.endTime) > slotStart)
-            );
-
-            const bookedRoomIds = activeSessionsInSlot.map(s => s.roomId).filter(Boolean);
-            const availableRooms = rooms.filter(r => !bookedRoomIds.includes(r.id));
-
-            const bookedCoachIds = activeSessionsInSlot.map(s => s.coachId).filter(Boolean);
-            const availableCoaches = coaches.filter(c => !bookedCoachIds.includes(c.id));
-
-            const validCoaches = availableCoaches.filter(coach => {
-                // Check Time Offs - strict overlap with slot
-                // Now using Timestamp, so we can check if leave overlaps specifically with this slot
-                const isUnavailableDueToLeave = timeOffs.some(to =>
-                    to.coachId === coach.id &&
-                    new Date(to.startDate) < slotEnd &&
-                    new Date(to.endDate) > slotStart
-                );
-                if (isUnavailableDueToLeave) return false;
-
-                if (!coach.availabilityRules?.length) return true;
-
-                // Find day rule - handle both string ("monday") and numeric (1) dayOfWeek formats
-                const dayIndex = date.getDay(); // 0-6 where 0 is Sunday
-                const dayRule = coach.availabilityRules.find(r => {
-                    if (r.dayOfWeek === undefined || r.dayOfWeek === null) return false;
-                    // Handle numeric dayOfWeek (0-6)
-                    if (typeof r.dayOfWeek === 'number') {
-                        return r.dayOfWeek === dayIndex;
-                    }
-                    // Handle string dayOfWeek ("sunday", "monday", etc.)
-                    if (typeof r.dayOfWeek === 'string') {
-                        return r.dayOfWeek.toLowerCase() === dayOfWeek;
-                    }
-                    return false;
-                });
-
-                // If no rule for this day OR rule says not available, coach is unavailable
-                if (!dayRule || !dayRule.available) return false;
-
-                // If rule has time ranges, validate against them
-                if (dayRule.startTime && dayRule.endTime) {
-                    const [sH, sM] = dayRule.startTime.split(':').map(Number);
-                    const [eH, eM] = dayRule.endTime.split(':').map(Number);
-                    const cStart = new Date(date); cStart.setHours(sH, sM, 0, 0);
-                    const cEnd = new Date(date); cEnd.setHours(eH, eM, 0, 0);
-                    return slotStart >= cStart && slotEnd <= cEnd;
-                }
-                return true;
-            });
-
-            const hoursStr = slotStart.getHours().toString().padStart(2, '0');
-            const minsStr = slotStart.getMinutes().toString().padStart(2, '0');
-            const timeStr = `${hoursStr}:${minsStr}`;
-
-            if (availableRooms.length > 0 && validCoaches.length > 0) {
-                slots.push({ time: timeStr, status: 'available' });
-            } else {
-                slots.push({ time: timeStr, status: 'full' });
-            }
-
-            currentHook.setMinutes(currentHook.getMinutes() + slotDurationMin);
-        }
-
-        return slots;
-    }
-
-    async findFirstActiveStudio(tenantId: string): Promise<string | null> {
-        const studio = await this.studioRepository.findOne({
-            where: { tenantId, active: true },
-            order: { createdAt: 'ASC' }
-        });
-        return studio ? studio.id : null;
-    }
-
-    async autoAssignResources(tenantId: string, studioId: string, start: Date, end: Date, preferredCoachId?: string): Promise<{ roomId: string, coachId: string }> {
-        // 1. Get overlapping sessions to find occupied resources
-        const overlappingSessions = await this.sessionRepository.createQueryBuilder('s')
-            .where('s.tenant_id = :tenantId', { tenantId })
-            .andWhere('s.studio_id = :studioId', { studioId })
-            .andWhere('s.status != :cancelled', { cancelled: 'cancelled' })
-            .andWhere('s.start_time < :end', { end })
-            .andWhere('s.end_time > :start', { start })
-            .getMany();
-
-        const occupiedRoomIds = overlappingSessions.map(s => s.roomId).filter(Boolean);
-        const occupiedCoachIds = overlappingSessions.map(s => s.coachId).filter(Boolean);
-
-        // 1b. Check Time Offs - Strict overlap with session time
-        const timeOffs = await this.timeOffRepository.createQueryBuilder('to')
-            .where('to.tenant_id = :tenantId', { tenantId })
-            .andWhere('to.status = :status', { status: 'approved' })
-            .andWhere('to.start_date < :end', { end })
-            .andWhere('to.end_date > :start', { start })
-            .getMany();
-
-        const coachesOnLeaveIds = timeOffs.map(to => to.coachId);
-
-        // 2. Find available room
-        const room = await this.roomRepository.findOne({
-            where: { studioId, active: true, tenantId } // Assuming simple query
-        });
-        // Ideally we fetch ALL active rooms and pick one not in occupied list
-        const allRooms = await this.roomRepository.find({ where: { studioId, active: true, tenantId } });
-        const availableRoom = allRooms.find(r => !occupiedRoomIds.includes(r.id));
-
-        if (!availableRoom) {
-            throw new Error('No rooms available for this time slot');
-        }
-
-        // 3. Find available coach
-        const allCoaches = await this.coachRepository.find({ where: { active: true, tenantId } });
-
-        let availableCoach;
-
-        if (preferredCoachId) {
-            // If user selected a specific coach, check availability
-            if (occupiedCoachIds.includes(preferredCoachId)) {
-                throw new Error('Selected coach is already booked for this time slot');
-            }
-            if (coachesOnLeaveIds.includes(preferredCoachId)) {
-                throw new Error('Selected coach is on leave during this time slot');
-            }
-            availableCoach = allCoaches.find(c => c.id === preferredCoachId);
-            if (!availableCoach) {
-                // Could act as validation too
-                throw new Error('Selected coach not found or inactive');
-            }
-        } else {
-            // Auto-assign any open coach
-            // Filter by studio if coaches are studio-scoped? Assuming global or linked.
-            // For simplified MVP, just pick any available coach not occupied AND not on leave.
-            availableCoach = allCoaches.find(c => !occupiedCoachIds.includes(c.id) && !coachesOnLeaveIds.includes(c.id));
-        }
-
-        // Coach is optional? If booking REQUIRES coach, we throw.
-        // Schema says coachId is UUID (required in DTO).
-        if (!availableCoach) {
-            // If strictly required
-            throw new Error('No coaches available for this time slot');
-        }
-
-        return { roomId: availableRoom.id, coachId: availableCoach.id };
-    }
+    return { roomId: availableRoom.id, coachId: availableCoach.id };
+  }
 }

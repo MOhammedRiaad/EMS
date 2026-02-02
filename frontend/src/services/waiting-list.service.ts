@@ -32,6 +32,9 @@ export interface WaitingListEntry {
         lastName: string;
         email: string;
         phone: string;
+        user?: {
+            gender?: 'male' | 'female' | 'other' | 'pnts';
+        };
     };
     studio: {
         id: string;

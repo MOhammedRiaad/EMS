@@ -7,12 +7,9 @@ import { Session } from '../sessions/entities/session.entity';
 import { SessionsModule } from '../sessions/sessions.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([User, Session]),
-        SessionsModule
-    ],
-    controllers: [CalendarController],
-    providers: [CalendarService],
-    exports: [CalendarService]
+  imports: [TypeOrmModule.forFeature([User, Session]), SessionsModule],
+  controllers: [CalendarController],
+  providers: [CalendarService],
+  exports: [CalendarService],
 })
-export class CalendarModule { }
+export class CalendarModule {}

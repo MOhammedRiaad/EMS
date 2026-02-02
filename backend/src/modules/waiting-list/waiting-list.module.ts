@@ -10,16 +10,16 @@ import { AuditModule } from '../audit/audit.module';
 import { SessionsModule } from '../sessions/sessions.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([WaitingListEntry]),
-        MailerModule,
-        StudiosModule,
-        ClientsModule,
-        AuditModule,
-        forwardRef(() => SessionsModule),
-    ],
-    controllers: [WaitingListController],
-    providers: [WaitingListService],
-    exports: [WaitingListService],
+  imports: [
+    TypeOrmModule.forFeature([WaitingListEntry]),
+    MailerModule,
+    StudiosModule,
+    ClientsModule,
+    AuditModule,
+    forwardRef(() => SessionsModule),
+  ],
+  controllers: [WaitingListController],
+  providers: [WaitingListService],
+  exports: [WaitingListService],
 })
-export class WaitingListModule { }
+export class WaitingListModule {}

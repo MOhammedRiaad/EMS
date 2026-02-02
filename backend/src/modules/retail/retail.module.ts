@@ -11,18 +11,12 @@ import { Client } from '../clients/entities/client.entity';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            Product,
-            ProductStock,
-            Sale,
-            SaleItem,
-            Client
-        ]),
-        AuditModule
-    ],
-    controllers: [RetailController],
-    providers: [ProductsService, SalesService],
-    exports: [ProductsService, SalesService]
+  imports: [
+    TypeOrmModule.forFeature([Product, ProductStock, Sale, SaleItem, Client]),
+    AuditModule,
+  ],
+  controllers: [RetailController],
+  providers: [ProductsService, SalesService],
+  exports: [ProductsService, SalesService],
 })
-export class RetailModule { }
+export class RetailModule {}

@@ -116,5 +116,10 @@ export const coachesService = {
             method: 'PATCH',
             body: JSON.stringify(rules)
         });
+    },
+
+    async getTimeOffRequests(status?: string): Promise<any[]> {
+        const query = status ? `?status=${status}` : '';
+        return authenticatedFetch(`/coaches/time-off-requests${query}`);
     }
 };

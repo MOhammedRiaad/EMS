@@ -3,8 +3,8 @@ import { waitingListService, type WaitingListEntry, type CreateWaitingListEntryD
 import { clientsService, type Client } from '../../../services/clients.service';
 import { studiosService, type Studio } from '../../../services/studios.service';
 import { sessionsService } from '../../../services/sessions.service';
-import { coachesService } from '../../../services/coaches.service';
-import { roomsService } from '../../../services/rooms.service';
+import { coachesService, type CoachDisplay } from '../../../services/coaches.service';
+import { roomsService, type Room } from '../../../services/rooms.service';
 
 export interface BookingData {
     startTime: string;
@@ -31,8 +31,9 @@ export function useWaitingListState() {
     const [entries, setEntries] = useState<WaitingListEntry[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [studios, setStudios] = useState<Studio[]>([]);
-    const [coaches, setCoaches] = useState<any[]>([]);
-    const [rooms, setRooms] = useState<any[]>([]);
+    const [coaches, setCoaches] = useState<CoachDisplay[]>([]);
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const [availableCoaches, setAvailableCoaches] = useState<CoachDisplay[]>([]);
 
     // UI state
     const [loading, setLoading] = useState(true);
@@ -168,16 +169,61 @@ export function useWaitingListState() {
         }
     }, [fetchEntries]);
 
+    // const [availableCoaches, setAvailableCoaches] = useState<any[]>([]); // Removed duplicate
+
     const openBookModal = useCallback((entry: WaitingListEntry) => {
         setSelectedEntry(entry);
         const preferredDate = entry.preferredDate
             ? new Date(entry.preferredDate).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0];
 
+        // Parse preferred time slot
+        let startTime = '09:00';
+        let endTime = '10:00';
+
+        if (entry.preferredTimeSlot) {
+            // Handle "HH:MM" or "HH:MM-HH:MM" formats
+            const parts = entry.preferredTimeSlot.split('-');
+            if (parts.length >= 1) {
+                startTime = parts[0].trim();
+                // Default duration 1 hour if no end time specified
+                if (parts.length >= 2) {
+                    endTime = parts[1].trim();
+                } else {
+                    const [hours, minutes] = startTime.split(':').map(Number);
+                    if (!isNaN(hours)) {
+                        const endHour = (hours + 1) % 24;
+                        endTime = `${endHour.toString().padStart(2, '0')}:${minutes ? minutes.toString().padStart(2, '0') : '00'}`;
+                    }
+                }
+            }
+        }
+
+        // Filter coaches by Studio and Gender preference
+        const clientGender = entry.client?.user?.gender || 'pnts'; // pnts = prefer not to say
+
+        const filteredCoaches = coaches.filter(coach => {
+            // 1. Must match studio
+            if (coach.studioId !== entry.studioId) return false;
+
+            // 2. Check coach's gender preference
+            if (coach.preferredClientGender === 'any') return true;
+            if (coach.preferredClientGender === clientGender) return true;
+
+            // If coach has specific preference and client doesn't match (or is unknown/pnts), exclude?
+            // Strict filtering: exclude. Loose filtering: include if client is pnts? 
+            // Let's go with strict for now if gender is known.
+            if (clientGender === 'pnts') return true; // Show all if client gender is unknown
+
+            return false;
+        });
+
+        setAvailableCoaches(filteredCoaches);
+
         setBookingData({
-            startTime: `${preferredDate}T09:00`,
-            endTime: `${preferredDate}T10:00`,
-            coachId: coaches[0]?.id || '',
+            startTime: `${preferredDate}T${startTime}`,
+            endTime: `${preferredDate}T${endTime}`,
+            coachId: filteredCoaches[0]?.id || '',
             roomId: rooms[0]?.id || '',
             programType: 'Personal Training'
         });
@@ -226,6 +272,7 @@ export function useWaitingListState() {
         clients,
         studios,
         coaches,
+        availableCoaches, // Return filtered coaches
         rooms,
 
         // UI state

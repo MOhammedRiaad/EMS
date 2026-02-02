@@ -5,9 +5,9 @@ import { ParqController } from './parq.controller';
 import { ParqService } from './parq.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([ParqResponse])],
-    controllers: [ParqController],
-    providers: [ParqService],
-    exports: [ParqService],
+  imports: [TypeOrmModule.forFeature([ParqResponse])],
+  controllers: [ParqController],
+  providers: [ParqService],
+  exports: [ParqService],
 })
-export class ParqModule { }
+export class ParqModule {}

@@ -6,15 +6,17 @@ import { CoachesController } from './coaches.controller';
 import { CoachesService } from './coaches.service';
 import { AuthModule } from '../auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
+import { MailerModule } from '../mailer/mailer.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Coach, CoachTimeOffRequest]),
-        AuthModule,
-        AuditModule
-    ],
-    controllers: [CoachesController],
-    providers: [CoachesService],
-    exports: [CoachesService],
+  imports: [
+    TypeOrmModule.forFeature([Coach, CoachTimeOffRequest]),
+    AuthModule,
+    AuditModule,
+    MailerModule,
+  ],
+  controllers: [CoachesController],
+  providers: [CoachesService],
+  exports: [CoachesService],
 })
-export class CoachesModule { }
+export class CoachesModule {}

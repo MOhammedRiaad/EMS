@@ -83,7 +83,7 @@ const AdminWaitingList: React.FC = () => {
                 onClose={() => state.setIsBookModalOpen(false)}
                 bookingData={state.bookingData}
                 setBookingData={state.setBookingData}
-                coaches={state.coaches}
+                coaches={state.availableCoaches}
                 rooms={state.rooms}
                 loading={state.bookingLoading}
                 onSubmit={state.handleBookSession}

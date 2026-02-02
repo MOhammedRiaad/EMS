@@ -13,16 +13,16 @@ import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 import { ClientProgressPhoto } from '../clients/entities/client-progress-photo.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([FavoriteCoach, ClientProgressPhoto]),
-        SessionsModule,
-        PackagesModule,
-        WaitingListModule,
-        ClientsModule,
-        CoachesModule,
-        AuthModule
-    ],
-    controllers: [ClientPortalController],
-    providers: [ClientPortalService],
+  imports: [
+    TypeOrmModule.forFeature([FavoriteCoach, ClientProgressPhoto]),
+    SessionsModule,
+    PackagesModule,
+    WaitingListModule,
+    ClientsModule,
+    CoachesModule,
+    AuthModule,
+  ],
+  controllers: [ClientPortalController],
+  providers: [ClientPortalService],
 })
-export class ClientPortalModule { }
+export class ClientPortalModule {}

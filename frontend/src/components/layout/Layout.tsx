@@ -85,6 +85,7 @@ const Layout: React.FC = () => {
         { path: '/rooms', label: 'Rooms', icon: DoorOpen },
         { path: '/devices', label: 'Devices', icon: Dumbbell },
         { path: '/inbody', label: 'InBody Scans', icon: Activity },
+        { path: '/admin/time-off', label: 'Time Off Requests', icon: Calendar },
     ];
 
     const clientBusinessItems: MenuItem[] = [

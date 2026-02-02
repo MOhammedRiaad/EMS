@@ -14,22 +14,22 @@ import { ClientSessionReview } from '../reviews/entities/review.entity';
 import { Lead } from '../leads/entities/lead.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            Client,
-            Session,
-            ClientPackage,
-            Package,
-            Coach,
-            Room,
-            EmsDevice,
-            WaitingListEntry,
-            ClientSessionReview,
-            Lead,
-        ]),
-    ],
-    controllers: [AnalyticsController],
-    providers: [AnalyticsService],
-    exports: [AnalyticsService],
+  imports: [
+    TypeOrmModule.forFeature([
+      Client,
+      Session,
+      ClientPackage,
+      Package,
+      Coach,
+      Room,
+      EmsDevice,
+      WaitingListEntry,
+      ClientSessionReview,
+      Lead,
+    ]),
+  ],
+  controllers: [AnalyticsController],
+  providers: [AnalyticsService],
+  exports: [AnalyticsService],
 })
-export class AnalyticsModule { }
+export class AnalyticsModule {}

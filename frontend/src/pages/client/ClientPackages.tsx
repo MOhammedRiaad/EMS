@@ -1,24 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Calendar, Clock, Loader2, Gift } from 'lucide-react';
+import { Package, Clock, Loader2, Gift } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { authenticatedFetch } from '../../services/api';
+
+// Reusing the ProgressRing from ClientHomeComponents (or redeclaring it if not exported)
+// Ideally we should move it to a shared component, but for now I'll inline a simple version or just use the radial design.
+
+const ProgressRing: React.FC<{
+    progress: number;
+    size?: number;
+    strokeWidth?: number;
+    color?: string;
+}> = ({ progress, size = 120, strokeWidth = 8, color = '#667eea' }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+    return (
+        <svg width={size} height={size} className="progress-ring transform -rotate-90">
+            <circle
+                stroke="currentColor"
+                className="text-gray-100 dark:text-slate-700"
+                strokeWidth={strokeWidth}
+                fill="transparent"
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+            />
+            <circle
+                stroke={color}
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="transparent"
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+                style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+            />
+        </svg>
+    );
+};
 
 interface PackageItem {
     id: string;
-    name: string;
-    type: 'sessions' | 'subscription';
+    package: {
+        id: string;
+        name: string;
+        description?: string;
+        price: number;
+    };
     purchaseDate: string;
     expiryDate?: string;
-    totalSessions?: number;
-    usedSessions?: number;
-    remainingSessions?: number;
-    status: 'active' | 'expired' | 'cancelled';
-    price: number;
+    sessionsUsed: number;
+    sessionsRemaining: number;
+    status: 'active' | 'expired' | 'depleted' | 'cancelled';
+    price?: number;
 }
 
 const ClientPackages: React.FC = () => {
     const [packages, setPackages] = useState<PackageItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'active' | 'expired'>('all');
+    const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
     useEffect(() => {
         loadPackages();
@@ -40,50 +84,78 @@ const ClientPackages: React.FC = () => {
     const filteredPackages = packages.filter(pkg => {
         if (filter === 'all') return true;
         if (filter === 'active') return pkg.status === 'active';
-        return pkg.status === 'expired' || pkg.status === 'cancelled';
+        return pkg.status !== 'active';
     });
 
-    const getStatusBadge = (status: string) => {
+    const getStatusStyle = (status: string) => {
         switch (status) {
             case 'active':
-                return <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Active</span>;
+                return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+            case 'depleted':
+                return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
             case 'expired':
-                return <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Expired</span>;
+                return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
             default:
-                return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full">Cancelled</span>;
+                return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
         }
     };
 
     if (loading) {
         return (
-            <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <div className="flex justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
             </div>
         );
     }
 
+    // Calculate total available sessions
+    const totalAvailable = packages
+        .filter(p => p.status === 'active')
+        .reduce((sum, p) => sum + (p.sessionsRemaining || 0), 0);
+
     return (
-        <div className="max-w-lg mx-auto pb-20 space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <Package className="text-blue-600" size={24} />
+        <div className="max-w-xl mx-auto pb-24 px-4 space-y-6">
+            <header className="pt-6 pb-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-xl text-purple-600">
+                        <Package size={24} />
+                    </div>
                     My Packages
                 </h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-1 ml-14">
+                    Manage your session credits and history
+                </p>
+            </header>
+
+            {/* Stats Overview */}
+            <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-purple-500/20 relative overflow-hidden">
+                <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                        <p className="text-purple-100 text-sm font-medium mb-1">Total Available Sessions</p>
+                        <h2 className="text-4xl font-bold">{totalAvailable}</h2>
+                    </div>
+                    <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <Gift size={32} className="text-white" />
+                    </div>
+                </div>
+                {/* Decorative circles */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex gap-2 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl">
+            {/* Filters */}
+            <div className="flex bg-gray-100 dark:bg-slate-800/50 p-1.5 rounded-xl">
                 {[
-                    { id: 'all', label: 'All' },
                     { id: 'active', label: 'Active' },
-                    { id: 'expired', label: 'History' },
+                    { id: 'inactive', label: 'History' },
+                    { id: 'all', label: 'All' },
                 ].map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setFilter(tab.id as any)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${filter === tab.id
-                            ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${filter === tab.id
+                            ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
                         {tab.label}
@@ -91,80 +163,97 @@ const ClientPackages: React.FC = () => {
                 ))}
             </div>
 
-            {/* Summary Card (Active Packages) */}
-            {filter !== 'expired' && (
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 text-white">
-                    <div className="flex items-center justify-between mb-4">
-                        <span className="text-blue-100 text-sm">Available Sessions</span>
-                        <Gift className="text-blue-200" size={20} />
-                    </div>
-                    <div className="text-4xl font-bold">
-                        {packages.filter(p => p.status === 'active').reduce((sum, p) => sum + (p.remainingSessions || 0), 0)}
-                    </div>
-                    <p className="text-blue-100 text-sm mt-1">from {packages.filter(p => p.status === 'active').length} active package(s)</p>
-                </div>
-            )}
-
             {/* Packages List */}
-            {filteredPackages.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 dark:bg-slate-900 rounded-xl">
-                    <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500 dark:text-gray-400">
-                        {filter === 'active' ? 'No active packages' : filter === 'expired' ? 'No package history' : 'No packages found'}
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {filteredPackages.map(pkg => (
-                        <div key={pkg.id} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-4">
-                            <div className="flex items-start justify-between mb-3">
-                                <div>
-                                    <h3 className="font-semibold text-gray-900 dark:text-white">{pkg.name}</h3>
-                                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                        <Calendar size={12} />
-                                        Purchased {new Date(pkg.purchaseDate).toLocaleDateString()}
-                                    </p>
-                                </div>
-                                {getStatusBadge(pkg.status)}
-                            </div>
+            <div className="space-y-4">
+                {filteredPackages.length === 0 ? (
+                    <div className="text-center py-16 bg-gray-50/50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-gray-200 dark:border-slate-700">
+                        <Package className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-3" />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">
+                            {filter === 'active' ? 'No active packages' : 'No packages found'}
+                        </p>
+                    </div>
+                ) : (
+                    filteredPackages.map((pkg, index) => {
+                        const totalSessions = (pkg.sessionsUsed || 0) + (pkg.sessionsRemaining || 0);
+                        const progress = totalSessions > 0 ? (pkg.sessionsRemaining / totalSessions) * 100 : 0;
+                        const isExpiringSoon = pkg.status === 'active' && pkg.expiryDate &&
+                            (new Date(pkg.expiryDate).getTime() - Date.now()) < (7 * 24 * 60 * 60 * 1000);
 
-                            {pkg.type === 'sessions' && (
-                                <div className="bg-gray-50 dark:bg-slate-800 p-3 rounded-lg">
-                                    <div className="flex justify-between text-sm mb-2">
-                                        <span className="text-gray-500">Sessions Used</span>
-                                        <span className="font-medium text-gray-900 dark:text-white">
-                                            {pkg.usedSessions} / {pkg.totalSessions}
+                        return (
+                            <div
+                                key={pkg.id}
+                                className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 relative overflow-hidden group"
+                                style={{ animationDelay: `${index * 100}ms` }}
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${getStatusStyle(pkg.status)}`}>
+                                                {pkg.status}
+                                            </span>
+                                            {isExpiringSoon && (
+                                                <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 animate-pulse">
+                                                    Expiring Soon
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight mb-1">
+                                            {pkg.package?.name || 'Untitled Package'}
+                                        </h3>
+                                        <p className="text-sm text-gray-400">
+                                            Purchased {new Date(pkg.purchaseDate).toLocaleDateString()}
+                                        </p>
+                                    </div>
+
+                                    {/* Radial Progress for Sessions */}
+                                    <div className="relative">
+                                        <ProgressRing
+                                            progress={progress}
+                                            size={64}
+                                            strokeWidth={5}
+                                            color={pkg.status === 'active' ? '#8b5cf6' : '#94a3b8'}
+                                        />
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span className={`text-base font-bold ${pkg.status === 'active' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`}>
+                                                {pkg.sessionsRemaining}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-3 py-3 border-t border-gray-100 dark:border-slate-800">
+                                    <div>
+                                        <span className="text-xs text-gray-400 block mb-0.5">Used</span>
+                                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            {pkg.sessionsUsed} <span className="text-gray-400 font-normal">/ {totalSessions}</span>
                                         </span>
                                     </div>
-                                    <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
-                                        <div
-                                            className="bg-blue-600 h-2 rounded-full transition-all"
-                                            style={{ width: `${((pkg.usedSessions || 0) / (pkg.totalSessions || 1)) * 100}%` }}
-                                        />
+                                    <div className="text-right">
+                                        <span className="text-xs text-gray-400 block mb-0.5">Expires</span>
+                                        <span className={`text-sm font-semibold flex items-center justify-end gap-1 ${isExpiringSoon ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                            {pkg.expiryDate ? new Date(pkg.expiryDate).toLocaleDateString() : 'Never'}
+                                            {pkg.expiryDate && <Clock size={12} />}
+                                        </span>
                                     </div>
-                                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium">
-                                        {pkg.remainingSessions} sessions remaining
-                                    </p>
                                 </div>
-                            )}
 
-                            {pkg.expiryDate && (
-                                <div className="flex items-center gap-1 text-xs text-gray-500 mt-3">
-                                    <Clock size={12} />
-                                    {pkg.status === 'active' ? 'Expires' : 'Expired'} {new Date(pkg.expiryDate).toLocaleDateString()}
+                                <div className="mt-2 text-right">
+                                    <span className="text-xs font-medium text-gray-300 dark:text-slate-600">
+                                        ID: {pkg.id.slice(0, 8)}
+                                    </span>
                                 </div>
-                            )}
-
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-slate-800">
-                                <span className="text-xs text-gray-500">Price</span>
-                                <span className="font-semibold text-gray-900 dark:text-white">
-                                    ${pkg.price?.toFixed(2)}
-                                </span>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                        );
+                    })
+                )}
+            </div>
+
+            <div className="text-center pt-4">
+                <Link to="/client/home" className="inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-700 transition-colors">
+                    Back to Dashboard
+                </Link>
+            </div>
         </div>
     );
 };

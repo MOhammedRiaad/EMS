@@ -5,9 +5,9 @@ import { StudiosController } from './studios.controller';
 import { StudiosService } from './studios.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Studio])],
-    controllers: [StudiosController],
-    providers: [StudiosService],
-    exports: [StudiosService],
+  imports: [TypeOrmModule.forFeature([Studio])],
+  controllers: [StudiosController],
+  providers: [StudiosService],
+  exports: [StudiosService],
 })
-export class StudiosModule { }
+export class StudiosModule {}

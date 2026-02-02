@@ -6,9 +6,9 @@ import { TermsController } from './terms.controller';
 import { TermsService } from './terms.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([TermsOfService, TermsAcceptance])],
-    controllers: [TermsController],
-    providers: [TermsService],
-    exports: [TermsService],
+  imports: [TypeOrmModule.forFeature([TermsOfService, TermsAcceptance])],
+  controllers: [TermsController],
+  providers: [TermsService],
+  exports: [TermsService],
 })
-export class TermsModule { }
+export class TermsModule {}

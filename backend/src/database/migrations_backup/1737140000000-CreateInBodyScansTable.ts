@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateInBodyScansTable1737140000000 implements MigrationInterface {
-    name = 'CreateInBodyScansTable1737140000000'
+  name = 'CreateInBodyScansTable1737140000000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TABLE "inbody_scans" (
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`CREATE TABLE "inbody_scans" (
             "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
             "tenant_id" uuid NOT NULL,
             "created_at" TIMESTAMP NOT NULL DEFAULT now(),
@@ -32,9 +32,9 @@ export class CreateInBodyScansTable1737140000000 implements MigrationInterface {
             CONSTRAINT "FK_inbody_scans_creator" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE NO ACTION,
             CONSTRAINT "FK_inbody_scans_tenant" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE
         )`);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP TABLE "inbody_scans"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE "inbody_scans"`);
+  }
 }

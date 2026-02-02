@@ -6,34 +6,40 @@ import { ClientPackage } from '../../packages/entities/client-package.entity';
 
 @Entity('session_participants')
 export class SessionParticipant extends TenantScopedEntity {
-    @Column({ name: 'session_id', type: 'uuid' })
-    sessionId: string;
+  @Column({ name: 'session_id', type: 'uuid' })
+  sessionId: string;
 
-    @ManyToOne(() => Session, session => session.participants, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'session_id' })
-    session: Session;
+  @ManyToOne(() => Session, (session) => session.participants, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'session_id' })
+  session: Session;
 
-    @Column({ name: 'client_id', type: 'uuid' })
-    clientId: string;
+  @Column({ name: 'client_id', type: 'uuid' })
+  clientId: string;
 
-    @ManyToOne(() => Client, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'client_id' })
-    client: Client;
+  @ManyToOne(() => Client, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'client_id' })
+  client: Client;
 
-    @Column({ name: 'joined_at', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
-    joinedAt: Date;
+  @Column({
+    name: 'joined_at',
+    type: 'timestamptz',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  joinedAt: Date;
 
-    @Column({
-        type: 'enum',
-        enum: ['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'],
-        default: 'scheduled',
-    })
-    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  @Column({
+    type: 'enum',
+    enum: ['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'],
+    default: 'scheduled',
+  })
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
-    @Column({ name: 'client_package_id', type: 'uuid', nullable: true })
-    clientPackageId: string | null;
+  @Column({ name: 'client_package_id', type: 'uuid', nullable: true })
+  clientPackageId: string | null;
 
-    @ManyToOne(() => ClientPackage, { onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'client_package_id' })
-    clientPackage: ClientPackage;
+  @ManyToOne(() => ClientPackage, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'client_package_id' })
+  clientPackage: ClientPackage;
 }

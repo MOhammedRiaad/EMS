@@ -7,12 +7,12 @@ import { ClientWaiver } from './entities/client-waiver.entity';
 import { ClientsModule } from '../clients/clients.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Waiver, ClientWaiver]),
-        forwardRef(() => ClientsModule)
-    ],
-    controllers: [WaiversController],
-    providers: [WaiversService],
-    exports: [WaiversService]
+  imports: [
+    TypeOrmModule.forFeature([Waiver, ClientWaiver]),
+    forwardRef(() => ClientsModule),
+  ],
+  controllers: [WaiversController],
+  providers: [WaiversService],
+  exports: [WaiversService],
 })
-export class WaiversModule { }
+export class WaiversModule {}

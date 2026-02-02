@@ -10,11 +10,11 @@ import { DashboardService } from './dashboard.service';
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller('dashboard')
 export class DashboardController {
-    constructor(private readonly dashboardService: DashboardService) { }
+  constructor(private readonly dashboardService: DashboardService) {}
 
-    @Get('stats')
-    @ApiOperation({ summary: 'Get dashboard statistics' })
-    getStats(@TenantId() tenantId: string) {
-        return this.dashboardService.getStats(tenantId);
-    }
+  @Get('stats')
+  @ApiOperation({ summary: 'Get dashboard statistics' })
+  getStats(@TenantId() tenantId: string) {
+    return this.dashboardService.getStats(tenantId);
+  }
 }

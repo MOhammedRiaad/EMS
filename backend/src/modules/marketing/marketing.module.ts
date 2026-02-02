@@ -8,14 +8,14 @@ import { MailerModule } from '../mailer/mailer.module';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([AutomationRule, AutomationExecution]),
-        TypeOrmModule.forFeature([AutomationRule, AutomationExecution]),
-        MailerModule,
-        AuditModule
-    ],
-    controllers: [AutomationController],
-    providers: [AutomationService],
-    exports: [TypeOrmModule, AutomationService]
+  imports: [
+    TypeOrmModule.forFeature([AutomationRule, AutomationExecution]),
+    TypeOrmModule.forFeature([AutomationRule, AutomationExecution]),
+    MailerModule,
+    AuditModule,
+  ],
+  controllers: [AutomationController],
+  providers: [AutomationService],
+  exports: [TypeOrmModule, AutomationService],
 })
-export class MarketingModule { }
+export class MarketingModule {}

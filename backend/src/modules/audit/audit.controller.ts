@@ -10,11 +10,11 @@ import { TenantId } from '../../common/decorators';
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller('audit')
 export class AuditController {
-    constructor(private readonly auditService: AuditService) { }
+  constructor(private readonly auditService: AuditService) {}
 
-    @Get()
-    @ApiOperation({ summary: 'Get audit logs' })
-    findAll(@TenantId() tenantId: string, @Query('limit') limit?: number) {
-        return this.auditService.findAll(tenantId, limit || 100);
-    }
+  @Get()
+  @ApiOperation({ summary: 'Get audit logs' })
+  findAll(@TenantId() tenantId: string, @Query('limit') limit?: number) {
+    return this.auditService.findAll(tenantId, limit || 100);
+  }
 }

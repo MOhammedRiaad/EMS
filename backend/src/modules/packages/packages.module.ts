@@ -6,12 +6,12 @@ import { Package, ClientPackage, Transaction } from './entities';
 import { AuditModule } from '../audit/audit.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Package, ClientPackage, Transaction]),
-        AuditModule
-    ],
-    controllers: [PackagesController],
-    providers: [PackagesService],
-    exports: [PackagesService],
+  imports: [
+    TypeOrmModule.forFeature([Package, ClientPackage, Transaction]),
+    AuditModule,
+  ],
+  controllers: [PackagesController],
+  providers: [PackagesService],
+  exports: [PackagesService],
 })
-export class PackagesModule { }
+export class PackagesModule {}

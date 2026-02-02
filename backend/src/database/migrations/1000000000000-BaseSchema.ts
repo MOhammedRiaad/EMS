@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class BaseSchema1000000000000 implements MigrationInterface {
-    name = 'BaseSchema1000000000000'
+  name = 'BaseSchema1000000000000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -238,27 +238,29 @@ export class BaseSchema1000000000000 implements MigrationInterface {
             ALTER TABLE inbody_records ENABLE ROW LEVEL SECURITY;
             ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop tables in reverse order of dependency
-        await queryRunner.query(`DROP TABLE IF EXISTS payments CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS inbody_records CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS client_session_reviews CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS sessions CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS ems_devices CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS clients CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS coaches CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS users CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS rooms CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS studios CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS tenants CASCADE`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop tables in reverse order of dependency
+    await queryRunner.query(`DROP TABLE IF EXISTS payments CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS inbody_records CASCADE`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS client_session_reviews CASCADE`,
+    );
+    await queryRunner.query(`DROP TABLE IF EXISTS sessions CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS ems_devices CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS clients CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS coaches CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS users CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS rooms CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS studios CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS tenants CASCADE`);
 
-        // Drop types
-        await queryRunner.query(`DROP TYPE IF EXISTS payment_status`);
-        await queryRunner.query(`DROP TYPE IF EXISTS client_status`);
-        await queryRunner.query(`DROP TYPE IF EXISTS device_status`);
-        await queryRunner.query(`DROP TYPE IF EXISTS session_status`);
-        await queryRunner.query(`DROP TYPE IF EXISTS user_role`);
-    }
+    // Drop types
+    await queryRunner.query(`DROP TYPE IF EXISTS payment_status`);
+    await queryRunner.query(`DROP TYPE IF EXISTS client_status`);
+    await queryRunner.query(`DROP TYPE IF EXISTS device_status`);
+    await queryRunner.query(`DROP TYPE IF EXISTS session_status`);
+    await queryRunner.query(`DROP TYPE IF EXISTS user_role`);
+  }
 }

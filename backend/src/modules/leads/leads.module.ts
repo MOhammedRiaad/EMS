@@ -9,13 +9,13 @@ import { ClientsModule } from '../clients/clients.module';
 import { MarketingModule } from '../marketing/marketing.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Lead, LeadActivity]),
-        ClientsModule,
-        MarketingModule
-    ],
-    controllers: [LeadController],
-    providers: [LeadService],
-    exports: [TypeOrmModule, LeadService]
+  imports: [
+    TypeOrmModule.forFeature([Lead, LeadActivity]),
+    ClientsModule,
+    MarketingModule,
+  ],
+  controllers: [LeadController],
+  providers: [LeadService],
+  exports: [TypeOrmModule, LeadService],
 })
-export class LeadsModule { }
+export class LeadsModule {}

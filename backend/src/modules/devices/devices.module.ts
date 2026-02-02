@@ -5,9 +5,9 @@ import { DevicesService } from './devices.service';
 import { EmsDevice } from './entities/ems-device.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([EmsDevice])],
-    controllers: [DevicesController],
-    providers: [DevicesService],
-    exports: [DevicesService],
+  imports: [TypeOrmModule.forFeature([EmsDevice])],
+  controllers: [DevicesController],
+  providers: [DevicesService],
+  exports: [DevicesService],
 })
-export class DevicesModule { }
+export class DevicesModule {}

@@ -37,7 +37,27 @@ const ClientQuickViewModal: React.FC<ClientQuickViewModalProps> = ({ clientId, i
         try {
             setLoading(true);
             const data = await coachPortalService.getClientDetails(clientId);
-            setClient(data);
+
+            // Map backend response to ClientData interface
+            if (data && data.profile) {
+                setClient({
+                    id: data.profile.id,
+                    firstName: data.profile.firstName,
+                    lastName: data.profile.lastName,
+                    email: data.profile.email,
+                    phone: data.profile.phone,
+                    // gender: data.profile.gender, // Not currently active in Client entity
+                    dateOfBirth: data.profile.dateOfBirth,
+                    profileImage: data.profile.avatarUrl,
+                    notes: data.profile.notes,
+                    // Calculate or map remaining sessions if available in future
+                    remainingSessions: undefined,
+                    healthConditions: data.profile.medicalHistory?.conditions || [],
+                    goals: Array.isArray(data.profile.healthGoals)
+                        ? data.profile.healthGoals.map((g: any) => typeof g === 'string' ? g : g.goal)
+                        : []
+                });
+            }
         } catch (err) {
             console.error('Failed to load client:', err);
         } finally {
