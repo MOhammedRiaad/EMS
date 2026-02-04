@@ -10,6 +10,7 @@ import {
   CoachTimeOffRequest,
   TimeOffStatus,
 } from './entities/coach-time-off.entity';
+import { Tenant } from '../tenants/entities/tenant.entity';
 import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
@@ -22,6 +23,8 @@ export class CoachesService {
     private readonly coachRepository: Repository<Coach>,
     @InjectRepository(CoachTimeOffRequest)
     private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly mailerService: MailerService,
@@ -217,10 +220,29 @@ export class CoachesService {
     id: string,
     rules: any[],
     tenantId: string,
+    user?: any,
   ): Promise<any[]> {
     const coach = await this.findOne(id, tenantId);
+
+    // Permission Check: If user is a coach, enforce restrictions
+    if (user && user.role === 'coach') {
+      // 1. Ensure they are editing their own profile
+      if (coach.userId !== user.id) {
+        throw new ForbiddenException('You can only update your own availability');
+      }
+
+      // 2. Check tenant setting for availability editing
+      const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
+      const allowSelfEdit = tenant?.settings?.allowCoachSelfEditAvailability ?? false;
+
+      if (!allowSelfEdit) {
+        throw new ForbiddenException('Availability editing is disabled by your studio administrator');
+      }
+    }
+
     coach.availabilityRules = rules;
     await this.coachRepository.save(coach);
+
 
     await this.auditService.log(
       tenantId,

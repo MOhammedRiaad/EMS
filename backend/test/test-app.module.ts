@@ -11,6 +11,7 @@ import { Tenant } from '../src/modules/tenants/entities/tenant.entity';
 import { Studio } from '../src/modules/studios/entities/studio.entity';
 import { Room } from '../src/modules/rooms/entities/room.entity';
 import { Coach } from '../src/modules/coaches/entities/coach.entity';
+import { CoachTimeOffRequest } from '../src/modules/coaches/entities/coach-time-off.entity';
 import { Client } from '../src/modules/clients/entities/client.entity';
 import { Session } from '../src/modules/sessions/entities/session.entity';
 import { EmsDevice } from '../src/modules/devices/entities/ems-device.entity';
@@ -79,6 +80,7 @@ const ALL_ENTITIES = [
   Studio,
   Room,
   Coach,
+  CoachTimeOffRequest,
   Client,
   Session,
   EmsDevice,

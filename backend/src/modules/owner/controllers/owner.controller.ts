@@ -129,7 +129,8 @@ export class OwnerController {
     @Get('tenants/:tenantId')
     @RequirePermissions('owner.tenant.view')
     async getTenantDetails(@Param('tenantId') tenantId: string) {
-        return this.ownerService.getTenantDetails(tenantId);
+        const tenant = await this.ownerService.getTenantDetails(tenantId);
+        return { tenant };
     }
 
     /**
@@ -180,7 +181,8 @@ export class OwnerController {
         @Request() req: any,
         @Ip() ip: string,
     ) {
-        return this.ownerService.suspendTenant(tenantId, reason, req.user.id, ip);
+        const tenant = await this.ownerService.suspendTenant(tenantId, reason, req.user.id, ip);
+        return { tenant };
     }
 
     /**

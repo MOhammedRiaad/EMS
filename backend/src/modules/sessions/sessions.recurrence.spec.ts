@@ -12,6 +12,11 @@ import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { BadRequestException } from '@nestjs/common';
 import { CreateSessionDto } from './dto';
+import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { PermissionService } from '../auth/services/permission.service';
+import { RoleService } from '../auth/services/role.service';
+import { AuditService } from '../audit/audit.service';
 
 describe('SessionsService - Recurrence', () => {
   let service: SessionsService;
@@ -36,6 +41,7 @@ describe('SessionsService - Recurrence', () => {
               orderBy: jest.fn().mockReturnThis(),
               getMany: jest.fn().mockResolvedValue([]),
               getOne: jest.fn().mockResolvedValue(null),
+              select: jest.fn().mockReturnThis(),
             })),
           },
         },
@@ -71,10 +77,45 @@ describe('SessionsService - Recurrence', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: getRepositoryToken(CoachTimeOffRequest),
+          useValue: {
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            createQueryBuilder: jest.fn(() => ({
+              where: jest.fn().mockReturnThis(),
+              andWhere: jest.fn().mockReturnThis(),
+              getMany: jest.fn().mockResolvedValue([]),
+              getOne: jest.fn().mockResolvedValue(null),
+              select: jest.fn().mockReturnThis(),
+            })),
+          },
+        },
+        {
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: FeatureFlagService,
+          useValue: {
+            isFeatureEnabled: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: PermissionService,
+          useValue: {
+            getPermissionsForRole: jest.fn().mockResolvedValue([]),
+            isPermissionAllowed: jest.fn().mockReturnValue(true),
+            getUserPermissions: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: RoleService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([]),
           },
         },
       ],

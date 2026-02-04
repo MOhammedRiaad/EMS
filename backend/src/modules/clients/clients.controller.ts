@@ -16,13 +16,14 @@ import { CreateClientDto, UpdateClientDto } from './dto';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { Roles, RolesGuard } from '../../common/guards/roles.guard';
 import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
 
 import { WaiversService } from '../waivers/waivers.service';
 
 @ApiTags('clients')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard, PlanLimitGuard)
 @Controller('clients')
 export class ClientsController {
   constructor(
@@ -49,6 +50,7 @@ export class ClientsController {
   }
 
   @Post()
+  @Roles('admin', 'tenant_owner', 'platform_owner')
   @CheckPlanLimit('clients')
   @ApiOperation({ summary: 'Create a new client' })
   create(@Body() dto: CreateClientDto, @TenantId() tenantId: string) {
@@ -56,6 +58,7 @@ export class ClientsController {
   }
 
   @Post('create-with-user')
+  @Roles('admin', 'tenant_owner')
   @CheckPlanLimit('clients')
   @ApiOperation({ summary: 'Create client with user account' })
   createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
@@ -73,12 +76,14 @@ export class ClientsController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Delete a client (soft delete)' })
   remove(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.clientsService.remove(id, tenantId);
   }
 
   @Post(':id/invite')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Invite client to portal (create user + email)' })
   invite(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.clientsService.invite(id, tenantId);
@@ -91,6 +96,7 @@ export class ClientsController {
   }
 
   @Post(':id/balance')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Adjust client balance (Add/Remove funds)' })
   adjustBalance(
     @Param('id') id: string,

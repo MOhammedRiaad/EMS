@@ -4,6 +4,9 @@ import request from 'supertest';
 import { TestAppModule } from './test-app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CoachTimeOffRequest } from '../src/modules/coaches/entities/coach-time-off.entity';
+import { DataSource } from 'typeorm';
+import { FeatureFlag } from '../src/modules/owner/entities/feature-flag.entity';
+import { FeatureAssignment } from '../src/modules/owner/entities/feature-assignment.entity';
 
 describe('Sessions E2E Tests', () => {
   let app: INestApplication;
@@ -13,6 +16,7 @@ describe('Sessions E2E Tests', () => {
   let roomId: string;
   let coachId: string;
   let clientId: string;
+  let dataSource: DataSource;
   let sessionId: string;
   let packageId: string;
   let coachEmail: string;
@@ -31,6 +35,8 @@ describe('Sessions E2E Tests', () => {
       new ValidationPipe({ whitelist: true, transform: true }),
     );
     await app.init();
+
+    dataSource = moduleFixture.get<DataSource>(DataSource);
 
     // Register and login to get access token
     const registerResponse = await request(app.getHttpServer())
@@ -131,6 +137,27 @@ describe('Sessions E2E Tests', () => {
         packageId,
       })
       .expect(201);
+
+    // Enable features for the test tenant to bypass security guards
+    const featureRepo = dataSource.getRepository(FeatureFlag);
+    const assignmentRepo = dataSource.getRepository(FeatureAssignment);
+
+    // 1. Ensure features exist
+    const features = await featureRepo.save([
+      { key: 'client.portal', name: 'Client Portal', category: 'core', defaultEnabled: true },
+      { key: 'coach.portal', name: 'Coach Portal', category: 'core', defaultEnabled: true },
+      { key: 'client.booking', name: 'Client Booking', category: 'core', defaultEnabled: true },
+      { key: 'client.progress_photos', name: 'Progress Photos', category: 'core', defaultEnabled: true },
+    ]);
+
+    // 2. Enable them for the tenant
+    const platformOwnerId = '00000000-0000-0000-0000-000000000000';
+    await assignmentRepo.save(features.map(f => ({
+      tenantId,
+      featureKey: f.key,
+      enabled: true,
+      enabledBy: platformOwnerId,
+    })));
   }, 60000);
 
   afterAll(async () => {

@@ -23,11 +23,12 @@ import { CoachesService } from './coaches.service';
 import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { Roles, RolesGuard } from '../../common/guards/roles.guard';
 import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
 
 @ApiTags('coaches')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard, PlanLimitGuard)
 @Controller('coaches')
 export class CoachesController {
   constructor(private readonly coachesService: CoachesService) { }
@@ -58,6 +59,7 @@ export class CoachesController {
   }
 
   @Post()
+  @Roles('admin', 'tenant_owner')
   @CheckPlanLimit('coaches')
   @ApiOperation({ summary: 'Create a new coach' })
   create(@Body() dto: CreateCoachDto, @TenantId() tenantId: string) {
@@ -65,6 +67,7 @@ export class CoachesController {
   }
 
   @Post('create-with-user')
+  @Roles('admin', 'tenant_owner')
   @CheckPlanLimit('coaches')
   @ApiOperation({ summary: 'Create coach with user account' })
   createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
@@ -72,6 +75,7 @@ export class CoachesController {
   }
 
   @Patch(':id')
+  @Roles('admin', 'tenant_owner', 'coach')
   @ApiOperation({ summary: 'Update a coach' })
   update(
     @Param('id') id: string,
@@ -82,6 +86,7 @@ export class CoachesController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Delete a coach (soft delete)' })
   remove(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.coachesService.remove(id, tenantId);
@@ -94,13 +99,15 @@ export class CoachesController {
   }
 
   @Patch(':id/availability')
+  @Roles('admin', 'tenant_owner', 'coach')
   @ApiOperation({ summary: 'Update coach availability rules' })
   updateAvailability(
     @Param('id') id: string,
     @Body() rules: any[],
     @TenantId() tenantId: string,
+    @Request() req: any,
   ) {
-    return this.coachesService.updateAvailability(id, rules, tenantId);
+    return this.coachesService.updateAvailability(id, rules, tenantId, req.user);
   }
 
   // ============ Time-Off Request Endpoints ============

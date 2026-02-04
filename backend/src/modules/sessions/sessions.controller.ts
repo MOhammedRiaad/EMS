@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   UseInterceptors,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -22,6 +23,7 @@ import {
 } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { Roles, RolesGuard } from '../../common/guards/roles.guard';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
 
@@ -29,7 +31,7 @@ import { SessionParticipantsService } from './session-participants.service';
 
 @ApiTags('sessions')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard, PlanLimitGuard)
 @Controller('sessions')
 export class SessionsController {
   constructor(
@@ -56,8 +58,12 @@ export class SessionsController {
   @Post()
   @CheckPlanLimit('sessions')
   @ApiOperation({ summary: 'Create a new session (with conflict checking)' })
-  create(@Body() dto: CreateSessionDto, @TenantId() tenantId: string) {
-    return this.sessionsService.create(dto, tenantId);
+  create(
+    @Body() dto: CreateSessionDto,
+    @TenantId() tenantId: string,
+    @Request() req: any,
+  ) {
+    return this.sessionsService.create(dto, tenantId, req.user);
   }
 
   @Post('check-conflicts')
@@ -67,10 +73,15 @@ export class SessionsController {
   }
 
   @Post('bulk')
+  @Roles('admin', 'tenant_owner')
   @CheckPlanLimit('sessions')
   @ApiOperation({ summary: 'Bulk create sessions' })
-  createBulk(@Body() dto: BulkCreateSessionDto, @TenantId() tenantId: string) {
-    return this.sessionsService.createBulk(dto, tenantId);
+  createBulk(
+    @Body() dto: BulkCreateSessionDto,
+    @TenantId() tenantId: string,
+    @Request() req: any,
+  ) {
+    return this.sessionsService.createBulk(dto, tenantId, req.user);
   }
 
   @Patch(':id')
@@ -79,8 +90,9 @@ export class SessionsController {
     @Param('id') id: string,
     @Body() dto: UpdateSessionDto,
     @TenantId() tenantId: string,
+    @Request() req: any,
   ) {
-    return this.sessionsService.update(id, dto, tenantId);
+    return this.sessionsService.update(id, dto, tenantId, req.user);
   }
 
   @Patch(':id/series')
@@ -94,12 +106,14 @@ export class SessionsController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Delete a session' })
   delete(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.sessionsService.delete(id, tenantId);
   }
 
   @Delete(':id/series')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Delete a session series' })
   deleteSeries(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.sessionsService.deleteSeries(id, tenantId);
@@ -111,12 +125,14 @@ export class SessionsController {
     @Param('id') id: string,
     @Body() dto: UpdateSessionStatusDto,
     @TenantId() tenantId: string,
+    @Request() req: any,
   ) {
     return this.sessionsService.updateStatus(
       id,
       tenantId,
       dto.status,
       dto.deductSession,
+      req.user?.id || 'API_USER',
     );
   }
 

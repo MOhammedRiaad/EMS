@@ -6,6 +6,8 @@ import { Session, SessionStatus } from '../sessions/entities/session.entity';
 import { Client } from '../clients/entities/client.entity';
 import { InBodyScan } from '../inbody-scans/entities/inbody-scan.entity';
 import { Coach } from '../coaches/entities/coach.entity';
+import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
+import { MailerService } from '../mailer/mailer.service';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 
 describe('CoachPortalService', () => {
@@ -80,6 +82,22 @@ describe('CoachPortalService', () => {
           useValue: {
             findOne: jest.fn(),
             save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(CoachTimeOffRequest),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: MailerService,
+          useValue: {
+            sendMail: jest.fn(),
           },
         },
       ],

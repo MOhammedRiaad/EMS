@@ -14,6 +14,10 @@ import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { BadRequestException } from '@nestjs/common';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { PermissionService } from '../auth/services/permission.service';
+import { RoleService } from '../auth/services/role.service';
+import { AuditService } from '../audit/audit.service';
 
 describe('SessionsService - Gender Validation', () => {
     let service: SessionsService;
@@ -73,8 +77,27 @@ describe('SessionsService - Gender Validation', () => {
                 { provide: PackagesService, useValue: mockPackagesService },
                 { provide: GamificationService, useValue: { checkAndUnlockAchievements: jest.fn() } },
                 {
-                    provide: require('../audit/audit.service').AuditService,
+                    provide: AuditService,
                     useValue: { log: jest.fn(), calculateDiff: jest.fn().mockReturnValue({ changes: {} }) },
+                },
+                {
+                    provide: FeatureFlagService,
+                    useValue: { isFeatureEnabled: jest.fn().mockResolvedValue(true) },
+                },
+                {
+                    provide: PermissionService,
+                    useValue: {
+                        getPermissionsForRole: jest.fn().mockResolvedValue([]),
+                        isPermissionAllowed: jest.fn().mockReturnValue(true),
+                        getUserPermissions: jest.fn().mockResolvedValue([]),
+                    },
+                },
+                {
+                    provide: RoleService,
+                    useValue: {
+                        findAll: jest.fn().mockResolvedValue([]),
+                        getRoleByKey: jest.fn().mockResolvedValue(null),
+                    },
                 },
             ],
         }).compile();

@@ -12,7 +12,11 @@ import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { PermissionService } from '../auth/services/permission.service';
+import { RoleService } from '../auth/services/role.service';
+import { AuditService } from '../audit/audit.service';
 
 describe('SessionsService', () => {
   let service: SessionsService;
@@ -26,6 +30,7 @@ describe('SessionsService', () => {
   let packagesService: jest.Mocked<PackagesService>;
   let gamificationService: jest.Mocked<GamificationService>;
   let timeOffRepository: jest.Mocked<Repository<CoachTimeOffRequest>>;
+  let featureFlagService: jest.Mocked<FeatureFlagService>;
 
   const mockSession = {
     id: 'session-123',
@@ -166,10 +171,29 @@ describe('SessionsService', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: FeatureFlagService,
+          useValue: {
+            isFeatureEnabled: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: PermissionService,
+          useValue: {
+            getPermissionsForRole: jest.fn().mockResolvedValue([]),
+            isPermissionAllowed: jest.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: RoleService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -186,6 +210,7 @@ describe('SessionsService', () => {
     packagesService = module.get(PackagesService);
     gamificationService = module.get(GamificationService);
     timeOffRepository = module.get(getRepositoryToken(CoachTimeOffRequest));
+    featureFlagService = module.get(FeatureFlagService);
 
     roomRepository.findOne.mockResolvedValue(mockRoom);
     studioRepository.findOne.mockResolvedValue(mockStudio);
@@ -395,15 +420,22 @@ describe('SessionsService', () => {
     };
 
     it('should create a session successfully', async () => {
-      const result = await service.create(createDto, 'tenant-123');
+      const result = await service.create(createDto, 'tenant-123', { role: 'admin' });
       expect(sessionRepository.create).toHaveBeenCalled();
       expect(sessionRepository.save).toHaveBeenCalled();
       expect(result).toBe(mockSession);
     });
 
     it('should send confirmation email', async () => {
-      await service.create(createDto, 'tenant-123');
+      await service.create(createDto, 'tenant-123', { role: 'admin' });
       expect(mailerService.sendMail).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw ForbiddenException if client booking is disabled', async () => {
+      featureFlagService.isFeatureEnabled.mockResolvedValue(false);
+      await expect(
+        service.create(createDto, 'tenant-123', { role: 'client' }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -428,6 +460,8 @@ describe('SessionsService', () => {
         'session-123',
         'tenant-123',
         'completed',
+        undefined,
+        'user-123',
       );
 
       expect(result.status).toBe('completed');
@@ -442,7 +476,7 @@ describe('SessionsService', () => {
       };
       sessionRepository.findOne.mockResolvedValue(inProgressSession);
 
-      await service.updateStatus('session-123', 'tenant-123', 'completed');
+      await service.updateStatus('session-123', 'tenant-123', 'completed', undefined, 'user-123');
 
       expect(
         gamificationService.checkAndUnlockAchievements,
@@ -453,7 +487,7 @@ describe('SessionsService', () => {
       const scheduledSession = { ...mockSession, status: 'scheduled' as const };
       sessionRepository.findOne.mockResolvedValue(scheduledSession);
 
-      await service.updateStatus('session-123', 'tenant-123', 'no_show');
+      await service.updateStatus('session-123', 'tenant-123', 'no_show', undefined, 'user-123');
 
       expect(packagesService.useSession).not.toHaveBeenCalled();
     });
@@ -469,6 +503,8 @@ describe('SessionsService', () => {
         'session-123',
         'tenant-123',
         'cancelled',
+        undefined,
+        'user-123',
       );
 
       expect(result.cancelledAt).toBeInstanceOf(Date);
@@ -483,6 +519,8 @@ describe('SessionsService', () => {
         'session-123',
         'tenant-123',
         'cancelled',
+        undefined,
+        'user-123',
       );
 
       expect(result.status).toBe('cancelled');
@@ -501,6 +539,7 @@ describe('SessionsService', () => {
         'tenant-123',
         'cancelled',
         true,
+        'user-123',
       );
 
       // If session was already deducted on book, cancelling shouldn't deduct again unless we are "charging" for it?
@@ -534,6 +573,7 @@ describe('SessionsService', () => {
         'session-123',
         updateDto,
         'tenant-123',
+        { role: 'admin' },
       );
 
       expect(result.notes).toBe('Updated notes');
@@ -591,7 +631,7 @@ describe('SessionsService', () => {
     });
 
     it('should create multiple sessions successfully', async () => {
-      const result = await service.createBulk(bulkDto, 'tenant-123');
+      const result = await service.createBulk(bulkDto, 'tenant-123', { role: 'admin' });
 
       expect(result.created).toBe(2);
       expect(result.errors).toHaveLength(0);
@@ -605,7 +645,7 @@ describe('SessionsService', () => {
         .mockResolvedValueOnce(mockSession)
         .mockRejectedValueOnce(new Error('Scheduling conflict'));
 
-      const result = await service.createBulk(bulkDto, 'tenant-123');
+      const result = await service.createBulk(bulkDto, 'tenant-123', { role: 'admin' });
 
       expect(result.created).toBe(1);
       expect(result.errors).toHaveLength(1);
@@ -655,12 +695,12 @@ describe('SessionsService', () => {
         parentSessionId: null,
       });
       await expect(
-        service.updateSeries('session-123', updateDto, 'tenant-123'),
+        service.updateSeries('session-123', updateDto, 'tenant-123', { role: 'admin' }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should update all future sessions in series', async () => {
-      await service.updateSeries('parent-123', updateDto, 'tenant-123');
+      await service.updateSeries('parent-123', updateDto, 'tenant-123', { role: 'admin' });
 
       // It should find sessions and save them as array
       expect(sessionRepository.save).toHaveBeenCalled();

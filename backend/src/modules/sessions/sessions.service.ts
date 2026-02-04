@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,6 +23,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
 
 export interface ConflictResult {
   hasConflicts: boolean;
@@ -56,6 +58,7 @@ export class SessionsService {
     private packagesService: PackagesService,
     private gamificationService: GamificationService,
     private readonly auditService: AuditService,
+    private readonly featureFlagService: FeatureFlagService,
   ) { }
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
@@ -115,7 +118,19 @@ export class SessionsService {
     return session;
   }
 
-  async create(dto: CreateSessionDto, tenantId: string): Promise<Session> {
+  async create(
+    dto: CreateSessionDto,
+    tenantId: string,
+    user?: any,
+  ): Promise<Session> {
+    // 0. Enforce client booking feature flag
+    if (user?.role === 'client') {
+      const canBook = await this.featureFlagService.isFeatureEnabled(tenantId, 'client.booking');
+      if (!canBook) {
+        throw new ForbiddenException('Client self-booking is currently disabled for this studio.');
+      }
+    }
+
     const startTime = new Date(dto.startTime);
     const endTime = new Date(dto.endTime);
 
@@ -250,12 +265,13 @@ export class SessionsService {
   async createBulk(
     bulkDto: BulkCreateSessionDto,
     tenantId: string,
+    user?: any,
   ): Promise<{ created: number; errors: any[] }> {
     const results = { created: 0, errors: [] as any[] };
 
     for (const [index, dto] of bulkDto.sessions.entries()) {
       try {
-        await this.create(dto, tenantId);
+        await this.create(dto, tenantId, user);
         results.created++;
       } catch (error) {
         this.logger.error(
@@ -832,6 +848,7 @@ export class SessionsService {
     id: string,
     dto: UpdateSessionDto,
     tenantId: string,
+    user?: any,
   ): Promise<Session> {
     const session = await this.findOne(id, tenantId);
 
@@ -1324,11 +1341,12 @@ export class SessionsService {
           shouldRefund = false;
         } else {
           // Check Policy
-          const tenant = await this.tenantRepository.findOne({
-            where: { id: tenantId },
-          });
-          const cancellationWindowHours =
-            tenant?.settings?.cancellationWindowHours || 48; // Default 48h
+          const isCancellationPolicyEnabled = await this.featureFlagService.isFeatureEnabled(tenantId, 'core.cancellation_policy');
+          const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
+
+          const cancellationWindowHours = isCancellationPolicyEnabled
+            ? (tenant?.settings?.cancellationWindowHours || 24)
+            : 24; // Default to 24h if feature is disabled/not included in plan
 
           const now = new Date();
           const sessionTime = new Date(session.startTime);
@@ -1412,6 +1430,7 @@ export class SessionsService {
     id: string,
     dto: UpdateSessionDto,
     tenantId: string,
+    user?: any,
   ): Promise<void> {
     const targetSession = await this.findOne(id, tenantId);
 

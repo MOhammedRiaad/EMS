@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, AlertCircle, Users } from 'lucide-react';
+import { Settings, Save, AlertCircle, Users, Palette, Upload } from 'lucide-react';
 import { tenantService } from '../../services/tenant.service';
 import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
@@ -21,6 +21,8 @@ const AdminSettings: React.FC = () => {
     const [timezone, setTimezone] = useState('UTC');
     const [reviewFilter, setReviewFilter] = useState<'all' | 'positive'>('all');
     const [allowCoachAvailabilityEdit, setAllowCoachAvailabilityEdit] = useState(false);
+    const [brandingColor, setBrandingColor] = useState('#7c3aed'); // Default purple
+    const [brandingLogo, setBrandingLogo] = useState('');
 
     const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
 
@@ -38,6 +40,8 @@ const AdminSettings: React.FC = () => {
                 setTimezone(settings.localization?.timezone ?? 'UTC');
                 setReviewFilter(settings.notifications?.reviewFilter ?? 'all');
                 setAllowCoachAvailabilityEdit(settings.allowCoachSelfEditAvailability ?? false);
+                setBrandingColor(settings.branding?.primaryColor ?? '#7c3aed');
+                setBrandingLogo(settings.branding?.logoUrl ?? '');
 
             } catch (err) {
                 console.error('Failed to fetch settings', err);
@@ -79,7 +83,12 @@ const AdminSettings: React.FC = () => {
                     ...currentSettings.notifications,
                     reviewFilter
                 },
-                allowCoachSelfEditAvailability: allowCoachAvailabilityEdit
+                allowCoachSelfEditAvailability: allowCoachAvailabilityEdit,
+                branding: {
+                    ...currentSettings.branding,
+                    primaryColor: brandingColor,
+                    logoUrl: brandingLogo
+                }
             };
 
             await tenantService.update(user.tenantId, {
@@ -150,6 +159,69 @@ const AdminSettings: React.FC = () => {
                                     />
                                     <p className="text-xs text-gray-400 mt-2">
                                         Sessions cancelled fewer than this many hours in advance will assume a credit was used.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Branding Settings */}
+                    {isEnabled('core.branding') && (
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                                <Palette className="text-pink-500" size={24} />
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Branding & Appearance</h2>
+                                    <p className="text-sm text-gray-500">Customize the look of your portal</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Primary Brand Color
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="color"
+                                            value={brandingColor}
+                                            onChange={(e) => setBrandingColor(e.target.value)}
+                                            className="h-10 w-20 rounded cursor-pointer border-0 p-0"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={brandingColor}
+                                            onChange={(e) => setBrandingColor(e.target.value)}
+                                            className="uppercase w-32 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        Used for buttons, links, and accents.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Logo URL
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-slate-700">
+                                            {brandingLogo ? (
+                                                <img src={brandingLogo} alt="Logo" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <Upload size={16} className="text-gray-400" />
+                                            )}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={brandingLogo}
+                                            onChange={(e) => setBrandingLogo(e.target.value)}
+                                            placeholder="https://..."
+                                            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        Direct link to your square logo image (PNG/JPG).
                                     </p>
                                 </div>
                             </div>

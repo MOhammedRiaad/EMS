@@ -3,7 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CoachesService } from './coaches.service';
 import { Coach } from './entities/coach.entity';
+import { CoachTimeOffRequest } from './entities/coach-time-off.entity';
+import { Tenant } from '../tenants/entities/tenant.entity';
 import { AuthService } from '../auth/auth.service';
+import { MailerService } from '../mailer/mailer.service';
+import { AuditService } from '../audit/audit.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('CoachesService', () => {
@@ -53,7 +57,29 @@ describe('CoachesService', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: getRepositoryToken(CoachTimeOffRequest),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Tenant),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: MailerService,
+          useValue: {
+            sendMail: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),

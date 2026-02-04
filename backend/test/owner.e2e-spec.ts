@@ -322,7 +322,7 @@ describe('Owner Portal (e2e)', () => {
                 .set('Authorization', `Bearer ${ownerToken}`)
                 .expect(200);
 
-            expect(tenantRes.body.tenant.plan).toBe('pro');
+            expect(tenantRes.body.tenant.plan.key).toBe('pro');
         });
     });
 });

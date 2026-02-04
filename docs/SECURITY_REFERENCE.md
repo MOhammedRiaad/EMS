@@ -33,9 +33,9 @@ The platform comes with several pre-defined system roles that cannot be deleted.
 | `platform_owner` | Full platform access. | All permissions (Super Admin) |
 | `support_owner` | Support staff access. | View all tenants, send broadcasts, view audit logs. |
 | `tenant_owner` | Studio owner. | Full control within their designated tenant. |
-| `admin` | Manager/Receptionist. | Operational control (bookings, clients) but no tenant settings. |
-| `coach` | Trainer/Coach. | Manage sessions, view assigned clients, track availability. |
-| `client` | Studio Member. | Book sessions, view progress, manage profile. |
+| `admin` | Manager/Receptionist. | Operational control (bookings, clients) but restricted access to studio settings. |
+| `coach` | Trainer/Coach. | Manage sessions, view assigned clients. Availability editing is conditionally restricted by studio settings. |
+| `client` | Studio Member. | Book sessions, view progress, manage profile. Features gated by studio plan. |
 
 ---
 
@@ -70,3 +70,32 @@ Every action in the Owner Portal is recorded in the `owner_audit_logs` table.
 - **Target**: The tenant or resource affected.
 - **Metadata**: JSON payload containing before/after states if applicable.
 - **Context**: IP Address and timestamp.
+
+---
+
+## 6. Feature-Gated Access
+
+In addition to RBAC, certain functionalities are gated by **Feature Flags** (Tenant settings) and **Plan Limits**.
+
+### Core Feature Flags
+- `core.branding`: Controls access to custom studio branding (colors/logo).
+- `core.cancellation_policy`: Controls the visibility and enforcement of cancellation windows.
+- `coach.portal`: Determines if the coach-specific portal and API endpoints are active.
+- `client.booking`: Enables/disables client-side session self-booking.
+
+### Behavioral Controls
+- `allowCoachSelfEditAvailability`: A tenant-wide setting that overrides the `coach` role's ability to modify their own schedule. When disabled, only Admins or Tenant Owners can manage coach availability.
+
+---
+
+## 7. Operational Permissions Matrix
+
+| Area | Permission Key | Role Access | Feature Dependency |
+| :--- | :--- | :--- | :--- |
+| **Settings** | `tenant.settings.update` | `tenant_owner` | N/A |
+| **Branding** | `core.branding` | `tenant_owner` | `core.branding` must be enabled |
+| **Sessions** | `session.create` | `admin`, `tenant_owner`, `client` (self) | `client.booking` for clients |
+| **Coaches** | `coach.availability.update`| `tenant_owner`, `admin`, `coach` (self)* | *Blocked if `allowCoachSelfEditAvailability` is false |
+| **Progress** | `client.progress.view` | `client`, `coach`, `admin` | `client.inbody_scans` must be enabled |
+| **Waitlist** | `core.waiting_list` | `admin`, `tenant_owner` | `core.waiting_list` must be enabled |
+

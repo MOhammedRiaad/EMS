@@ -7,6 +7,10 @@ import { Transaction } from '../packages/entities/transaction.entity';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { User } from '../auth/entities/user.entity';
+import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
+import { AuditService } from '../audit/audit.service';
+import { PermissionService } from '../auth/services/permission.service';
+import { RoleService } from '../auth/services/role.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('ClientsService', () => {
@@ -122,10 +126,35 @@ describe('ClientsService', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: getRepositoryToken(ClientProgressPhoto),
+          useValue: {
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
-            calculateDiff: jest.fn(),
+            calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: PermissionService,
+          useValue: {
+            getPermissionsForRole: jest.fn().mockResolvedValue([]),
+            isPermissionAllowed: jest.fn().mockReturnValue(true),
+            getUserPermissions: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: RoleService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([]),
+            getRoleByKey: jest.fn().mockResolvedValue(null),
           },
         },
       ],
@@ -137,8 +166,8 @@ describe('ClientsService', () => {
     authService = module.get(AuthService);
     mailerService = module.get(MailerService);
     // Mock auditService methods
-    module.get(require('../audit/audit.service').AuditService).log = jest.fn();
-    module.get(require('../audit/audit.service').AuditService).calculateDiff =
+    module.get(AuditService).log = jest.fn();
+    module.get(AuditService).calculateDiff =
       jest.fn().mockReturnValue({ changes: {} });
 
     jest.clearAllMocks();

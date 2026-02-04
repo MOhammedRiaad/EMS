@@ -7,6 +7,10 @@ import {
   WaitingListStatus,
 } from './entities/waiting-list.entity';
 import { NotFoundException } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service';
+import { SessionsService } from '../sessions/sessions.service';
+import { StudiosService } from '../studios/studios.service';
+import { ClientsService } from '../clients/clients.service';
 
 describe('WaitingListService', () => {
   let service: WaitingListService;
@@ -51,19 +55,25 @@ describe('WaitingListService', () => {
           },
         },
         {
-          provide: require('../studios/studios.service').StudiosService,
+          provide: StudiosService,
           useValue: {
             findOne: jest.fn(),
           },
         },
         {
-          provide: require('../clients/clients.service').ClientsService,
+          provide: ClientsService,
           useValue: {
             findOne: jest.fn(),
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: SessionsService,
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
@@ -144,7 +154,7 @@ describe('WaitingListService', () => {
       expect(result).toBe(mockEntry);
       expect(repository.findOne).toHaveBeenCalledWith({
         where: { id: 'entry-123', tenantId: 'tenant-123' },
-        relations: ['client', 'studio', 'coach', 'session', 'approver'],
+        relations: ['client', 'studio', 'coach', 'session', 'session.room', 'approver'],
       });
     });
 
@@ -202,7 +212,7 @@ describe('WaitingListService', () => {
       expect(result).toEqual([mockEntry]);
       expect(repository.find).toHaveBeenCalledWith({
         where: { clientId: 'client-123', tenantId: 'tenant-123' },
-        relations: ['studio', 'coach', 'session'],
+        relations: ['studio', 'coach', 'session', 'session.room'],
         order: { createdAt: 'DESC' },
       });
     });

@@ -80,7 +80,8 @@ describe('PlanLimitGuard', () => {
             await guard.canActivate(context);
             fail('Should have thrown ForbiddenException');
         } catch (e) {
-            expect(e).toBeInstanceOf(ForbiddenException);
+            const { HttpException } = require('@nestjs/common');
+            expect(e).toBeInstanceOf(HttpException);
             expect((e as any).response.statusCode).toBe(402);
             expect((e as any).response.message).toBe('Client limit reached');
         }

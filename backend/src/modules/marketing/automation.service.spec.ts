@@ -12,6 +12,8 @@ import {
   AutomationExecutionStatus,
 } from './entities/automation-execution.entity';
 import { MailerService } from '../mailer/mailer.service';
+import { UsageTrackingService } from '../owner/services/usage-tracking.service';
+import { AuditService } from '../audit/audit.service';
 
 describe('AutomationService', () => {
   let service: AutomationService;
@@ -85,10 +87,17 @@ describe('AutomationService', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: UsageTrackingService,
+          useValue: {
+            checkLimit: jest.fn().mockResolvedValue(null),
+            recordMetric: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
