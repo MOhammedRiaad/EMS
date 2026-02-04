@@ -31,10 +31,10 @@ export class User extends TenantScopedEntityWithUpdate {
 
   @Column({
     type: 'enum',
-    enum: ['male', 'female', 'other', 'pnts'],
-    default: 'pnts',
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    default: 'prefer_not_to_say',
   })
-  gender: 'male' | 'female' | 'other' | 'pnts';
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @Column({ name: 'first_name', type: 'varchar', length: 100, nullable: true })
   firstName: string | null;

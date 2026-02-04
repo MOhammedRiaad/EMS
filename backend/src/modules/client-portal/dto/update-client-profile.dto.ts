@@ -30,7 +30,7 @@ export class UpdateClientProfileDto {
   avatarUrl?: string;
 
   @ApiProperty({ required: false })
-  @IsEnum(['male', 'female', 'other', 'pnts'])
+  @IsEnum(['male', 'female', 'other', 'prefer_not_to_say'])
   @IsOptional()
   gender?: string;
 

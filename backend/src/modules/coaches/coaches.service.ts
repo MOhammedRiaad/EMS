@@ -25,7 +25,7 @@ export class CoachesService {
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly mailerService: MailerService,
-  ) {}
+  ) { }
 
   async findAll(tenantId: string, search?: string): Promise<Coach[]> {
     const query = this.coachRepository
@@ -81,7 +81,8 @@ export class CoachesService {
       return coaches.filter(
         (coach) =>
           coach.preferredClientGender === 'any' ||
-          coach.preferredClientGender === clientGender,
+          (clientGender !== 'prefer_not_to_say' &&
+            coach.preferredClientGender === clientGender),
       );
     }
 

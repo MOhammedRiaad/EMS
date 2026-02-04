@@ -7,7 +7,7 @@ export interface CoachFormData {
     password: string;
     firstName: string;
     lastName: string;
-    gender: 'male' | 'female' | 'other' | 'pnts';
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     studioId: string;
     bio: string;
     specializations: string;

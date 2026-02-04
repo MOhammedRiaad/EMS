@@ -56,7 +56,7 @@ export class SessionsService {
     private packagesService: PackagesService,
     private gamificationService: GamificationService,
     private readonly auditService: AuditService,
-  ) {}
+  ) { }
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
     const qb = this.sessionRepository
@@ -1201,9 +1201,9 @@ export class SessionsService {
     if (availableSessions <= 0) {
       throw new BadRequestException(
         `Client has no available sessions for booking. ` +
-          `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
-          `Already scheduled: ${scheduledSessionsCount}. ` +
-          `Please complete existing sessions or renew the package.`,
+        `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+        `Already scheduled: ${scheduledSessionsCount}. ` +
+        `Please complete existing sessions or renew the package.`,
       );
     }
   }
@@ -1232,8 +1232,7 @@ export class SessionsService {
     if (coachPreference && coachPreference !== 'any') {
       if (
         clientGender &&
-        clientGender !== 'pnts' &&
-        coachPreference !== clientGender
+        (clientGender === 'prefer_not_to_say' || coachPreference !== clientGender)
       ) {
         throw new BadRequestException(
           `This coach prefers to work with ${coachPreference} clients.`,

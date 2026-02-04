@@ -33,7 +33,7 @@ export class ClientsService {
     private readonly authService: AuthService,
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
-  ) {}
+  ) { }
 
   async findAll(tenantId: string, search?: string): Promise<Client[]> {
     const query = this.clientRepository
@@ -203,6 +203,10 @@ export class ClientsService {
     // Update user gender if provided and client has a linked user
     if (gender && client.userId) {
       await this.userRepository.update(client.userId, { gender });
+      // Update in-memory user object so the response reflects the change
+      if (client.user) {
+        client.user.gender = gender;
+      }
     }
 
     if (Object.keys(changes).length > 0 || gender) {

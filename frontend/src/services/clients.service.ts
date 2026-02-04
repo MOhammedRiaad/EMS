@@ -32,7 +32,7 @@ export interface Client {
     } | null;
     user?: {
         id: string;
-        gender?: 'male' | 'female' | 'other' | 'pnts';
+        gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     } | null;
 }
 
