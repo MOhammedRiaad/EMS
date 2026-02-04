@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { TrendingUp, Target } from 'lucide-react';
+import { TrendingUp, Target, Lock } from 'lucide-react';
 import InBodyTrendsChart from '../inbody/InBodyTrendsChart';
 import { useClientProgressState } from './useClientProgressState';
 import { StatsCards, ScanHistoryList, EmptyScansState, GoalProgress } from './ClientProgressComponents';
 import { AchievementsSection } from '../../components/client/gamification/AchievementsSection';
 import { useClientGoals } from '../../hooks/useClientGoals';
 import { GoalSettingModal } from '../../components/client/gamification/GoalSettingModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ClientProgress = () => {
+    const { isEnabled } = useAuth();
     const { scans, latestScan, loading, error } = useClientProgressState();
     const { goals, refetch: refetchGoals } = useClientGoals();
     const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
@@ -15,6 +17,21 @@ const ClientProgress = () => {
 
     const weightGoal = goals.find((g: any) => g.goalType === 'weight')?.targetValue;
     const bodyFatGoal = goals.find((g: any) => g.goalType === 'body_fat')?.targetValue;
+
+    const showGoals = isEnabled('client.goals');
+    const showAchievements = isEnabled('client.achievements');
+
+    if (!isEnabled('client.inbody_scans') && !showGoals && !showAchievements) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
+                <div className="p-4 bg-gray-100 dark:bg-slate-800 rounded-full">
+                    <Lock size={48} className="text-gray-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Feature Not Available</h2>
+                <p className="text-gray-500 max-w-md">Progress tracking is currently disabled for this studio.</p>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -56,7 +73,7 @@ const ClientProgress = () => {
                 {latestScan && <StatsCards latestScan={latestScan} previousScan={previousScan} />}
 
                 {/* Goal Progress */}
-                {latestScan && (
+                {latestScan && showGoals && (
                     <div className="relative mb-6 group">
                         <GoalProgress
                             currentWeight={latestScan.weight}
@@ -75,7 +92,7 @@ const ClientProgress = () => {
                 )}
 
                 {/* Achievement Badges */}
-                <AchievementsSection />
+                {showAchievements && <AchievementsSection />}
 
                 {/* Charts */}
                 {scans.length > 0 ? (

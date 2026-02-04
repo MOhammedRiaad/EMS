@@ -191,9 +191,10 @@ interface NextSessionCardProps {
         room?: { name: string };
         coach?: { user?: { firstName: string | null; lastName: string | null } };
     } | undefined;
+    canBook?: boolean;
 }
 
-export const NextSessionCard: React.FC<NextSessionCardProps> = ({ nextSession }) => {
+export const NextSessionCard: React.FC<NextSessionCardProps> = ({ nextSession, canBook = true }) => {
     if (nextSession) {
         return (
             <div className="relative overflow-hidden rounded-3xl animate-fade-in-up">
@@ -260,15 +261,31 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({ nextSession })
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur flex items-center justify-center animate-float">
                     <Zap className="text-white" size={40} />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Ready to train?</h3>
-                <p className="text-purple-100 mb-6 text-sm">Book your next EMS session and crush your goals!</p>
-                <Link
-                    to="/client/book"
-                    className="inline-flex items-center bg-white text-purple-600 px-6 py-3 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all active:scale-95 hover:-translate-y-1"
-                >
-                    <Calendar size={18} className="mr-2" />
-                    Book Now
-                </Link>
+                {canBook ? (
+                    <>
+                        <h3 className="text-2xl font-bold text-white mb-2">Ready to train?</h3>
+                        <p className="text-purple-100 mb-6 text-sm">Book your next EMS session and crush your goals!</p>
+                        <Link
+                            to="/client/book"
+                            className="inline-flex items-center bg-white text-purple-600 px-6 py-3 rounded-xl font-bold shadow-xl hover:shadow-2xl transition-all active:scale-95 hover:-translate-y-1"
+                        >
+                            <Calendar size={18} className="mr-2" />
+                            Book Now
+                        </Link>
+                    </>
+                ) : (
+                    <>
+                        <h3 className="text-2xl font-bold text-white mb-2">No Upcoming Sessions</h3>
+                        <p className="text-purple-100 mb-6 text-sm">Your scheduled sessions will appear here.</p>
+                        <Link
+                            to="/client/schedule"
+                            className="inline-flex items-center bg-white/20 text-white border border-white/40 px-6 py-3 rounded-xl font-bold hover:bg-white/30 transition-all"
+                        >
+                            <Calendar size={18} className="mr-2" />
+                            View Schedule
+                        </Link>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -402,22 +419,35 @@ export const WaitingListCard: React.FC<WaitingListCardProps> = ({ entries, onCan
 // ============================================================================
 // Quick Actions - Premium Grid
 // ============================================================================
-export const QuickActionsCard: React.FC = () => (
-    <div className="grid grid-cols-2 gap-3 animate-fade-in-up stagger-3">
-        <Link to="/client/schedule" className="premium-card p-4 flex flex-col items-center text-center group hover:border-blue-200 dark:hover:border-blue-900">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
-                <Calendar size={22} />
-            </div>
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Schedule</span>
-        </Link>
-        <Link to="/client/progress" className="premium-card p-4 flex flex-col items-center text-center group hover:border-green-200 dark:hover:border-green-900">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg shadow-green-500/30">
-                <TrendingUp size={22} />
-            </div>
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Progress</span>
-        </Link>
-    </div>
-);
+interface QuickActionsProps {
+    showSchedule?: boolean;
+    showProgress?: boolean;
+}
+
+export const QuickActionsCard: React.FC<QuickActionsProps> = ({ showSchedule = true, showProgress = true }) => {
+    if (!showSchedule && !showProgress) return null;
+
+    return (
+        <div className={`grid ${showSchedule && showProgress ? 'grid-cols-2' : 'grid-cols-1'} gap-3 animate-fade-in-up stagger-3`}>
+            {showSchedule && (
+                <Link to="/client/schedule" className="premium-card p-4 flex flex-col items-center text-center group hover:border-blue-200 dark:hover:border-blue-900">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/30">
+                        <Calendar size={22} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Schedule</span>
+                </Link>
+            )}
+            {showProgress && (
+                <Link to="/client/progress" className="premium-card p-4 flex flex-col items-center text-center group hover:border-green-200 dark:hover:border-green-900">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-lg shadow-green-500/30">
+                        <TrendingUp size={22} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Progress</span>
+                </Link>
+            )}
+        </div>
+    );
+};
 
 
 

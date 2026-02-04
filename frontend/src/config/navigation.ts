@@ -78,8 +78,8 @@ export const NAVIGATION_ITEMS: NavItem[] = [
 
     // Client Portal
     { id: 'client-home', path: '/client/home', label: 'Home', icon: Home, section: 'client-portal', requiredRole: ['client'] },
-    { id: 'client-schedule', path: '/client/schedule', label: 'Schedule', icon: Calendar, section: 'client-portal', requiredRole: ['client'] },
-    { id: 'client-leaderboard', path: '/client/leaderboard', label: 'Leaderboard', icon: Trophy, section: 'client-portal', requiredRole: ['client'] },
+    { id: 'client-schedule', path: '/client/schedule', label: 'Schedule', icon: Calendar, section: 'client-portal', requiredRole: ['client'], requiredFeature: 'core.sessions' },
+    { id: 'client-leaderboard', path: '/client/leaderboard', label: 'Leaderboard', icon: Trophy, section: 'client-portal', requiredRole: ['client'], requiredFeature: 'client.leaderboard' },
     { id: 'client-profile', path: '/client/profile', label: 'Profile', icon: Users, section: 'client-portal', requiredRole: ['client'] },
 
     // Coach Portal

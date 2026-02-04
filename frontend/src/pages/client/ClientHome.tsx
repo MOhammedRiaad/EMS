@@ -12,7 +12,7 @@ import { ActivityFeed } from '../../components/client/social/ActivityFeed';
 import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
 
 const ClientHome = () => {
-    const { user } = useAuth();
+    const { user, isEnabled } = useAuth();
     const state = useClientHomeState();
 
     if (state.loading) {
@@ -35,6 +35,11 @@ const ClientHome = () => {
     }
 
     const { nextSession, activePackage } = state.data || {};
+
+    const showWaitingList = isEnabled('core.waiting_list');
+    const showSessions = isEnabled('core.sessions');
+    const showProgress = isEnabled('client.inbody_scans');
+    const canBook = isEnabled('client.booking');
 
     return (
         <div className="relative min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
@@ -64,33 +69,42 @@ const ClientHome = () => {
                         <NotificationsSection notifications={state.importantNotifications} />
 
                         {/* Main Action Card (Next Session or Booking) */}
-                        <section>
-                            <NextSessionCard nextSession={nextSession} />
-                        </section>
+                        {showSessions && (
+                            <section>
+                                <NextSessionCard nextSession={nextSession} canBook={canBook} />
+                            </section>
+                        )}
 
                         {/* Active Plan & Stats */}
                         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <ActivePackageCard activePackage={activePackage} />
-                            <WaitingListCard
-                                entries={state.waitingList}
-                                onCancel={state.handleCancelWaitingList}
+                            {showWaitingList && (
+                                <WaitingListCard
+                                    entries={state.waitingList}
+                                    onCancel={state.handleCancelWaitingList}
+                                />
+                            )}
+                            <QuickActionsCard
+                                showSchedule={showSessions}
+                                showProgress={showProgress}
                             />
-                            <QuickActionsCard />
                         </section>
                     </div>
 
                     {/* Sidebar Column */}
                     <div className="space-y-6">
                         <CalendarSyncWidget />
-                        <div className="sticky top-6">
-                            <ActivityFeed />
-                        </div>
+                        {isEnabled('client.activity_feed') && (
+                            <div className="sticky top-6">
+                                <ActivityFeed />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Floating Action Button */}
-            <FloatingBookButton />
+            {showSessions && canBook && <FloatingBookButton />}
         </div>
     );
 };
