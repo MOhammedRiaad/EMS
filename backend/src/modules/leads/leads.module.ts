@@ -7,15 +7,17 @@ import { LeadService } from './lead.service';
 
 import { ClientsModule } from '../clients/clients.module';
 import { MarketingModule } from '../marketing/marketing.module';
+import { OwnerModule } from '../owner/owner.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Lead, LeadActivity]),
     ClientsModule,
     MarketingModule,
+    OwnerModule,
   ],
   controllers: [LeadController],
   providers: [LeadService],
   exports: [TypeOrmModule, LeadService],
 })
-export class LeadsModule {}
+export class LeadsModule { }

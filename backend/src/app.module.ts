@@ -15,6 +15,7 @@ import { DevicesModule } from './modules/devices/devices.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { HealthController } from './common/health.controller';
+import { HealthService } from './common/health.service';
 import { StorageModule } from './modules/storage/storage.module';
 import { MailerModule } from './modules/mailer/mailer.module';
 import { InBodyScansModule } from './modules/inbody-scans/inbody-scans.module';
@@ -37,6 +38,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { MarketingModule } from './modules/marketing/marketing.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { OwnerModule } from './modules/owner/owner.module';
 
 @Module({
   imports: [
@@ -59,11 +61,11 @@ import { AuditModule } from './modules/audit/audit.module';
             transport: isProduction
               ? undefined
               : {
-                  target: 'pino-pretty',
-                  options: {
-                    singleLine: true,
-                  },
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
                 },
+              },
           },
         };
       },
@@ -133,13 +135,15 @@ import { AuditModule } from './modules/audit/audit.module';
     LeadsModule,
     MarketingModule,
     AuditModule,
+    OwnerModule,
   ],
   controllers: [HealthController],
   providers: [
+    HealthService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

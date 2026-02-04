@@ -21,8 +21,11 @@ import {
 import { JwtPayload } from './strategies/jwt.strategy';
 import { TenantsService } from '../tenants/tenants.service';
 import { MailerService } from '../mailer/mailer.service';
-
 import { AuditService } from '../audit/audit.service';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { PermissionService } from './services/permission.service';
+import { RoleService } from './services/role.service';
+import { isPermissionAllowed } from '../../config/permissions.config';
 
 @Injectable()
 export class AuthService {
@@ -35,7 +38,10 @@ export class AuthService {
     private readonly tenantsService: TenantsService,
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
-  ) {}
+    private readonly permissionService: PermissionService,
+    private readonly roleService: RoleService,
+    private readonly featureFlagService: FeatureFlagService,
+  ) { }
 
   // Public registration - creates new Tenant + Tenant Owner
   async register(dto: RegisterTenantOwnerDto) {
@@ -431,10 +437,49 @@ export class AuthService {
     return { message: 'Password has been reset successfully.' };
   }
 
-  private generateTokens(
+  private async generateTokens(
     user: User,
     tenant?: { id: string; name: string; isComplete: boolean; settings?: any },
   ) {
+    // Get user permissions
+    let permissions = await this.permissionService.getUserPermissions(user.id);
+
+    // SELF-HEALING: If no permissions found, check if user needs migration from legacy role
+    if (permissions.length === 0 && user.role) {
+      const legacyRoleKey = user.role;
+      const role = await this.roleService.getRoleByKey(legacyRoleKey);
+
+      if (role) {
+        // Assign the role to the user
+        await this.roleService.assignRoleToUser(user.id, role.id);
+        // Refetch permissions
+        permissions = await this.permissionService.getUserPermissions(user.id);
+      }
+    }
+
+    // Get tenant features
+    let enabledFeatures: string[] = [];
+    if (user.tenantId) {
+      const features = await this.featureFlagService.getFeaturesForTenant(user.tenantId);
+      enabledFeatures = features
+        .filter((f: any) => f.enabled)
+        .map((f: any) => f.feature.key);
+    }
+
+    // DYNAMIC PERMISSION FILTERING
+    // Filter out permissions that are restricted by disabled features
+    // This ensures Plan limits are enforced even if the Role has the permission.
+    const filteredPermissions = permissions.filter(p => isPermissionAllowed(p.key, enabledFeatures));
+    const permissionKeys = filteredPermissions.map((p) => p.key);
+
+    // Enforce Tenant Feature Access
+    if (user.role === 'client' && !enabledFeatures.includes('client.portal')) {
+      throw new ForbiddenException('Client portal access is disabled for this tenant.');
+    }
+    if (user.role === 'coach' && !enabledFeatures.includes('coach.portal')) {
+      throw new ForbiddenException('Coach portal access is disabled for this tenant.');
+    }
+
     const payload: JwtPayload = {
       sub: user.id,
       tenantId: user.tenantId,
@@ -453,15 +498,13 @@ export class AuthService {
         role: user.role,
         tenantId: user.tenantId,
         clientId: user.client?.id,
+        permissions: permissionKeys,
+        features: enabledFeatures,
       },
-      tenant: tenant
-        ? {
-            id: tenant.id,
-            name: tenant.name,
-            isComplete: tenant.isComplete,
-            settings: tenant.settings,
-          }
-        : undefined,
+      tenant: tenant ? {
+        ...tenant,
+        features: enabledFeatures,
+      } : undefined,
     };
   }
   async update(id: string, updateData: Partial<User>) {

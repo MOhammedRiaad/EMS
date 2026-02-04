@@ -46,6 +46,8 @@ const formatErrorMessage = (errorData: any): string => {
     return errorData.error || 'API request failed';
 };
 
+export const apiEvents = new EventTarget();
+
 export const api = {
     async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<{ data: T }> {
         const url = new URL(`${API_URL}${endpoint}`);
@@ -63,6 +65,9 @@ export const api = {
 
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts);
         }
@@ -81,6 +86,9 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts);
         }
@@ -98,6 +106,9 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts);
         }
@@ -115,6 +126,9 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts);
         }
@@ -131,6 +145,9 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts);
         }

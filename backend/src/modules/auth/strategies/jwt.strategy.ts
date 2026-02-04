@@ -7,7 +7,7 @@ export interface JwtPayload {
   sub: string;
   tenantId: string;
   email: string;
-  role: 'tenant_owner' | 'admin' | 'coach' | 'client';
+  role: 'platform_owner' | 'owner' | 'tenant_owner' | 'admin' | 'coach' | 'client';
   clientId?: string;
 }
 

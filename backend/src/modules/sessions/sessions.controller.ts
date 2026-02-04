@@ -23,18 +23,19 @@ import {
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
 
 import { SessionParticipantsService } from './session-participants.service';
 
 @ApiTags('sessions')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
 @Controller('sessions')
 export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
     private readonly participantsService: SessionParticipantsService,
-  ) {}
+  ) { }
 
   @Get()
   @UseInterceptors(CacheInterceptor)
@@ -53,6 +54,7 @@ export class SessionsController {
   }
 
   @Post()
+  @CheckPlanLimit('sessions')
   @ApiOperation({ summary: 'Create a new session (with conflict checking)' })
   create(@Body() dto: CreateSessionDto, @TenantId() tenantId: string) {
     return this.sessionsService.create(dto, tenantId);
@@ -65,6 +67,7 @@ export class SessionsController {
   }
 
   @Post('bulk')
+  @CheckPlanLimit('sessions')
   @ApiOperation({ summary: 'Bulk create sessions' })
   createBulk(@Body() dto: BulkCreateSessionDto, @TenantId() tenantId: string) {
     return this.sessionsService.createBulk(dto, tenantId);

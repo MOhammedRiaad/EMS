@@ -17,9 +17,16 @@ describe('StudiosService', () => {
     address: '123 Main St',
     city: 'New York',
     country: 'USA',
+    timezone: 'Europe/Berlin',
+    openingHours: {},
+    contactEmail: 'studio@example.com',
+    contactPhone: '+1234567890',
     active: true,
     rooms: [],
-  } as Studio;
+    tenant: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  } as unknown as Studio;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

@@ -16,18 +16,19 @@ import { CreateClientDto, UpdateClientDto } from './dto';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
 
 import { WaiversService } from '../waivers/waivers.service';
 
 @ApiTags('clients')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
 @Controller('clients')
 export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly waiversService: WaiversService,
-  ) {}
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'List all clients for tenant' })
@@ -48,12 +49,14 @@ export class ClientsController {
   }
 
   @Post()
+  @CheckPlanLimit('clients')
   @ApiOperation({ summary: 'Create a new client' })
   create(@Body() dto: CreateClientDto, @TenantId() tenantId: string) {
     return this.clientsService.create(dto, tenantId);
   }
 
   @Post('create-with-user')
+  @CheckPlanLimit('clients')
   @ApiOperation({ summary: 'Create client with user account' })
   createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
     return this.clientsService.createWithUser(dto, tenantId);
@@ -105,6 +108,7 @@ export class ClientsController {
   }
 
   @Post(':id/photos')
+  @CheckPlanLimit('storage')
   @ApiOperation({ summary: 'Add progress photo' })
   addPhoto(
     @Param('id') id: string,

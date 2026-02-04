@@ -13,10 +13,12 @@ import { Activity, Heart, Calendar, Scale, Star } from 'lucide-react';
 import { clientsService } from '../../services/clients.service';
 import { api } from '../../services/api';
 import { getImageUrl } from '../../utils/imageUtils';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ClientDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { isEnabled } = useAuth();
     const [client, setClient] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
@@ -141,32 +143,34 @@ const ClientDetailsPage: React.FC = () => {
             </div>
 
             <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-                <nav className="-mb-px flex space-x-8">
+                <nav className="-mb-px flex space-x-8 overflow-x-auto">
                     {[
-                        { id: 'overview', label: 'Overview', icon: User },
-                        { id: 'finance', label: 'Finance', icon: Wallet },
-                        { id: 'waivers', label: 'Waivers', icon: FileText },
-                        { id: 'parq', label: 'PAR-Q', icon: Activity },
-                        { id: 'health', label: 'Health & Progress', icon: Heart },
-                        { id: 'sessions', label: 'Sessions', icon: Calendar },
-                        { id: 'inbody', label: 'InBody', icon: Scale },
-                        { id: 'reviews', label: 'Reviews', icon: Star },
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`
+                        { id: 'overview', label: 'Overview', icon: User, text: 'Overview' },
+                        { id: 'finance', label: 'Finance', icon: Wallet, feature: 'finance.client_wallet' },
+                        { id: 'waivers', label: 'Waivers', icon: FileText, feature: 'compliance.waivers' },
+                        { id: 'parq', label: 'PAR-Q', icon: Activity, feature: 'compliance.parq' },
+                        { id: 'health', label: 'Health & Progress', icon: Heart, feature: 'client.progress_tracking' },
+                        { id: 'sessions', label: 'Sessions', icon: Calendar, feature: 'core.sessions' },
+                        { id: 'inbody', label: 'InBody', icon: Scale, feature: 'client.inbody_scans' },
+                        { id: 'reviews', label: 'Reviews', icon: Star, feature: 'client.reviews' },
+                    ]
+                        .filter(tab => !tab.feature || isEnabled(tab.feature))
+                        .map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`
                                 flex items-center whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
                                 ${activeTab === tab.id
-                                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                                }
+                                        ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                    }
                             `}
-                        >
-                            <tab.icon className={`mr-2 h-5 w-5 ${activeTab === tab.id ? 'text-primary-500' : 'text-gray-400'}`} />
-                            {tab.label}
-                        </button>
-                    ))}
+                            >
+                                <tab.icon className={`mr-2 h-5 w-5 ${activeTab === tab.id ? 'text-primary-500' : 'text-gray-400'}`} />
+                                {tab.label}
+                            </button>
+                        ))}
                 </nav>
             </div>
 

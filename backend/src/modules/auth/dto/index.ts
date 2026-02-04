@@ -97,6 +97,7 @@ export class AuthResponseDto {
     role: string;
     tenantId: string;
     clientId?: string;
+    permissions: string[];
   };
 
   @ApiPropertyOptional()

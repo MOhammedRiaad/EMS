@@ -41,6 +41,7 @@ import AnnouncementManager from './pages/admin/marketing/announcements/Announcem
 import { AuthProvider } from './contexts/AuthContext';
 import { MenuPreferencesProvider } from './contexts/MenuPreferencesContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { NavigationProvider } from './contexts/NavigationContext';
 import './styles/variables.css';
 import SetupPassword from './pages/auth/SetupPassword';
 import ClientLayout from './components/layout/ClientLayout';
@@ -57,7 +58,8 @@ import NotificationPreferences from './pages/client/NotificationPreferences';
 import PrivacySettings from './pages/client/PrivacySettings';
 import HelpSupport from './pages/client/HelpSupport';
 import { LeaderboardPage } from './pages/client/LeaderboardPage';
-import RoleGuard from './components/auth/RoleGuard';
+
+import PermissionGuard from './components/auth/PermissionGuard';
 
 import CoachLayout from './components/layout/CoachLayout';
 import CoachHome from './pages/coach/CoachHome';
@@ -67,108 +69,154 @@ import CoachClientDetails from './pages/coach/CoachClientDetails';
 import CoachAvailability from './pages/coach/CoachAvailability';
 import CoachSettings from './pages/coach/CoachSettings';
 
+import OwnerLayout from './components/layout/OwnerLayout';
+import OwnerDashboard from './pages/owner/OwnerDashboard';
+import OwnerTenants from './pages/owner/OwnerTenants';
+import OwnerTenantDetails from './pages/owner/OwnerTenantDetails';
+import OwnerUpgradeRequests from './pages/owner/OwnerUpgradeRequests';
+// New imports
+import OwnerRoles from './pages/owner/OwnerRoles';
+import OwnerAdmins from './pages/owner/OwnerAdmins';
+import OwnerAuditLogs from './pages/owner/OwnerAuditLogs';
+import OwnerAnalytics from './pages/owner/OwnerAnalytics';
+import OwnerAlerts from './pages/owner/OwnerAlerts';
+import OwnerFeatures from './pages/owner/OwnerFeatures';
+import OwnerPlans from './pages/owner/OwnerPlans';
+import OwnerSettings from './pages/owner/OwnerSettings';
+import OwnerAutomations from './pages/owner/OwnerAutomations';
+import OwnerMessaging from './pages/owner/OwnerMessaging';
+import OwnerCompliance from './pages/owner/OwnerCompliance';
+
+import LimitReachedModal from './components/admin/LimitReachedModal';
+
 function App() {
   return (
     <ThemeProvider>
       <MenuPreferencesProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/onboarding" element={<TenantOnboarding />} />
-              <Route path="/auth/setup" element={<SetupPassword />} />
+          <NavigationProvider>
+            <BrowserRouter>
+              <LimitReachedModal />
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/onboarding" element={<TenantOnboarding />} />
+                <Route path="/auth/setup" element={<SetupPassword />} />
 
-              {/* Client Portal Routes */}
-              <Route element={<RoleGuard allowedRoles={['client']} />}>
-                <Route path="/client" element={<ClientLayout />}>
-                  <Route index element={<Navigate to="home" replace />} />
-                  <Route path="home" element={<ClientHome />} />
-                  <Route path="schedule" element={<ClientSchedule />} />
-                  <Route path="book" element={<ClientBooking />} />
-                  <Route path="progress" element={<ClientProgress />} />
-                  <Route path="profile" element={<ClientProfile />} />
-                  <Route path="notifications" element={<NotificationPreferences />} />
-                  <Route path="leaderboard" element={<LeaderboardPage />} />
-                  <Route path="privacy" element={<PrivacySettings />} />
-                  <Route path="help" element={<HelpSupport />} />
-                  <Route path="account" element={<ClientAccount />} />
-                  <Route path="packages" element={<ClientPackages />} />
-                  <Route path="waitlist" element={<ClientWaitlist />} />
-                </Route>
-              </Route>
-
-              {/* Coach Portal Routes */}
-              <Route element={<RoleGuard allowedRoles={['coach']} />}>
-                <Route path="/coach" element={<CoachLayout />}>
-                  <Route index element={<Navigate to="home" replace />} />
-                  <Route path="home" element={<CoachHome />} />
-                  <Route path="clients" element={<CoachClients />} />
-                  <Route path="clients/:id" element={<CoachClientDetails />} />
-                  <Route path="availability" element={<CoachAvailability />} />
-                  <Route path="time-off" element={<CoachTimeOff />} />
-                  <Route path="inbody/new/:clientId" element={<InBodyScanForm />} />
-                  <Route path="settings" element={<CoachSettings />} />
-                </Route>
-              </Route>
-
-              {/* Admin / Studio Routes */}
-              <Route element={<RoleGuard allowedRoles={['admin', 'tenant_owner']} />}>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="sessions" element={<Sessions />} />
-                  <Route path="sessions/new" element={<SessionCreatePage />} />
-                  <Route path="sessions/:id/edit" element={<SessionCreatePage />} />
-
-                  <Route path="clients" element={<Clients />} />
-                  <Route path="clients/:id" element={<ClientDetailsPage />} />
-                  <Route path="coaches" element={<Coaches />} />
-                  <Route path="coaches/create" element={<CreateCoach />} />
-                  <Route path="coaches/:id/availability" element={<CoachAvailabilityPage />} />
-
-                  <Route path="retail/products" element={<ProductListPage />} />
-                  <Route path="retail/inventory" element={<InventoryPage />} />
-                  <Route path="retail/pos" element={<POSPage />} />
-                  <Route path="retail/reports" element={<RetailReportsPage />} />
-
-                  <Route path="studios" element={<Studios />} />
-                  <Route path="rooms" element={<Rooms />} />
-                  <Route path="devices" element={<Devices />} />
-
-                  <Route path="inbody" element={<InBodyScans />} />
-                  <Route path="inbody/new" element={<InBodyScanForm />} />
-                  <Route path="inbody/edit/:scanId" element={<InBodyScanForm />} />
-
-                  <Route path="admin/users" element={<UserManagement />} />
-                  <Route path="admin/coach-performance" element={<CoachPerformance />} />
-                  <Route path="admin/waiting-list" element={<AdminWaitingList />} />
-                  <Route path="admin/reviews" element={<Reviews />} />
-                  <Route path="admin/packages" element={<AdminPackages />} />
-                  <Route path="admin/cash-flow" element={<AdminCashFlow />} />
-                  <Route path="admin/settings" element={<AdminSettings />} />
-                  <Route path="admin/branding" element={<BrandSettings />} />
-                  <Route path="analytics" element={<Analytics />} />
-                  <Route path="admin/audit-logs" element={<AuditLogsPage />} />
-                  <Route path="admin/announcements" element={<AnnouncementManager />} />
-                  <Route path="admin/time-off" element={<TimeOffRequests />} />
-
-                  {/* Marketing Routes */}
-                  <Route path="admin/marketing" element={<MarketingDashboard />}>
-                    <Route index element={<Navigate to="leads" replace />} />
-                    <Route path="leads" element={<LeadKanbanBoard />} />
-                    <Route path="leads/list" element={<LeadListView />} />
-                    <Route path="automations" element={<AutomationList />} />
-                    <Route path="queue" element={<AutomationQueue />} />
-                    <Route path="reports" element={<MarketingReports />} />
+                {/* Client Portal Routes */}
+                <Route element={<PermissionGuard requiredPermissions={['session.read']} />}>
+                  <Route path="/client" element={<ClientLayout />}>
+                    <Route index element={<Navigate to="home" replace />} />
+                    <Route path="home" element={<ClientHome />} />
+                    <Route path="schedule" element={<ClientSchedule />} />
+                    <Route path="book" element={<ClientBooking />} />
+                    <Route path="progress" element={<ClientProgress />} />
+                    <Route path="profile" element={<ClientProfile />} />
+                    <Route path="notifications" element={<NotificationPreferences />} />
+                    <Route path="leaderboard" element={<LeaderboardPage />} />
+                    <Route path="privacy" element={<PrivacySettings />} />
+                    <Route path="help" element={<HelpSupport />} />
+                    <Route path="account" element={<ClientAccount />} />
+                    <Route path="packages" element={<ClientPackages />} />
+                    <Route path="waitlist" element={<ClientWaitlist />} />
                   </Route>
                 </Route>
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+
+                {/* Coach Portal Routes */}
+                <Route element={<PermissionGuard requiredPermissions={['coach.availability.self.edit']} />}>
+                  <Route path="/coach" element={<CoachLayout />}>
+                    <Route index element={<Navigate to="home" replace />} />
+                    <Route path="home" element={<CoachHome />} />
+                    <Route path="clients" element={<CoachClients />} />
+                    <Route path="clients/:id" element={<CoachClientDetails />} />
+                    <Route path="availability" element={<CoachAvailability />} />
+                    <Route path="time-off" element={<CoachTimeOff />} />
+                    <Route path="inbody/new/:clientId" element={<InBodyScanForm />} />
+                    <Route path="settings" element={<CoachSettings />} />
+                  </Route>
+                </Route>
+
+                {/* Admin / Studio Routes */}
+                <Route element={<PermissionGuard requiredPermissions={['tenant.settings.read']} />}>
+                  <Route path="/" element={<Layout />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="sessions" element={<Sessions />} />
+                    <Route path="sessions/new" element={<SessionCreatePage />} />
+                    <Route path="sessions/:id/edit" element={<SessionCreatePage />} />
+
+                    <Route path="clients" element={<Clients />} />
+                    <Route path="clients/:id" element={<ClientDetailsPage />} />
+                    <Route path="coaches" element={<Coaches />} />
+                    <Route path="coaches/create" element={<CreateCoach />} />
+                    <Route path="coaches/:id/availability" element={<CoachAvailabilityPage />} />
+
+                    <Route path="retail/products" element={<ProductListPage />} />
+                    <Route path="retail/inventory" element={<InventoryPage />} />
+                    <Route path="retail/pos" element={<POSPage />} />
+                    <Route path="retail/reports" element={<RetailReportsPage />} />
+
+                    <Route path="studios" element={<Studios />} />
+                    <Route path="rooms" element={<Rooms />} />
+                    <Route path="devices" element={<Devices />} />
+
+                    <Route path="inbody" element={<InBodyScans />} />
+                    <Route path="inbody/new" element={<InBodyScanForm />} />
+                    <Route path="inbody/edit/:scanId" element={<InBodyScanForm />} />
+
+                    <Route path="admin/users" element={<UserManagement />} />
+                    <Route path="admin/coach-performance" element={<CoachPerformance />} />
+                    <Route path="admin/waiting-list" element={<AdminWaitingList />} />
+                    <Route path="admin/reviews" element={<Reviews />} />
+                    <Route path="admin/packages" element={<AdminPackages />} />
+                    <Route path="admin/cash-flow" element={<AdminCashFlow />} />
+                    <Route path="admin/settings" element={<AdminSettings />} />
+                    <Route path="admin/branding" element={<BrandSettings />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+                    <Route path="admin/announcements" element={<AnnouncementManager />} />
+                    <Route path="admin/time-off" element={<TimeOffRequests />} />
+
+                    {/* Marketing Routes */}
+                    <Route path="admin/marketing" element={<MarketingDashboard />}>
+                      <Route index element={<Navigate to="leads" replace />} />
+                      <Route path="leads" element={<LeadKanbanBoard />} />
+                      <Route path="leads/list" element={<LeadListView />} />
+                      <Route path="automations" element={<AutomationList />} />
+                      <Route path="queue" element={<AutomationQueue />} />
+                      <Route path="reports" element={<MarketingReports />} />
+                    </Route>
+                  </Route>
+                </Route>
+
+
+
+                {/* Owner / Super Admin Routes */}
+                <Route element={<PermissionGuard requiredPermissions={['owner.dashboard.view']} />}>
+                  <Route path="/owner" element={<OwnerLayout />}>
+                    <Route index element={<OwnerDashboard />} />
+                    <Route path="tenants" element={<OwnerTenants />} />
+                    <Route path="tenants/:id" element={<OwnerTenantDetails />} />
+                    <Route path="upgrades" element={<OwnerUpgradeRequests />} />
+                    <Route path="analytics" element={<OwnerAnalytics />} />
+                    <Route path="alerts" element={<OwnerAlerts />} />
+                    <Route path="features" element={<OwnerFeatures />} />
+                    <Route path="plans" element={<OwnerPlans />} />
+                    <Route path="roles" element={<OwnerRoles />} />
+                    <Route path="admins" element={<OwnerAdmins />} />
+                    <Route path="logs" element={<OwnerAuditLogs />} />
+                    <Route path="settings" element={<OwnerSettings />} />
+                    <Route path="automations" element={<OwnerAutomations />} />
+                    <Route path="messaging" element={<OwnerMessaging />} />
+                    <Route path="compliance" element={<OwnerCompliance />} />
+                  </Route>
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </NavigationProvider>
         </AuthProvider>
       </MenuPreferencesProvider>
-    </ThemeProvider>
+    </ThemeProvider >
   );
 }
 

@@ -23,13 +23,14 @@ import { CoachesService } from './coaches.service';
 import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
 
 @ApiTags('coaches')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
 @Controller('coaches')
 export class CoachesController {
-  constructor(private readonly coachesService: CoachesService) {}
+  constructor(private readonly coachesService: CoachesService) { }
 
   @Get()
   @UseInterceptors(CacheInterceptor)
@@ -57,12 +58,14 @@ export class CoachesController {
   }
 
   @Post()
+  @CheckPlanLimit('coaches')
   @ApiOperation({ summary: 'Create a new coach' })
   create(@Body() dto: CreateCoachDto, @TenantId() tenantId: string) {
     return this.coachesService.create(dto, tenantId);
   }
 
   @Post('create-with-user')
+  @CheckPlanLimit('coaches')
   @ApiOperation({ summary: 'Create coach with user account' })
   createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
     return this.coachesService.createWithUser(dto, tenantId);

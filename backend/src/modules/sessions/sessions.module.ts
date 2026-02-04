@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Session } from './entities/session.entity';
 import { Room } from '../rooms/entities/room.entity';
@@ -18,6 +18,7 @@ import { GamificationModule } from '../gamification/gamification.module';
 
 import { SessionParticipant } from './entities/session-participant.entity';
 import { SessionParticipantsService } from './session-participants.service';
+import { OwnerModule } from '../owner/owner.module';
 
 @Module({
   imports: [
@@ -36,9 +37,10 @@ import { SessionParticipantsService } from './session-participants.service';
     PackagesModule,
     GamificationModule,
     AuditModule,
+    forwardRef(() => OwnerModule),
   ],
   controllers: [SessionsController],
   providers: [SessionsService, SessionParticipantsService],
   exports: [SessionsService, SessionParticipantsService],
 })
-export class SessionsModule {}
+export class SessionsModule { }

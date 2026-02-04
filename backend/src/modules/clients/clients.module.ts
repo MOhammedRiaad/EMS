@@ -11,6 +11,7 @@ import { Transaction } from '../packages/entities/transaction.entity';
 import { User } from '../auth/entities/user.entity';
 import { WaiversModule } from '../waivers/waivers.module';
 import { AuditModule } from '../audit/audit.module';
+import { OwnerModule } from '../owner/owner.module';
 
 @Module({
   imports: [
@@ -19,9 +20,10 @@ import { AuditModule } from '../audit/audit.module';
     MailerModule,
     forwardRef(() => WaiversModule),
     AuditModule,
+    forwardRef(() => OwnerModule),
   ],
   controllers: [ClientsController],
   providers: [ClientsService],
   exports: [ClientsService],
 })
-export class ClientsModule {}
+export class ClientsModule { }

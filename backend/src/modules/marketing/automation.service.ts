@@ -1,6 +1,7 @@
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   AutomationRule,
@@ -12,6 +13,7 @@ import {
   AutomationExecutionStatus,
 } from './entities/automation-execution.entity';
 import { MailerService } from '../mailer/mailer.service';
+import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 
 @Injectable()
 export class AutomationService {
@@ -23,7 +25,8 @@ export class AutomationService {
     @InjectRepository(AutomationExecution)
     private executionRepository: Repository<AutomationExecution>,
     private mailerService: MailerService,
-  ) {}
+    private usageTrackingService: UsageTrackingService,
+  ) { }
 
   async create(createDto: any, tenantId: string): Promise<AutomationRule> {
     const rule = this.ruleRepository.create({
@@ -98,7 +101,7 @@ export class AutomationService {
 
     if (!tenantId) {
       this.logger.warn(
-        `Trigger event ${type} missing tenantId context. Skipping automation.`,
+        `Trigger event ${type} missing tenantId context.Skipping automation.`,
       );
       return;
     }
@@ -136,6 +139,16 @@ export class AutomationService {
     });
 
     await this.executionRepository.save(execution);
+
+    // Record usage metric
+    await this.usageTrackingService.recordMetric(
+      tenantId,
+      'automation_executions',
+      1,
+      'daily',
+      { ruleId: rule.id, executionId: execution.id }
+    );
+
     this.logger.log(`Created execution ${execution.id} for rule ${rule.name}`);
   }
 
@@ -210,7 +223,7 @@ export class AutomationService {
     payload: any,
     context: any,
   ) {
-    this.logger.log(`[Automation] EXECUTING Action: ${type}`, payload);
+    this.logger.log(`[Automation] EXECUTING Action: ${type} `, payload);
 
     if (type === AutomationActionType.SEND_EMAIL) {
       // context.email should exist if it's a client/lead context
@@ -237,5 +250,31 @@ export class AutomationService {
     }
 
     // SMS implementation would go here
+  }
+
+  async getGlobalStats(): Promise<{
+    totalExecutions: number;
+    activeRules: number;
+    failedExecutions: number;
+    executionsToday: number;
+  }> {
+    const totalExecutions = await this.executionRepository.count();
+    const activeRules = await this.ruleRepository.count({ where: { isActive: true } });
+    const failedExecutions = await this.executionRepository.count({
+      where: { status: AutomationExecutionStatus.FAILED },
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const executionsToday = await this.executionRepository.count({
+      where: { createdAt: MoreThanOrEqual(today) },
+    });
+
+    return {
+      totalExecutions,
+      activeRules,
+      failedExecutions,
+      executionsToday,
+    };
   }
 }
