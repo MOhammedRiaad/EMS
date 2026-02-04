@@ -15,12 +15,15 @@ import { LeadService } from './lead.service';
 import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { User } from '../auth/entities/user.entity';
-import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
+import {
+  CheckPlanLimit,
+  PlanLimitGuard,
+} from '../owner/guards/plan-limit.guard';
 
 @Controller('leads')
 @UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
 export class LeadController {
-  constructor(private readonly leadService: LeadService) { }
+  constructor(private readonly leadService: LeadService) {}
 
   @Post()
   create(

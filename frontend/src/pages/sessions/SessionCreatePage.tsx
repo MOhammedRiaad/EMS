@@ -4,6 +4,7 @@ import PageHeader from '../../components/common/PageHeader';
 import SessionForm from './SessionForm';
 import { useSessionsState } from './useSessionsState';
 import { ChevronLeft } from 'lucide-react';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const SessionCreatePage: React.FC = () => {
     const navigate = useNavigate();
@@ -78,6 +79,18 @@ const SessionCreatePage: React.FC = () => {
                     />
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={state.showTimeChangeConfirmation}
+                onClose={() => state.setShowTimeChangeConfirmation(false)}
+                onConfirm={state.handleConfirmTimeChange}
+                title="Reschedule Warning"
+                message="This session time differs from the original booking. Proceeding will update the session and notify the client by email. Are you sure?"
+                confirmLabel="Confirm Reschedule"
+                cancelLabel="Cancel"
+                loading={state.saving}
+                isDestructive={false}
+            />
         </div>
     );
 };

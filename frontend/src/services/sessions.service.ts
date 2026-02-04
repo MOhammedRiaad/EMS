@@ -12,6 +12,7 @@ export interface Session {
     programType?: string;
     notes?: string;
     intensityLevel?: number;
+    emsDeviceId?: string;
     client?: { id: string; firstName: string; lastName: string; avatarUrl?: string };
     coach?: {
         id: string;
@@ -57,6 +58,7 @@ export interface CreateSessionInput {
     recurrenceDays?: number[];
     type: 'individual' | 'group';
     capacity: number;
+    allowTimeChangeOverride?: boolean;
 }
 
 export interface SessionQuery {

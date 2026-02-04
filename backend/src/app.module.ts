@@ -61,11 +61,11 @@ import { OwnerModule } from './modules/owner/owner.module';
             transport: isProduction
               ? undefined
               : {
-                target: 'pino-pretty',
-                options: {
-                  singleLine: true,
+                  target: 'pino-pretty',
+                  options: {
+                    singleLine: true,
+                  },
                 },
-              },
           },
         };
       },
@@ -146,4 +146,4 @@ import { OwnerModule } from './modules/owner/owner.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

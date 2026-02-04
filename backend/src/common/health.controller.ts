@@ -5,7 +5,7 @@ import { HealthService, HealthCheckResult } from './health.service';
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly healthService: HealthService) { }
+  constructor(private readonly healthService: HealthService) {}
 
   /**
    * Full health check - returns detailed status of all components
@@ -54,7 +54,9 @@ export class HealthController {
    * Returns 200 if the service can handle requests, 503 otherwise
    */
   @Get('ready')
-  @ApiOperation({ summary: 'Readiness probe - can the service handle requests?' })
+  @ApiOperation({
+    summary: 'Readiness probe - can the service handle requests?',
+  })
   @ApiResponse({ status: 200, description: 'Service is ready' })
   @ApiResponse({ status: 503, description: 'Service is not ready' })
   async ready() {

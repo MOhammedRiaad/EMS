@@ -144,20 +144,42 @@ describe('Sessions E2E Tests', () => {
 
     // 1. Ensure features exist
     const features = await featureRepo.save([
-      { key: 'client.portal', name: 'Client Portal', category: 'core', defaultEnabled: true },
-      { key: 'coach.portal', name: 'Coach Portal', category: 'core', defaultEnabled: true },
-      { key: 'client.booking', name: 'Client Booking', category: 'core', defaultEnabled: true },
-      { key: 'client.progress_photos', name: 'Progress Photos', category: 'core', defaultEnabled: true },
+      {
+        key: 'client.portal',
+        name: 'Client Portal',
+        category: 'core',
+        defaultEnabled: true,
+      },
+      {
+        key: 'coach.portal',
+        name: 'Coach Portal',
+        category: 'core',
+        defaultEnabled: true,
+      },
+      {
+        key: 'client.booking',
+        name: 'Client Booking',
+        category: 'core',
+        defaultEnabled: true,
+      },
+      {
+        key: 'client.progress_photos',
+        name: 'Progress Photos',
+        category: 'core',
+        defaultEnabled: true,
+      },
     ]);
 
     // 2. Enable them for the tenant
     const platformOwnerId = '00000000-0000-0000-0000-000000000000';
-    await assignmentRepo.save(features.map(f => ({
-      tenantId,
-      featureKey: f.key,
-      enabled: true,
-      enabledBy: platformOwnerId,
-    })));
+    await assignmentRepo.save(
+      features.map((f) => ({
+        tenantId,
+        featureKey: f.key,
+        enabled: true,
+        enabledBy: platformOwnerId,
+      })),
+    );
   }, 60000);
 
   afterAll(async () => {

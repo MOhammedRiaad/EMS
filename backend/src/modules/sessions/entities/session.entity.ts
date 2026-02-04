@@ -140,4 +140,10 @@ export class Session extends TenantScopedEntityWithUpdate {
   @ManyToOne(() => ClientPackage, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'client_package_id' })
   clientPackage: ClientPackage;
+
+  @Column({ name: 'booked_start_time', type: 'timestamptz', nullable: true })
+  bookedStartTime: Date | null;
+
+  @Column({ name: 'booked_end_time', type: 'timestamptz', nullable: true })
+  bookedEndTime: Date | null;
 }

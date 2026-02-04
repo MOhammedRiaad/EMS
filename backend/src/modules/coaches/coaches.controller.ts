@@ -24,14 +24,17 @@ import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { Roles, RolesGuard } from '../../common/guards/roles.guard';
-import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
+import {
+  CheckPlanLimit,
+  PlanLimitGuard,
+} from '../owner/guards/plan-limit.guard';
 
 @ApiTags('coaches')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard, PlanLimitGuard)
 @Controller('coaches')
 export class CoachesController {
-  constructor(private readonly coachesService: CoachesService) { }
+  constructor(private readonly coachesService: CoachesService) {}
 
   @Get()
   @UseInterceptors(CacheInterceptor)
@@ -107,7 +110,12 @@ export class CoachesController {
     @TenantId() tenantId: string,
     @Request() req: any,
   ) {
-    return this.coachesService.updateAvailability(id, rules, tenantId, req.user);
+    return this.coachesService.updateAvailability(
+      id,
+      rules,
+      tenantId,
+      req.user,
+    );
   }
 
   // ============ Time-Off Request Endpoints ============

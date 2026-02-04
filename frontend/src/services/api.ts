@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const getHeaders = () => {
@@ -12,13 +13,15 @@ export class ApiError extends Error {
     statusCode?: number;
     error?: string;
     conflicts?: any[];
+    data?: any;
 
-    constructor(message: string, statusCode?: number, error?: string, conflicts?: any[]) {
+    constructor(message: string, statusCode?: number, error?: string, conflicts?: any[], data?: any) {
         super(message);
         this.name = 'ApiError';
         this.statusCode = statusCode;
         this.error = error;
         this.conflicts = conflicts;
+        this.data = data;
     }
 }
 
@@ -69,7 +72,7 @@ export const api = {
                 apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
             }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         const data = await response.json();
@@ -90,7 +93,7 @@ export const api = {
                 apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
             }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -110,7 +113,7 @@ export const api = {
                 apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
             }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -130,7 +133,7 @@ export const api = {
                 apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
             }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -149,7 +152,7 @@ export const api = {
                 apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
             }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -176,11 +179,14 @@ export const authenticatedFetch = async (endpoint: string, options: RequestInit 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         const message = formatErrorMessage(data);
-        throw new ApiError(message, response.status, data.error, data.conflicts);
+        throw new ApiError(message, response.status, data.error, data.conflicts, data);
     }
+
     if (response.status === 204) {
         return {};
     }
+
     const text = await response.text();
     return text ? JSON.parse(text) : {};
 };
+

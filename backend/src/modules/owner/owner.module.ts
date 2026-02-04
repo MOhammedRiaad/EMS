@@ -3,7 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 
 // Entities
-import { FeatureFlag, FeatureAssignment, Plan, UsageMetric, OwnerAuditLog, PlanUpgradeRequest } from './entities';
+import {
+  FeatureFlag,
+  FeatureAssignment,
+  Plan,
+  UsageMetric,
+  OwnerAuditLog,
+  PlanUpgradeRequest,
+} from './entities';
 import { BroadcastMessage } from './entities/broadcast-message.entity';
 import { SystemSettings } from './entities/system-settings.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
@@ -19,15 +26,15 @@ import { TermsAcceptance } from '../terms/entities/terms-acceptance.entity';
 
 // Services
 import {
-    OwnerService,
-    FeatureFlagService,
-    PlanService,
-    UsageTrackingService,
-    UpgradeRequestService,
-    OwnerAuditService,
-    BroadcastService,
-    SystemConfigService,
-    OwnerDataExportService,
+  OwnerService,
+  FeatureFlagService,
+  PlanService,
+  UsageTrackingService,
+  UpgradeRequestService,
+  OwnerAuditService,
+  BroadcastService,
+  SystemConfigService,
+  OwnerDataExportService,
 } from './services';
 import { OwnerAnalyticsService } from './services/owner-analytics.service';
 import { AlertsService } from './services/alerts.service';
@@ -41,8 +48,14 @@ import { PermissionGuard, PlanLimitGuard } from './guards';
 import { OwnerController } from './controllers/owner.controller';
 import { FeatureFlagController } from './controllers/feature-flag.controller';
 import { PlanController } from './controllers/plan.controller';
-import { UpgradeRequestController, TenantUpgradeRequestController } from './controllers/upgrade-request.controller';
-import { UsageController, TenantUsageController } from './controllers/usage.controller';
+import {
+  UpgradeRequestController,
+  TenantUpgradeRequestController,
+} from './controllers/upgrade-request.controller';
+import {
+  UsageController,
+  TenantUsageController,
+} from './controllers/usage.controller';
 import { OwnerAnalyticsController } from './controllers/analytics.controller';
 import { AlertsController } from './controllers/alerts.controller';
 import { RoleController } from './controllers/role.controller';
@@ -50,84 +63,84 @@ import { RoleController } from './controllers/role.controller';
 import { MarketingModule } from '../marketing/marketing.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([
-            // Owner entities
-            FeatureFlag,
-            FeatureAssignment,
-            Plan,
-            UsageMetric,
-            OwnerAuditLog,
-            PlanUpgradeRequest,
-            BroadcastMessage,
-            SystemSettings,
-            // Shared entities
-            Tenant,
-            User,
-            Permission,
-            Role,
-            UserRoleAssignment,
-            Client,
-            Coach,
-            Session,
-            Transaction,
-            TermsAcceptance,
-        ]),
-        JwtModule.registerAsync({
-            useFactory: () => ({
-                secret: process.env.JWT_SECRET,
-                signOptions: { expiresIn: '1h' },
-            }),
-        }),
-        forwardRef(() => MarketingModule),
-    ],
-    controllers: [
-        OwnerController,
-        FeatureFlagController,
-        PlanController,
-        UpgradeRequestController,
-        TenantUpgradeRequestController,
-        UsageController,
-        TenantUsageController,
-        OwnerAnalyticsController,
-        AlertsController,
-        RoleController,
-    ],
-    providers: [
-        // Services
-        OwnerService,
-        FeatureFlagService,
-        PlanService,
-        UsageTrackingService,
-        UpgradeRequestService,
-        OwnerAuditService,
-        OwnerAnalyticsService,
-        AlertsService,
-        BroadcastService,
-        SystemConfigService,
-        OwnerDataExportService,
-        PermissionService,
-        RoleService,
-        // Guards
-        PermissionGuard,
-        PlanLimitGuard,
-    ],
-    exports: [
-        OwnerService,
-        FeatureFlagService,
-        PlanService,
-        UsageTrackingService,
-        UpgradeRequestService,
-        OwnerAuditService,
-        OwnerAnalyticsService,
-        AlertsService,
-        BroadcastService,
-        SystemConfigService,
-        OwnerDataExportService,
-        PermissionService,
-        RoleService,
-        PermissionGuard,
-        PlanLimitGuard,
-    ],
+  imports: [
+    TypeOrmModule.forFeature([
+      // Owner entities
+      FeatureFlag,
+      FeatureAssignment,
+      Plan,
+      UsageMetric,
+      OwnerAuditLog,
+      PlanUpgradeRequest,
+      BroadcastMessage,
+      SystemSettings,
+      // Shared entities
+      Tenant,
+      User,
+      Permission,
+      Role,
+      UserRoleAssignment,
+      Client,
+      Coach,
+      Session,
+      Transaction,
+      TermsAcceptance,
+    ]),
+    JwtModule.registerAsync({
+      useFactory: () => ({
+        secret: process.env.JWT_SECRET,
+        signOptions: { expiresIn: '1h' },
+      }),
+    }),
+    forwardRef(() => MarketingModule),
+  ],
+  controllers: [
+    OwnerController,
+    FeatureFlagController,
+    PlanController,
+    UpgradeRequestController,
+    TenantUpgradeRequestController,
+    UsageController,
+    TenantUsageController,
+    OwnerAnalyticsController,
+    AlertsController,
+    RoleController,
+  ],
+  providers: [
+    // Services
+    OwnerService,
+    FeatureFlagService,
+    PlanService,
+    UsageTrackingService,
+    UpgradeRequestService,
+    OwnerAuditService,
+    OwnerAnalyticsService,
+    AlertsService,
+    BroadcastService,
+    SystemConfigService,
+    OwnerDataExportService,
+    PermissionService,
+    RoleService,
+    // Guards
+    PermissionGuard,
+    PlanLimitGuard,
+  ],
+  exports: [
+    OwnerService,
+    FeatureFlagService,
+    PlanService,
+    UsageTrackingService,
+    UpgradeRequestService,
+    OwnerAuditService,
+    OwnerAnalyticsService,
+    AlertsService,
+    BroadcastService,
+    SystemConfigService,
+    OwnerDataExportService,
+    PermissionService,
+    RoleService,
+    PermissionGuard,
+    PlanLimitGuard,
+  ],
 })
-export class OwnerModule { }
+export class OwnerModule {}

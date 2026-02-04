@@ -19,4 +19,4 @@ import { OwnerModule } from '../owner/owner.module';
   providers: [AutomationService],
   exports: [TypeOrmModule, AutomationService],
 })
-export class MarketingModule { }
+export class MarketingModule {}

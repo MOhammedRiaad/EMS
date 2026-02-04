@@ -28,7 +28,7 @@ export class CoachesService {
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly mailerService: MailerService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, search?: string): Promise<Coach[]> {
     const query = this.coachRepository
@@ -228,21 +228,27 @@ export class CoachesService {
     if (user && user.role === 'coach') {
       // 1. Ensure they are editing their own profile
       if (coach.userId !== user.id) {
-        throw new ForbiddenException('You can only update your own availability');
+        throw new ForbiddenException(
+          'You can only update your own availability',
+        );
       }
 
       // 2. Check tenant setting for availability editing
-      const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
-      const allowSelfEdit = tenant?.settings?.allowCoachSelfEditAvailability ?? false;
+      const tenant = await this.tenantRepository.findOne({
+        where: { id: tenantId },
+      });
+      const allowSelfEdit =
+        tenant?.settings?.allowCoachSelfEditAvailability ?? false;
 
       if (!allowSelfEdit) {
-        throw new ForbiddenException('Availability editing is disabled by your studio administrator');
+        throw new ForbiddenException(
+          'Availability editing is disabled by your studio administrator',
+        );
       }
     }
 
     coach.availabilityRules = rules;
     await this.coachRepository.save(coach);
-
 
     await this.auditService.log(
       tenantId,

@@ -11,7 +11,13 @@ import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Client } from '../../clients/entities/client.entity';
 
-export type UserRole = 'platform_owner' | 'owner' | 'tenant_owner' | 'admin' | 'coach' | 'client';
+export type UserRole =
+  | 'platform_owner'
+  | 'owner'
+  | 'tenant_owner'
+  | 'admin'
+  | 'coach'
+  | 'client';
 
 @Entity('users')
 export class User extends TenantScopedEntityWithUpdate {
@@ -24,7 +30,14 @@ export class User extends TenantScopedEntityWithUpdate {
 
   @Column({
     type: 'enum',
-    enum: ['platform_owner', 'owner', 'tenant_owner', 'admin', 'coach', 'client'],
+    enum: [
+      'platform_owner',
+      'owner',
+      'tenant_owner',
+      'admin',
+      'coach',
+      'client',
+    ],
     default: 'client',
   })
   role: UserRole;

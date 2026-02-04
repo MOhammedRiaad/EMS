@@ -17,7 +17,10 @@ import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { Roles, RolesGuard } from '../../common/guards/roles.guard';
-import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
+import {
+  CheckPlanLimit,
+  PlanLimitGuard,
+} from '../owner/guards/plan-limit.guard';
 
 import { WaiversService } from '../waivers/waivers.service';
 
@@ -29,7 +32,7 @@ export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly waiversService: WaiversService,
-  ) { }
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all clients for tenant' })

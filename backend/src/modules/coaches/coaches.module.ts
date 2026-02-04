@@ -22,4 +22,4 @@ import { OwnerModule } from '../owner/owner.module';
   providers: [CoachesService],
   exports: [CoachesService],
 })
-export class CoachesModule { }
+export class CoachesModule {}

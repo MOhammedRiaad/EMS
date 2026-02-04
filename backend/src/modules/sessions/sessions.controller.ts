@@ -25,7 +25,10 @@ import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { Roles, RolesGuard } from '../../common/guards/roles.guard';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
-import { CheckPlanLimit, PlanLimitGuard } from '../owner/guards/plan-limit.guard';
+import {
+  CheckPlanLimit,
+  PlanLimitGuard,
+} from '../owner/guards/plan-limit.guard';
 
 import { SessionParticipantsService } from './session-participants.service';
 
@@ -37,7 +40,7 @@ export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
     private readonly participantsService: SessionParticipantsService,
-  ) { }
+  ) {}
 
   @Get()
   @UseInterceptors(CacheInterceptor)

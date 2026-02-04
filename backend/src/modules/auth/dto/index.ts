@@ -78,7 +78,9 @@ export class CreateUserDto {
   @IsIn(['admin', 'coach', 'client'])
   role: 'admin' | 'coach' | 'client';
 
-  @ApiPropertyOptional({ enum: ['male', 'female', 'other', 'prefer_not_to_say'] })
+  @ApiPropertyOptional({
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+  })
   @IsOptional()
   @IsIn(['male', 'female', 'other', 'prefer_not_to_say'])
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';

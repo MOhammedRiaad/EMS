@@ -1,4 +1,3 @@
-
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
@@ -26,7 +25,7 @@ export class AutomationService {
     private executionRepository: Repository<AutomationExecution>,
     private mailerService: MailerService,
     private usageTrackingService: UsageTrackingService,
-  ) { }
+  ) {}
 
   async create(createDto: any, tenantId: string): Promise<AutomationRule> {
     const rule = this.ruleRepository.create({
@@ -146,7 +145,7 @@ export class AutomationService {
       'automation_executions',
       1,
       'daily',
-      { ruleId: rule.id, executionId: execution.id }
+      { ruleId: rule.id, executionId: execution.id },
     );
 
     this.logger.log(`Created execution ${execution.id} for rule ${rule.name}`);
@@ -259,7 +258,9 @@ export class AutomationService {
     executionsToday: number;
   }> {
     const totalExecutions = await this.executionRepository.count();
-    const activeRules = await this.ruleRepository.count({ where: { isActive: true } });
+    const activeRules = await this.ruleRepository.count({
+      where: { isActive: true },
+    });
     const failedExecutions = await this.executionRepository.count({
       where: { status: AutomationExecutionStatus.FAILED },
     });

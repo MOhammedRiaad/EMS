@@ -104,7 +104,9 @@ export class UpdateClientDto {
   @IsUUID()
   studioId?: string;
 
-  @ApiPropertyOptional({ enum: ['male', 'female', 'other', 'prefer_not_to_say'] })
+  @ApiPropertyOptional({
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+  })
   @IsOptional()
   @IsEnum(['male', 'female', 'other', 'prefer_not_to_say'])
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';

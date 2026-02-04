@@ -30,7 +30,7 @@ export class WaitingListService {
     private readonly auditService: AuditService,
     @Inject(forwardRef(() => SessionsService))
     private readonly sessionsService: SessionsService,
-  ) { }
+  ) {}
 
   async create(
     createDto: CreateWaitingListEntryDto,
@@ -92,7 +92,14 @@ export class WaitingListService {
   async findOne(id: string, tenantId: string): Promise<WaitingListEntry> {
     const entry = await this.waitingListRepo.findOne({
       where: { id, tenantId },
-      relations: ['client', 'studio', 'coach', 'session', 'session.room', 'approver'],
+      relations: [
+        'client',
+        'studio',
+        'coach',
+        'session',
+        'session.room',
+        'approver',
+      ],
     });
 
     if (!entry) {

@@ -34,6 +34,12 @@ import { OwnerModule } from '../owner/owner.module';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, PermissionService, RoleService],
-  exports: [AuthService, JwtStrategy, PassportModule, PermissionService, RoleService],
+  exports: [
+    AuthService,
+    JwtStrategy,
+    PassportModule,
+    PermissionService,
+    RoleService,
+  ],
 })
-export class AuthModule { }
+export class AuthModule {}

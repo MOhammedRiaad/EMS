@@ -43,4 +43,4 @@ import { OwnerModule } from '../owner/owner.module';
   providers: [SessionsService, SessionParticipantsService],
   exports: [SessionsService, SessionParticipantsService],
 })
-export class SessionsModule { }
+export class SessionsModule {}

@@ -154,7 +154,14 @@ describe('WaitingListService', () => {
       expect(result).toBe(mockEntry);
       expect(repository.findOne).toHaveBeenCalledWith({
         where: { id: 'entry-123', tenantId: 'tenant-123' },
-        relations: ['client', 'studio', 'coach', 'session', 'session.room', 'approver'],
+        relations: [
+          'client',
+          'studio',
+          'coach',
+          'session',
+          'session.room',
+          'approver',
+        ],
       });
     });
 

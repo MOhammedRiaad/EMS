@@ -35,7 +35,7 @@ export class PackagesService {
     @InjectRepository(Transaction)
     private transactionRepo: Repository<Transaction>,
     private readonly auditService: AuditService,
-  ) { }
+  ) {}
 
   // ===== PACKAGES =====
   async findAllPackages(tenantId: string, includeInactive = false) {
@@ -334,7 +334,7 @@ export class PackagesService {
     const currentBalance = lastTx ? Number(lastTx.runningBalance) : 0;
     const newBalance =
       dto.type === TransactionType.EXPENSE ||
-        dto.type === TransactionType.REFUND
+      dto.type === TransactionType.REFUND
         ? currentBalance - Math.abs(dto.amount)
         : currentBalance + Math.abs(dto.amount);
 

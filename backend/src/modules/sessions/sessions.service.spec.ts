@@ -12,7 +12,12 @@ import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { FeatureFlagService } from '../owner/services/feature-flag.service';
 import { PermissionService } from '../auth/services/permission.service';
 import { RoleService } from '../auth/services/role.service';
@@ -420,7 +425,9 @@ describe('SessionsService', () => {
     };
 
     it('should create a session successfully', async () => {
-      const result = await service.create(createDto, 'tenant-123', { role: 'admin' });
+      const result = await service.create(createDto, 'tenant-123', {
+        role: 'admin',
+      });
       expect(sessionRepository.create).toHaveBeenCalled();
       expect(sessionRepository.save).toHaveBeenCalled();
       expect(result).toBe(mockSession);
@@ -436,6 +443,19 @@ describe('SessionsService', () => {
       await expect(
         service.create(createDto, 'tenant-123', { role: 'client' }),
       ).rejects.toThrow(ForbiddenException);
+    });
+    it('should set bookedStartTime and bookedEndTime on creation', async () => {
+      // Mock create to return the partial entity with passed props
+      sessionRepository.create.mockImplementation(
+        (dto) => ({ ...mockSession, ...dto }) as any,
+      );
+      sessionRepository.save.mockImplementation(async (s) => s as Session);
+
+      const result = await service.create(createDto, 'tenant-123', {
+        role: 'admin',
+      });
+      expect(result.bookedStartTime).toEqual(new Date(createDto.startTime));
+      expect(result.bookedEndTime).toEqual(new Date(createDto.endTime));
     });
   });
 
@@ -476,7 +496,13 @@ describe('SessionsService', () => {
       };
       sessionRepository.findOne.mockResolvedValue(inProgressSession);
 
-      await service.updateStatus('session-123', 'tenant-123', 'completed', undefined, 'user-123');
+      await service.updateStatus(
+        'session-123',
+        'tenant-123',
+        'completed',
+        undefined,
+        'user-123',
+      );
 
       expect(
         gamificationService.checkAndUnlockAchievements,
@@ -487,7 +513,13 @@ describe('SessionsService', () => {
       const scheduledSession = { ...mockSession, status: 'scheduled' as const };
       sessionRepository.findOne.mockResolvedValue(scheduledSession);
 
-      await service.updateStatus('session-123', 'tenant-123', 'no_show', undefined, 'user-123');
+      await service.updateStatus(
+        'session-123',
+        'tenant-123',
+        'no_show',
+        undefined,
+        'user-123',
+      );
 
       expect(packagesService.useSession).not.toHaveBeenCalled();
     });
@@ -579,6 +611,45 @@ describe('SessionsService', () => {
       expect(result.notes).toBe('Updated notes');
       expect(sessionRepository.save).toHaveBeenCalled();
     });
+
+    it('should throw ConflictException (warning) if time changed without override', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z', // Different from mockSession.startTime
+        endTime: '2027-01-25T11:20:00Z',
+      };
+
+      // Mock session having bookedStartTime same as original startTime
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await expect(
+        service.update('session-123', timeChangeDto, 'tenant-123', {
+          role: 'admin',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should allow time change with override', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+      expect(sessionRepository.save).toHaveBeenCalled();
+    });
   });
 
   describe('createBulk', () => {
@@ -631,7 +702,9 @@ describe('SessionsService', () => {
     });
 
     it('should create multiple sessions successfully', async () => {
-      const result = await service.createBulk(bulkDto, 'tenant-123', { role: 'admin' });
+      const result = await service.createBulk(bulkDto, 'tenant-123', {
+        role: 'admin',
+      });
 
       expect(result.created).toBe(2);
       expect(result.errors).toHaveLength(0);
@@ -645,7 +718,9 @@ describe('SessionsService', () => {
         .mockResolvedValueOnce(mockSession)
         .mockRejectedValueOnce(new Error('Scheduling conflict'));
 
-      const result = await service.createBulk(bulkDto, 'tenant-123', { role: 'admin' });
+      const result = await service.createBulk(bulkDto, 'tenant-123', {
+        role: 'admin',
+      });
 
       expect(result.created).toBe(1);
       expect(result.errors).toHaveLength(1);
@@ -695,12 +770,16 @@ describe('SessionsService', () => {
         parentSessionId: null,
       });
       await expect(
-        service.updateSeries('session-123', updateDto, 'tenant-123', { role: 'admin' }),
+        service.updateSeries('session-123', updateDto, 'tenant-123', {
+          role: 'admin',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should update all future sessions in series', async () => {
-      await service.updateSeries('parent-123', updateDto, 'tenant-123', { role: 'admin' });
+      await service.updateSeries('parent-123', updateDto, 'tenant-123', {
+        role: 'admin',
+      });
 
       // It should find sessions and save them as array
       expect(sessionRepository.save).toHaveBeenCalled();

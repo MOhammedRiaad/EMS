@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -59,7 +60,7 @@ export class SessionsService {
     private gamificationService: GamificationService,
     private readonly auditService: AuditService,
     private readonly featureFlagService: FeatureFlagService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
     const qb = this.sessionRepository
@@ -125,9 +126,14 @@ export class SessionsService {
   ): Promise<Session> {
     // 0. Enforce client booking feature flag
     if (user?.role === 'client') {
-      const canBook = await this.featureFlagService.isFeatureEnabled(tenantId, 'client.booking');
+      const canBook = await this.featureFlagService.isFeatureEnabled(
+        tenantId,
+        'client.booking',
+      );
       if (!canBook) {
-        throw new ForbiddenException('Client self-booking is currently disabled for this studio.');
+        throw new ForbiddenException(
+          'Client self-booking is currently disabled for this studio.',
+        );
       }
     }
 
@@ -210,6 +216,8 @@ export class SessionsService {
         ? new Date(dto.recurrenceEndDate)
         : null,
       clientPackageId, // Link session to package
+      bookedStartTime: new Date(dto.startTime),
+      bookedEndTime: new Date(dto.endTime),
     });
 
     const savedSession = await this.sessionRepository.save(session);
@@ -918,6 +926,31 @@ export class SessionsService {
       }
     }
 
+    // Check for time change validation
+    if ((dto.startTime || dto.endTime) && !dto.allowTimeChangeOverride) {
+      const bookedStart = session.bookedStartTime
+        ? session.bookedStartTime.getTime()
+        : session.startTime.getTime();
+      const bookedEnd = session.bookedEndTime
+        ? session.bookedEndTime.getTime()
+        : session.endTime.getTime();
+
+      const newStart = dto.startTime
+        ? new Date(dto.startTime).getTime()
+        : session.startTime.getTime();
+      const newEnd = dto.endTime
+        ? new Date(dto.endTime).getTime()
+        : session.endTime.getTime();
+
+      if (newStart !== bookedStart || newEnd !== bookedEnd) {
+        throw new ConflictException({
+          message: 'Session time deviating from original booking request.',
+          code: 'TIME_CHANGE_WARNING',
+          originalTime: session.bookedStartTime || session.startTime,
+        });
+      }
+    }
+
     const originalTime = session.startTime.getTime();
     Object.assign(session, dto);
     const saved = await this.sessionRepository.save(session);
@@ -931,6 +964,26 @@ export class SessionsService {
         'API_USER',
         { oldTime: new Date(originalTime), newTime: saved.startTime },
       );
+
+      // Notify client of time change
+      if (saved.clientId) {
+        try {
+          const client = await this.clientsService.findOne(
+            saved.clientId,
+            tenantId,
+          );
+          if (client && client.email) {
+            await this.mailerService.sendMail(
+              client.email,
+              'Session Rescheduled - EMS Studio',
+              `Your session has been rescheduled to ${saved.startTime.toLocaleString()}.`,
+              `<p>Hi ${client.firstName},</p><p>Your session has been rescheduled to <strong>${saved.startTime.toLocaleString()}</strong>.</p><p>Please contact us if this time does not work for you.</p>`,
+            );
+          }
+        } catch (error) {
+          this.logger.error('Failed to send reschedule email', error);
+        }
+      }
     }
 
     return saved;
@@ -1218,9 +1271,9 @@ export class SessionsService {
     if (availableSessions <= 0) {
       throw new BadRequestException(
         `Client has no available sessions for booking. ` +
-        `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
-        `Already scheduled: ${scheduledSessionsCount}. ` +
-        `Please complete existing sessions or renew the package.`,
+          `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+          `Already scheduled: ${scheduledSessionsCount}. ` +
+          `Please complete existing sessions or renew the package.`,
       );
     }
   }
@@ -1249,7 +1302,8 @@ export class SessionsService {
     if (coachPreference && coachPreference !== 'any') {
       if (
         clientGender &&
-        (clientGender === 'prefer_not_to_say' || coachPreference !== clientGender)
+        (clientGender === 'prefer_not_to_say' ||
+          coachPreference !== clientGender)
       ) {
         throw new BadRequestException(
           `This coach prefers to work with ${coachPreference} clients.`,
@@ -1341,11 +1395,17 @@ export class SessionsService {
           shouldRefund = false;
         } else {
           // Check Policy
-          const isCancellationPolicyEnabled = await this.featureFlagService.isFeatureEnabled(tenantId, 'core.cancellation_policy');
-          const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
+          const isCancellationPolicyEnabled =
+            await this.featureFlagService.isFeatureEnabled(
+              tenantId,
+              'core.cancellation_policy',
+            );
+          const tenant = await this.tenantRepository.findOne({
+            where: { id: tenantId },
+          });
 
           const cancellationWindowHours = isCancellationPolicyEnabled
-            ? (tenant?.settings?.cancellationWindowHours || 24)
+            ? tenant?.settings?.cancellationWindowHours || 24
             : 24; // Default to 24h if feature is disabled/not included in plan
 
           const now = new Date();

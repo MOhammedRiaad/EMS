@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateMissingOwnerTables1770100000002 implements MigrationInterface {
-    name = 'CreateMissingOwnerTables1770100000002';
+  name = 'CreateMissingOwnerTables1770100000002';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // 1. Create System Settings Table
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // 1. Create System Settings Table
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS system_settings (
                 key VARCHAR(100) PRIMARY KEY,
                 value TEXT NOT NULL,
@@ -15,8 +15,8 @@ export class CreateMissingOwnerTables1770100000002 implements MigrationInterface
             );
         `);
 
-        // 2. Create Broadcast Messages Table (and enums)
-        await queryRunner.query(`
+    // 2. Create Broadcast Messages Table (and enums)
+    await queryRunner.query(`
             DO $$ BEGIN
                 CREATE TYPE broadcast_type_enum AS ENUM ('EMAIL', 'SMS', 'IN_APP');
             EXCEPTION
@@ -24,7 +24,7 @@ export class CreateMissingOwnerTables1770100000002 implements MigrationInterface
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$ BEGIN
                 CREATE TYPE broadcast_status_enum AS ENUM ('DRAFT', 'SCHEDULED', 'SENDING', 'SENT', 'FAILED');
             EXCEPTION
@@ -32,7 +32,7 @@ export class CreateMissingOwnerTables1770100000002 implements MigrationInterface
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$ BEGIN
                 CREATE TYPE broadcast_audience_enum AS ENUM ('ALL_TENANTS', 'TENANT_OWNERS', 'ALL_COACHES', 'ALL_CLIENTS', 'SPECIFIC_PLANS');
             EXCEPTION
@@ -40,7 +40,7 @@ export class CreateMissingOwnerTables1770100000002 implements MigrationInterface
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS broadcast_messages (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 subject VARCHAR(255),
@@ -58,34 +58,68 @@ export class CreateMissingOwnerTables1770100000002 implements MigrationInterface
             );
         `);
 
-        // Indices
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_system_settings_category ON system_settings(category);`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_broadcast_messages_status ON broadcast_messages(status);`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_broadcast_messages_created_by ON broadcast_messages("createdBy");`);
+    // Indices
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_system_settings_category ON system_settings(category);`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_broadcast_messages_status ON broadcast_messages(status);`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_broadcast_messages_created_by ON broadcast_messages("createdBy");`,
+    );
 
-        // 3. Seed Default System Settings
-        const defaultSettings = [
-            { key: 'retention.audit_logs', value: '90', category: 'retention', description: 'Days to retain audit logs' },
-            { key: 'security.password_expiry', value: '0', category: 'security', description: 'Password expiry in days (0 = disabled)' },
-            { key: 'maintenance.mode', value: 'false', category: 'maintenance', description: 'Global maintenance mode' },
-            { key: 'system.platform_name', value: '"EMS Studio"', category: 'system', description: 'Platform display name' },
-            { key: 'branding.primary_color', value: '"#3B82F6"', category: 'branding', description: 'Primary branding color' },
-        ];
+    // 3. Seed Default System Settings
+    const defaultSettings = [
+      {
+        key: 'retention.audit_logs',
+        value: '90',
+        category: 'retention',
+        description: 'Days to retain audit logs',
+      },
+      {
+        key: 'security.password_expiry',
+        value: '0',
+        category: 'security',
+        description: 'Password expiry in days (0 = disabled)',
+      },
+      {
+        key: 'maintenance.mode',
+        value: 'false',
+        category: 'maintenance',
+        description: 'Global maintenance mode',
+      },
+      {
+        key: 'system.platform_name',
+        value: '"EMS Studio"',
+        category: 'system',
+        description: 'Platform display name',
+      },
+      {
+        key: 'branding.primary_color',
+        value: '"#3B82F6"',
+        category: 'branding',
+        description: 'Primary branding color',
+      },
+    ];
 
-        for (const setting of defaultSettings) {
-            await queryRunner.query(`
+    for (const setting of defaultSettings) {
+      await queryRunner.query(
+        `
                 INSERT INTO system_settings (key, value, category, description)
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (key) DO NOTHING;
-            `, [setting.key, setting.value, setting.category, setting.description]);
-        }
+            `,
+        [setting.key, setting.value, setting.category, setting.description],
+      );
     }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP TABLE IF EXISTS broadcast_messages;`);
-        await queryRunner.query(`DROP TABLE IF EXISTS system_settings;`);
-        await queryRunner.query(`DROP TYPE IF EXISTS broadcast_audience_enum;`);
-        await queryRunner.query(`DROP TYPE IF EXISTS broadcast_status_enum;`);
-        await queryRunner.query(`DROP TYPE IF EXISTS broadcast_type_enum;`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE IF EXISTS broadcast_messages;`);
+    await queryRunner.query(`DROP TABLE IF EXISTS system_settings;`);
+    await queryRunner.query(`DROP TYPE IF EXISTS broadcast_audience_enum;`);
+    await queryRunner.query(`DROP TYPE IF EXISTS broadcast_status_enum;`);
+    await queryRunner.query(`DROP TYPE IF EXISTS broadcast_type_enum;`);
+  }
 }

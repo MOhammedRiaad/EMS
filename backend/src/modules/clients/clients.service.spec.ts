@@ -167,8 +167,9 @@ describe('ClientsService', () => {
     mailerService = module.get(MailerService);
     // Mock auditService methods
     module.get(AuditService).log = jest.fn();
-    module.get(AuditService).calculateDiff =
-      jest.fn().mockReturnValue({ changes: {} });
+    module.get(AuditService).calculateDiff = jest
+      .fn()
+      .mockReturnValue({ changes: {} });
 
     jest.clearAllMocks();
   });

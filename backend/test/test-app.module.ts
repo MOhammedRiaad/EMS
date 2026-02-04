@@ -177,4 +177,4 @@ const ALL_ENTITIES = [
   controllers: [HealthController],
   providers: [HealthService],
 })
-export class TestAppModule { }
+export class TestAppModule {}

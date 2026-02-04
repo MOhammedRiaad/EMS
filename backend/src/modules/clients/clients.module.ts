@@ -26,4 +26,4 @@ import { OwnerModule } from '../owner/owner.module';
   providers: [ClientsService],
   exports: [ClientsService],
 })
-export class ClientsModule { }
+export class ClientsModule {}

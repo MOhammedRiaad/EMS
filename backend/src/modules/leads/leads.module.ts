@@ -20,4 +20,4 @@ import { OwnerModule } from '../owner/owner.module';
   providers: [LeadService],
   exports: [TypeOrmModule, LeadService],
 })
-export class LeadsModule { }
+export class LeadsModule {}

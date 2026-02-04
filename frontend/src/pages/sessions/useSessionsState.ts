@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { sessionsService, type Session } from '../../services/sessions.service';
+import { ApiError } from '../../services/api';
 import { clientsService, type Client } from '../../services/clients.service';
 import { coachesService, type CoachDisplay } from '../../services/coaches.service';
 import { studiosService, type Studio } from '../../services/studios.service';
@@ -83,6 +84,7 @@ export function useSessionsState() {
     const [cancelReason, setCancelReason] = useState('');
     const [deductSessionChoice, setDeductSessionChoice] = useState<boolean | null>(null);
     const [showDeductChoice, setShowDeductChoice] = useState(false);
+    const [showTimeChangeConfirmation, setShowTimeChangeConfirmation] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState<SessionFormData>(initialFormState);
@@ -168,7 +170,7 @@ export function useSessionsState() {
         setError(null);
     }, []);
 
-    const handleFilterChange = useCallback((key: string, value: any) => {
+    const handleFilterChange = useCallback((key: string, value: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         setFilters(prev => ({ ...prev, [key]: value }));
     }, []);
 
@@ -204,12 +206,12 @@ export function useSessionsState() {
             setIsCreateModalOpen(false);
             resetForm();
             fetchData();
-        } catch (err: any) {
-            if (err.conflicts && Array.isArray(err.conflicts)) {
+        } catch (err: unknown) {
+            if (err instanceof ApiError && err.conflicts && Array.isArray(err.conflicts)) {
                 const conflictMessages = err.conflicts.map((c: { message: string }) => c.message).join('. ');
                 setError(`Scheduling conflicts: ${conflictMessages}`);
             } else {
-                setError(err.message || 'Failed to create session');
+                setError((err as Error).message || 'Failed to create session');
             }
         } finally {
             setSaving(false);
@@ -226,7 +228,7 @@ export function useSessionsState() {
         setFormData({
             studioId: session.studioId,
             roomId: session.roomId,
-            emsDeviceId: (session as any).emsDeviceId || '',
+            emsDeviceId: session.emsDeviceId || '',
             clientId: session.clientId,
             coachId: session.coachId,
             startTime: formattedStartTime,
@@ -242,8 +244,7 @@ export function useSessionsState() {
         setIsEditModalOpen(true);
     }, []);
 
-    const handleUpdate = useCallback(async (e: React.FormEvent) => {
-        e.preventDefault();
+    const _update = useCallback(async (override: boolean) => {
         if (!selectedSession) return;
         setError(null);
         setSaving(true);
@@ -251,45 +252,51 @@ export function useSessionsState() {
             const start = new Date(formData.startTime);
             const end = new Date(start.getTime() + formData.duration * 60000);
 
-            if ((selectedSession as any).applyToSeries) {
-                await sessionsService.updateSeries(selectedSession.id, {
-                    studioId: formData.studioId,
-                    roomId: formData.roomId,
-                    clientId: formData.clientId || undefined,
-                    coachId: formData.coachId,
-                    startTime: start.toISOString(),
-                    endTime: end.toISOString(),
-                    emsDeviceId: formData.emsDeviceId || undefined,
-                    notes: formData.notes || undefined
-                });
+            const payload = {
+                studioId: formData.studioId,
+                roomId: formData.roomId,
+                clientId: formData.clientId || undefined,
+                coachId: formData.coachId,
+                startTime: start.toISOString(),
+                endTime: end.toISOString(),
+                emsDeviceId: formData.emsDeviceId || undefined,
+                notes: formData.notes || undefined,
+                allowTimeChangeOverride: override
+            };
+
+            if ((selectedSession as Session & { applyToSeries?: boolean }).applyToSeries) {
+                await sessionsService.updateSeries(selectedSession.id, payload);
             } else {
-                await sessionsService.update(selectedSession.id, {
-                    studioId: formData.studioId,
-                    roomId: formData.roomId,
-                    clientId: formData.clientId || undefined,
-                    coachId: formData.coachId,
-                    startTime: start.toISOString(),
-                    endTime: end.toISOString(),
-                    emsDeviceId: formData.emsDeviceId || undefined,
-                    notes: formData.notes || undefined
-                });
+                await sessionsService.update(selectedSession.id, payload);
             }
 
             setIsEditModalOpen(false);
             setSelectedSession(null);
             resetForm();
             fetchData();
-        } catch (err: any) {
-            if (err.conflicts && Array.isArray(err.conflicts)) {
+            setShowTimeChangeConfirmation(false);
+        } catch (err: unknown) {
+            if (err instanceof ApiError && err.conflicts && Array.isArray(err.conflicts)) {
                 const conflictMessages = err.conflicts.map((c: { message: string }) => c.message).join('. ');
                 setError(`Scheduling conflicts: ${conflictMessages}`);
+            } else if (err instanceof ApiError && err.data?.message?.code === 'TIME_CHANGE_WARNING') {
+                setShowTimeChangeConfirmation(true);
             } else {
-                setError(err.message || 'Failed to update session');
+                setError((err as Error).message || 'Failed to update session');
             }
         } finally {
             setSaving(false);
         }
     }, [formData, selectedSession, resetForm, fetchData]);
+
+    const handleUpdate = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        await _update(false);
+    }, [_update]);
+
+    const handleConfirmTimeChange = useCallback(async () => {
+        await _update(true);
+    }, [_update]);
 
     const [deleteSeries, setDeleteSeries] = useState(false);
 
@@ -367,9 +374,9 @@ export function useSessionsState() {
             setCancelReason('');
             setDeductSessionChoice(null);
             setShowDeductChoice(false);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to update status', err);
-            setError(err.message || 'Failed to update session status');
+            setError((err as Error).message || 'Failed to update session status');
         } finally {
             setSaving(false);
         }
@@ -417,6 +424,8 @@ export function useSessionsState() {
         deductSessionChoice,
         setDeductSessionChoice,
         showDeductChoice,
+        showTimeChangeConfirmation,
+        setShowTimeChangeConfirmation,
 
         // Form
         formData,
@@ -434,6 +443,7 @@ export function useSessionsState() {
         handleCreate,
         handleEdit,
         handleUpdate,
+        handleConfirmTimeChange,
         handleDeleteClick,
         handleDeleteConfirm,
         handleStatusClick,

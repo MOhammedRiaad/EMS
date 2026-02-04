@@ -21,12 +21,12 @@ import { CoachesService } from '../coaches/coaches.service';
 export interface DashboardNotification {
   id: string;
   type:
-  | 'session_today'
-  | 'session_upcoming'
-  | 'package_expiring'
-  | 'package_low'
-  | 'waitlist_update'
-  | 'time_off_request';
+    | 'session_today'
+    | 'session_upcoming'
+    | 'package_expiring'
+    | 'package_low'
+    | 'waitlist_update'
+    | 'time_off_request';
   title: string;
   message: string;
   link?: string;
@@ -51,7 +51,7 @@ export class NotificationsService {
     @InjectRepository(AnnouncementRead)
     private readonly announcementReadRepository: Repository<AnnouncementRead>,
     private readonly coachesService: CoachesService,
-  ) { }
+  ) {}
 
   // --- In-App Notifications ---
 

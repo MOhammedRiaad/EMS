@@ -267,7 +267,7 @@
   - Remove from waitlist on successful booking
 
 **Session Time Validation** (ADMIN_GUIDE - implied)
-- [ ] **Respect Original Booked Time**: When admin edits a session, validate that the new time matches client's original request
+- [x] **Respect Original Booked Time**: When admin edits a session, validate that the new time matches client's original request
   - Show warning if changing from booked time
   - Require confirmation for time changes
 

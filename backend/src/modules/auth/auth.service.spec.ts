@@ -497,20 +497,24 @@ describe('AuthService', () => {
 
     it('should throw ForbiddenException if client portal is disabled for client', async () => {
       mockFeatureFlagService.getFeaturesForTenant.mockResolvedValueOnce([
-        { feature: { key: 'client.portal' }, enabled: false }
+        { feature: { key: 'client.portal' }, enabled: false },
       ]);
       const clientUser = { ...mockUser, role: 'client' } as User;
 
-      await expect(service['generateTokens'](clientUser, mockTenant)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service['generateTokens'](clientUser, mockTenant),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw ForbiddenException if coach portal is disabled for coach', async () => {
       mockFeatureFlagService.getFeaturesForTenant.mockResolvedValueOnce([
-        { feature: { key: 'coach.portal' }, enabled: false }
+        { feature: { key: 'coach.portal' }, enabled: false },
       ]);
       const coachUser = { ...mockUser, role: 'coach' } as User;
 
-      await expect(service['generateTokens'](coachUser, mockTenant)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service['generateTokens'](coachUser, mockTenant),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should include clientId in payload if user has client', async () => {

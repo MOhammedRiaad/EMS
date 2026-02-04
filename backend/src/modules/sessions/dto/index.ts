@@ -171,7 +171,14 @@ export class UpdateSessionStatusDto {
   deductSession?: boolean;
 }
 
-export class UpdateSessionDto extends PartialType(CreateSessionDto) {}
+import { IsBoolean } from 'class-validator';
+
+export class UpdateSessionDto extends PartialType(CreateSessionDto) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  allowTimeChangeOverride?: boolean;
+}
 
 export class BulkCreateSessionDto {
   @ApiProperty({ type: [CreateSessionDto] })

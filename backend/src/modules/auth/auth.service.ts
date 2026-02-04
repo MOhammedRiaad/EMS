@@ -41,7 +41,7 @@ export class AuthService {
     private readonly permissionService: PermissionService,
     private readonly roleService: RoleService,
     private readonly featureFlagService: FeatureFlagService,
-  ) { }
+  ) {}
 
   // Public registration - creates new Tenant + Tenant Owner
   async register(dto: RegisterTenantOwnerDto) {
@@ -460,7 +460,9 @@ export class AuthService {
     // Get tenant features
     let enabledFeatures: string[] = [];
     if (user.tenantId) {
-      const features = await this.featureFlagService.getFeaturesForTenant(user.tenantId);
+      const features = await this.featureFlagService.getFeaturesForTenant(
+        user.tenantId,
+      );
       enabledFeatures = features
         .filter((f: any) => f.enabled)
         .map((f: any) => f.feature.key);
@@ -469,15 +471,21 @@ export class AuthService {
     // DYNAMIC PERMISSION FILTERING
     // Filter out permissions that are restricted by disabled features
     // This ensures Plan limits are enforced even if the Role has the permission.
-    const filteredPermissions = permissions.filter(p => isPermissionAllowed(p.key, enabledFeatures));
+    const filteredPermissions = permissions.filter((p) =>
+      isPermissionAllowed(p.key, enabledFeatures),
+    );
     const permissionKeys = filteredPermissions.map((p) => p.key);
 
     // Enforce Tenant Feature Access
     if (user.role === 'client' && !enabledFeatures.includes('client.portal')) {
-      throw new ForbiddenException('Client portal access is disabled for this tenant.');
+      throw new ForbiddenException(
+        'Client portal access is disabled for this tenant.',
+      );
     }
     if (user.role === 'coach' && !enabledFeatures.includes('coach.portal')) {
-      throw new ForbiddenException('Coach portal access is disabled for this tenant.');
+      throw new ForbiddenException(
+        'Coach portal access is disabled for this tenant.',
+      );
     }
 
     const payload: JwtPayload = {
@@ -501,10 +509,12 @@ export class AuthService {
         permissions: permissionKeys,
         features: enabledFeatures,
       },
-      tenant: tenant ? {
-        ...tenant,
-        features: enabledFeatures,
-      } : undefined,
+      tenant: tenant
+        ? {
+            ...tenant,
+            features: enabledFeatures,
+          }
+        : undefined,
     };
   }
   async update(id: string, updateData: Partial<User>) {

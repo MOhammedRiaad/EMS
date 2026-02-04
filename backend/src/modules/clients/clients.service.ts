@@ -33,7 +33,7 @@ export class ClientsService {
     private readonly authService: AuthService,
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, search?: string): Promise<Client[]> {
     const query = this.clientRepository
