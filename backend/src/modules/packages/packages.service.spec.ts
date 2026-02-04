@@ -267,6 +267,7 @@ describe('PackagesService', () => {
           type: TransactionType.INCOME,
           category: TransactionCategory.PACKAGE_SALE,
           amount: mockPackage.price,
+          clientId: 'client-123',
         }),
       );
     });
@@ -464,6 +465,7 @@ describe('PackagesService', () => {
           category: TransactionCategory.PACKAGE_SALE,
           amount: 500,
           description: 'Test',
+          clientId: 'client-123',
         },
         'tenant-123',
         'user-123',
@@ -472,6 +474,7 @@ describe('PackagesService', () => {
       expect(transactionRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           runningBalance: 1500,
+          clientId: 'client-123',
         }),
       );
     });

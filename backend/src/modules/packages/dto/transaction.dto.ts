@@ -17,6 +17,11 @@ export class CreateTransactionDto {
   @IsOptional()
   studioId?: string;
 
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  clientId?: string;
+
   @ApiProperty({ enum: TransactionType })
   @IsEnum(TransactionType)
   type: TransactionType;
