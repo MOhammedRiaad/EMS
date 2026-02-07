@@ -20,7 +20,7 @@ describe('API Service', () => {
 
             const result = await api.get('/sessions');
 
-            expect(result).toEqual(mockData);
+            expect(result).toEqual({ data: mockData });
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('/sessions'),
                 expect.objectContaining({
@@ -70,9 +70,7 @@ describe('API Service', () => {
                 json: () => Promise.resolve({ message: 'Unauthorized' }),
             });
 
-            await expect(api.get('/sessions')).rejects.toEqual({
-                response: { data: { message: 'Unauthorized' } },
-            });
+            await expect(api.get('/sessions')).rejects.toThrow('Unauthorized');
         });
     });
 
@@ -103,9 +101,7 @@ describe('API Service', () => {
                 json: () => Promise.resolve({ message: 'Validation failed' }),
             });
 
-            await expect(api.post('/sessions', {})).rejects.toEqual({
-                response: { data: { message: 'Validation failed' } },
-            });
+            await expect(api.post('/sessions', {})).rejects.toThrow('Validation failed');
         });
     });
 
@@ -115,6 +111,7 @@ describe('API Service', () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve({ success: true }),
+                text: () => Promise.resolve(JSON.stringify({ success: true })),
             });
 
             const result = await authenticatedFetch('/protected');
@@ -134,6 +131,7 @@ describe('API Service', () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
                 json: () => Promise.resolve({ message: 'Access denied' }),
+                text: () => Promise.resolve(JSON.stringify({ message: 'Access denied' })),
             });
 
             await expect(authenticatedFetch('/protected')).rejects.toThrow(
@@ -145,6 +143,7 @@ describe('API Service', () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
                 json: () => Promise.resolve({}),
+                text: () => Promise.resolve(''),
             });
 
             await expect(authenticatedFetch('/protected')).rejects.toThrow(
@@ -157,6 +156,7 @@ describe('API Service', () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve({}),
+                text: () => Promise.resolve('{}'),
             });
 
             await authenticatedFetch('/data', {

@@ -1,5 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import OwnerTenants from '../OwnerTenants';
 import { ownerPortalService } from '../../../services/owner-portal.service';
 
@@ -51,12 +52,20 @@ describe('OwnerTenants', () => {
     });
 
     it('renders loading state initially', () => {
-        render(<OwnerTenants />);
+        render(
+            <MemoryRouter>
+                <OwnerTenants />
+            </MemoryRouter>
+        );
         expect(screen.getByText(/Loading tenants.../i)).toBeInTheDocument();
     });
 
     it('renders tenant list after loading', async () => {
-        render(<OwnerTenants />);
+        render(
+            <MemoryRouter>
+                <OwnerTenants />
+            </MemoryRouter>
+        );
 
         await waitFor(() => {
             expect(screen.queryByText(/Loading tenants.../i)).not.toBeInTheDocument();
@@ -69,7 +78,11 @@ describe('OwnerTenants', () => {
     });
 
     it('filters tenants when typing in search', async () => {
-        render(<OwnerTenants />);
+        render(
+            <MemoryRouter>
+                <OwnerTenants />
+            </MemoryRouter>
+        );
 
         const searchInput = screen.getByPlaceholderText(/Search tenants.../i);
         fireEvent.change(searchInput, { target: { value: 'Main' } });
@@ -84,7 +97,11 @@ describe('OwnerTenants', () => {
     it('triggers impersonation when clicking login button', async () => {
         (ownerPortalService.impersonateTenant as any).mockResolvedValue({ token: 'mock-token' });
 
-        render(<OwnerTenants />);
+        render(
+            <MemoryRouter>
+                <OwnerTenants />
+            </MemoryRouter>
+        );
 
         await waitFor(() => {
             expect(screen.getByText('Main Studio')).toBeInTheDocument();
@@ -100,7 +117,11 @@ describe('OwnerTenants', () => {
     it('renders empty state when no tenants returned', async () => {
         (ownerPortalService.getTenants as any).mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
 
-        render(<OwnerTenants />);
+        render(
+            <MemoryRouter>
+                <OwnerTenants />
+            </MemoryRouter>
+        );
 
         await waitFor(() => {
             expect(screen.getByText(/No tenants found/i)).toBeInTheDocument();

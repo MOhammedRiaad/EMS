@@ -31,7 +31,9 @@ describe('AuthService', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(mockResponse),
+                text: () => Promise.resolve(JSON.stringify(mockResponse)),
             });
 
             const result = await authService.login({
@@ -56,7 +58,9 @@ describe('AuthService', () => {
         it('should throw error on failed login', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                status: 401,
                 json: () => Promise.resolve({ message: 'Invalid credentials' }),
+                text: () => Promise.resolve(JSON.stringify({ message: 'Invalid credentials' })),
             });
 
             await expect(
@@ -70,7 +74,9 @@ describe('AuthService', () => {
         it('should throw default error message when no message provided', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                status: 401,
                 json: () => Promise.resolve({}),
+                text: () => Promise.resolve(''),
             });
 
             await expect(
@@ -78,7 +84,7 @@ describe('AuthService', () => {
                     email: 'test@example.com',
                     password: 'wrongpassword',
                 })
-            ).rejects.toThrow('Login failed');
+            ).rejects.toThrow('API request failed');
         });
     });
 
@@ -104,7 +110,9 @@ describe('AuthService', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(mockResponse),
+                text: () => Promise.resolve(JSON.stringify(mockResponse)),
             });
 
             const result = await authService.register({
@@ -127,7 +135,9 @@ describe('AuthService', () => {
         it('should throw error on failed registration', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                status: 400,
                 json: () => Promise.resolve({ message: 'Email already exists' }),
+                text: () => Promise.resolve(JSON.stringify({ message: 'Email already exists' })),
             });
 
             await expect(
@@ -162,7 +172,9 @@ describe('AuthService', () => {
 
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(mockResponse),
+                text: () => Promise.resolve(JSON.stringify(mockResponse)),
             });
 
             const result = await authService.setupPassword({
@@ -178,7 +190,9 @@ describe('AuthService', () => {
         it('should throw error on invalid setup token', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                status: 400,
                 json: () => Promise.resolve({ message: 'Invalid or expired token' }),
+                text: () => Promise.resolve(JSON.stringify({ message: 'Invalid or expired token' })),
             });
 
             await expect(
