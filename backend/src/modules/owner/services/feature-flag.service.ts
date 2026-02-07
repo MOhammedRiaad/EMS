@@ -21,7 +21,7 @@ export class FeatureFlagService {
     private readonly planRepository: Repository<Plan>,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
-  ) {}
+  ) { }
 
   /**
    * Check if a feature is enabled for a tenant
@@ -185,16 +185,18 @@ export class FeatureFlagService {
     }
 
     feature.defaultEnabled = enabled;
-    return this.featureFlagRepository.save(feature);
+    const saved = await this.featureFlagRepository.save(feature);
+    return { ...saved, isEnabled: saved.defaultEnabled } as any;
   }
 
   /**
    * Get all feature flags
    */
-  async getAllFeatureFlags(): Promise<FeatureFlag[]> {
-    return this.featureFlagRepository.find({
+  async getAllFeatureFlags(): Promise<any[]> {
+    const features = await this.featureFlagRepository.find({
       order: { category: 'ASC', key: 'ASC' },
     });
+    return features.map((f) => ({ ...f, isEnabled: f.defaultEnabled }));
   }
 
   /**
@@ -219,7 +221,8 @@ export class FeatureFlagService {
       isExperimental: data.isExperimental ?? false,
     });
 
-    return this.featureFlagRepository.save(feature);
+    const saved = await this.featureFlagRepository.save(feature);
+    return { ...saved, isEnabled: saved.defaultEnabled } as any;
   }
 
   /**
