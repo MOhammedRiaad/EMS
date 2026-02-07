@@ -10,6 +10,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { AuditService } from '../audit/audit.service';
 import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { SystemConfigService } from '../owner/services/system-config.service';
 import { PermissionService } from './services/permission.service';
 import { RoleService } from './services/role.service';
 import { UsageTrackingService } from '../owner/services/usage-tracking.service';
@@ -164,6 +165,12 @@ describe('AuthService', () => {
           useValue: {
             recordMetric: jest.fn().mockResolvedValue(undefined),
             checkLimit: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: SystemConfigService,
+          useValue: {
+            get: jest.fn().mockResolvedValue(false),
           },
         },
       ],
