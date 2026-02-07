@@ -14,7 +14,7 @@ export class PermissionService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(UserRoleAssignment)
     private readonly userRoleRepository: Repository<UserRoleAssignment>,
-  ) {}
+  ) { }
 
   /**
    * Check if a user has a specific permission
@@ -148,5 +148,32 @@ export class PermissionService {
     return this.permissionRepository.find({
       where: { key: In(keys) },
     });
+  }
+
+  /**
+   * Update a permission
+   */
+  async updatePermission(
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      category?: string;
+      isActive?: boolean;
+    },
+  ): Promise<Permission> {
+    await this.permissionRepository.update(id, data);
+    const updated = await this.permissionRepository.findOne({ where: { id } });
+    if (!updated) {
+      throw new Error(`Permission with ID ${id} not found`);
+    }
+    return updated;
+  }
+
+  /**
+   * Delete a permission
+   */
+  async deletePermission(id: string): Promise<void> {
+    await this.permissionRepository.delete(id);
   }
 }

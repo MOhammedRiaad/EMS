@@ -18,6 +18,8 @@ import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { AuditService } from '../audit/audit.service';
 import { User } from '../auth/entities/user.entity';
+import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+import { Session } from '../sessions/entities/session.entity';
 
 @Injectable()
 export class ClientsService {
@@ -30,6 +32,10 @@ export class ClientsService {
     private readonly photoRepository: Repository<ClientProgressPhoto>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(FavoriteCoach)
+    private readonly favoriteCoachRepository: Repository<FavoriteCoach>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
     private readonly authService: AuthService,
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
@@ -66,10 +72,21 @@ export class ClientsService {
     tenantId: string,
     relations: string[] = [],
   ): Promise<Client> {
-    const client = await this.clientRepository.findOne({
-      where: { id, tenantId },
-      relations,
-    });
+    // Use query builder to ensure relations are properly loaded
+    const queryBuilder = this.clientRepository
+      .createQueryBuilder('client')
+      .where('client.id = :id', { id })
+      .andWhere('client.tenantId = :tenantId', { tenantId });
+
+    // Add relations
+    if (relations.includes('user')) {
+      queryBuilder.leftJoinAndSelect('client.user', 'user');
+    }
+    if (relations.includes('studio')) {
+      queryBuilder.leftJoinAndSelect('client.studio', 'studio');
+    }
+
+    const client = await queryBuilder.getOne();
     if (!client) {
       throw new NotFoundException(`Client ${id} not found`);
     }
@@ -350,5 +367,111 @@ export class ClientsService {
     }
 
     await this.photoRepository.remove(photo);
+  }
+
+  async getFavoriteCoach(
+    clientId: string,
+    tenantId: string,
+  ): Promise<any | null> {
+    // Ensure client exists
+    await this.findOne(clientId, tenantId);
+
+    // Get the most recently favorited coach
+    const favorite = await this.favoriteCoachRepository.findOne({
+      where: { clientId, tenantId },
+      relations: ['coach', 'coach.user'],
+      order: { favoritedAt: 'DESC' },
+    });
+
+    if (favorite && favorite.coach) {
+      return {
+        id: favorite.coach.id,
+        firstName: favorite.coach.user?.firstName || '',
+        lastName: favorite.coach.user?.lastName || '',
+        name: favorite.coach.user
+          ? `${favorite.coach.user.firstName} ${favorite.coach.user.lastName}`
+          : 'Unknown Coach',
+        avatarUrl: favorite.coach.user?.avatarUrl || null,
+        favoritedAt: favorite.favoritedAt,
+        isFavorite: true,
+      };
+    }
+
+    // If no favorite coach, get the most frequently assigned coach from sessions
+    const mostAssignedCoach = await this.sessionRepository
+      .createQueryBuilder('session')
+      .select('session.coachId', 'coachId')
+      .addSelect('coach.id', 'id')
+      .addSelect('user.firstName', 'firstName')
+      .addSelect('user.lastName', 'lastName')
+      .addSelect('user.avatarUrl', 'avatarUrl')
+      .addSelect('COUNT(*)', 'sessionCount')
+      .leftJoin('session.coach', 'coach')
+      .leftJoin('coach.user', 'user')
+      .where('session.clientId = :clientId', { clientId })
+      .andWhere('session.tenantId = :tenantId', { tenantId })
+      .andWhere('session.coachId IS NOT NULL')
+      .groupBy('session.coachId')
+      .addGroupBy('coach.id')
+      .addGroupBy('user.firstName')
+      .addGroupBy('user.lastName')
+      .addGroupBy('user.avatarUrl')
+      .orderBy('COUNT(*)', 'DESC')
+      .limit(1)
+      .getRawOne();
+
+    if (!mostAssignedCoach || !mostAssignedCoach.coachId) {
+      return null;
+    }
+
+    const firstName = mostAssignedCoach.firstName || '';
+    const lastName = mostAssignedCoach.lastName || '';
+    const name = firstName && lastName
+      ? `${firstName} ${lastName}`
+      : 'Unknown Coach';
+
+    return {
+      id: mostAssignedCoach.coachId,
+      firstName,
+      lastName,
+      name,
+      avatarUrl: mostAssignedCoach.avatarUrl || null,
+      sessionCount: parseInt(mostAssignedCoach.sessionCount, 10),
+      isFavorite: false,
+    };
+  }
+
+  async getMostUsedRoom(
+    clientId: string,
+    tenantId: string,
+  ): Promise<{ roomId: string; roomName: string; usageCount: number } | null> {
+    // Ensure client exists
+    await this.findOne(clientId, tenantId);
+
+    // Query sessions for this client and count room usage
+    const roomUsage = await this.sessionRepository
+      .createQueryBuilder('session')
+      .select('session.roomId', 'roomId')
+      .addSelect('room.name', 'roomName')
+      .addSelect('COUNT(*)', 'usageCount')
+      .leftJoin('session.room', 'room')
+      .where('session.clientId = :clientId', { clientId })
+      .andWhere('session.tenantId = :tenantId', { tenantId })
+      .andWhere('session.roomId IS NOT NULL')
+      .groupBy('session.roomId')
+      .addGroupBy('room.name')
+      .orderBy('COUNT(*)', 'DESC')
+      .limit(1)
+      .getRawOne();
+
+    if (!roomUsage || !roomUsage.roomId) {
+      return null;
+    }
+
+    return {
+      roomId: roomUsage.roomId,
+      roomName: roomUsage.roomName || 'Unknown Room',
+      usageCount: parseInt(roomUsage.usageCount, 10),
+    };
   }
 }

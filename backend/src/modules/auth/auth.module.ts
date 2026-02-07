@@ -40,6 +40,7 @@ import { OwnerModule } from '../owner/owner.module';
     PassportModule,
     PermissionService,
     RoleService,
+    JwtModule,
   ],
 })
-export class AuthModule {}
+export class AuthModule { }

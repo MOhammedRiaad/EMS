@@ -22,7 +22,7 @@ export class RoleController {
   constructor(
     private readonly roleService: RoleService,
     private readonly permissionService: PermissionService,
-  ) {}
+  ) { }
 
   /**
    * Get all roles
@@ -125,5 +125,49 @@ export class RoleController {
   @RequirePermissions('owner.role.view')
   async getUserRoles(@Param('userId') userId: string) {
     return this.permissionService.getUserRoles(userId);
+  }
+
+  /**
+   * Create a new permission
+   */
+  @Post('permissions')
+  @RequirePermissions('owner.role.manage')
+  async createPermission(
+    @Body()
+    data: {
+      key: string;
+      name: string;
+      description?: string;
+      category: string;
+    },
+  ) {
+    return this.permissionService.createPermission(data);
+  }
+
+  /**
+   * Update a permission
+   */
+  @Patch('permissions/:id')
+  @RequirePermissions('owner.role.manage')
+  async updatePermission(
+    @Param('id') id: string,
+    @Body()
+    data: {
+      name?: string;
+      description?: string;
+      category?: string;
+      isActive?: boolean;
+    },
+  ) {
+    return this.permissionService.updatePermission(id, data);
+  }
+
+  /**
+   * Delete a permission
+   */
+  @Delete('permissions/:id')
+  @RequirePermissions('owner.role.manage')
+  async deletePermission(@Param('id') id: string) {
+    return this.permissionService.deletePermission(id);
   }
 }

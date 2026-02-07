@@ -40,11 +40,11 @@ const OwnerTenantDetails: React.FC = () => {
         setLoading(true);
         try {
             const tenantData = await ownerPortalService.getTenantDetails(id);
-            setTenant(tenantData);
+            setTenant(tenantData.tenant);
 
             // Map backend features structure to frontend TenantFeatureState
-            if (tenantData.features && Array.isArray(tenantData.features)) {
-                const mappedFeatures: TenantFeatureState[] = tenantData.features.map((item: any) => ({
+            if (tenantData.tenant.features && Array.isArray(tenantData.tenant.features)) {
+                const mappedFeatures: TenantFeatureState[] = tenantData.tenant.features.map((item: any) => ({
                     key: item.feature.key,
                     name: item.feature.name,
                     description: item.feature.description,
@@ -57,7 +57,7 @@ const OwnerTenantDetails: React.FC = () => {
                 setFeatures(mappedFeatures);
             }
 
-            setSelectedPlan(tenantData.plan?.key || 'starter');
+            setSelectedPlan(tenantData.tenant.plan?.key || 'starter');
         } catch (error) {
             console.error('Failed to load tenant details', error);
             // navigate('/owner/tenants');

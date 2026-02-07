@@ -43,7 +43,7 @@ export class ClientsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get client by ID' })
   findOne(@Param('id') id: string, @TenantId() tenantId: string) {
-    return this.clientsService.findOne(id, tenantId);
+    return this.clientsService.findOne(id, tenantId, ['studio', 'user']);
   }
 
   @Get(':id/waivers')
@@ -141,5 +141,17 @@ export class ClientsController {
     @TenantId() tenantId: string,
   ) {
     return this.clientsService.deleteProgressPhoto(id, photoId, tenantId);
+  }
+
+  @Get(':id/favorite-coach')
+  @ApiOperation({ summary: 'Get client favorite coach' })
+  getFavoriteCoach(@Param('id') id: string, @TenantId() tenantId: string) {
+    return this.clientsService.getFavoriteCoach(id, tenantId);
+  }
+
+  @Get(':id/most-used-room')
+  @ApiOperation({ summary: 'Get client most used room' })
+  getMostUsedRoom(@Param('id') id: string, @TenantId() tenantId: string) {
+    return this.clientsService.getMostUsedRoom(id, tenantId);
   }
 }

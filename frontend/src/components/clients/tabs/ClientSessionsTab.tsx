@@ -1,17 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, User, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, AlertCircle, Star, TrendingUp } from 'lucide-react';
 import DataTable, { type Column } from '../../common/DataTable';
 import { sessionsService, type Session } from '../../../services/sessions.service';
+import { clientsService } from '../../../services/clients.service';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface ClientSessionsTabProps {
     clientId: string;
 }
 
 const ClientSessionsTab: React.FC<ClientSessionsTabProps> = ({ clientId }) => {
+    const { isEnabled } = useAuth();
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [favoriteCoach, setFavoriteCoach] = useState<{ id: string; name: string; firstName: string; lastName: string; avatarUrl: string | null; favoritedAt?: string; sessionCount?: number; isFavorite?: boolean } | null>(null);
+    const [mostUsedRoom, setMostUsedRoom] = useState<{ roomId: string; roomName: string; usageCount: number } | null>(null);
 
     const fetchSessions = async () => {
         setLoading(true);
@@ -30,8 +35,25 @@ const ClientSessionsTab: React.FC<ClientSessionsTabProps> = ({ clientId }) => {
     useEffect(() => {
         if (clientId) {
             fetchSessions();
+            
+            // Fetch favorite coach and most used room if feature is enabled
+            if (isEnabled('client.favorite_coaches')) {
+                const fetchAdditionalData = async () => {
+                    try {
+                        const [coach, room] = await Promise.all([
+                            clientsService.getFavoriteCoach(clientId),
+                            clientsService.getMostUsedRoom(clientId)
+                        ]);
+                        setFavoriteCoach(coach);
+                        setMostUsedRoom(room);
+                    } catch (err) {
+                        console.error('Failed to load favorite coach or most used room', err);
+                    }
+                };
+                fetchAdditionalData();
+            }
         }
-    }, [clientId]);
+    }, [clientId, isEnabled]);
 
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
@@ -48,6 +70,8 @@ const ClientSessionsTab: React.FC<ClientSessionsTabProps> = ({ clientId }) => {
         );
     };
 
+    const showFavoriteCoachInfo = isEnabled('client.favorite_coaches');
+    
     const columns: Column<Session>[] = [
         {
             key: 'startTime',
@@ -116,6 +140,70 @@ const ClientSessionsTab: React.FC<ClientSessionsTabProps> = ({ clientId }) => {
 
     return (
         <div className="space-y-6">
+            {/* Info Cards */}
+            {showFavoriteCoachInfo && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Favorite Coach Card */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center">
+                                {favoriteCoach?.isFavorite ? (
+                                    <Star className="w-5 h-5 text-yellow-500 fill-yellow-500 mr-3" />
+                                ) : (
+                                    <User className="w-5 h-5 text-gray-400 mr-3" />
+                                )}
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        {favoriteCoach?.isFavorite ? 'Favorite Coach' : 'Most Assigned Coach'}
+                                    </h4>
+                                    <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                        {favoriteCoach ? (
+                                            <>
+                                                {favoriteCoach.name}
+                                                {!favoriteCoach.isFavorite && favoriteCoach.sessionCount && (
+                                                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                                                        ({favoriteCoach.sessionCount} sessions)
+                                                    </span>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="text-gray-400">No coach data</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Most Used Room Card */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center">
+                                <TrendingUp className="w-5 h-5 text-blue-500 mr-3" />
+                                <div>
+                                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Most Used Room
+                                    </h4>
+                                    <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                        {mostUsedRoom ? (
+                                            <>
+                                                {mostUsedRoom.roomName}
+                                                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                                                    ({mostUsedRoom.usageCount} sessions)
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="text-gray-400">No room data</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sessions Table */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <div className="flex items-center">

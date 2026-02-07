@@ -130,5 +130,13 @@ export const clientsService = {
             method: 'POST',
             body: formData
         });
+    },
+
+    async getFavoriteCoach(id: string): Promise<{ id: string; name: string; firstName: string; lastName: string; avatarUrl: string | null; favoritedAt?: string; sessionCount?: number; isFavorite?: boolean } | null> {
+        return authenticatedFetch(`/clients/${id}/favorite-coach`);
+    },
+
+    async getMostUsedRoom(id: string): Promise<{ roomId: string; roomName: string; usageCount: number } | null> {
+        return authenticatedFetch(`/clients/${id}/most-used-room`);
     }
 };

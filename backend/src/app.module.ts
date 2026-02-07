@@ -39,6 +39,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { MarketingModule } from './modules/marketing/marketing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { OwnerModule } from './modules/owner/owner.module';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 
 @Module({
   imports: [
@@ -61,11 +62,11 @@ import { OwnerModule } from './modules/owner/owner.module';
             transport: isProduction
               ? undefined
               : {
-                  target: 'pino-pretty',
-                  options: {
-                    singleLine: true,
-                  },
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
                 },
+              },
           },
         };
       },
@@ -144,6 +145,10 @@ import { OwnerModule } from './modules/owner/owner.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceGuard,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule { }

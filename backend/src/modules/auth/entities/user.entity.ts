@@ -6,7 +6,7 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { Exclude } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Client } from '../../clients/entities/client.entity';
@@ -47,6 +47,7 @@ export class User extends TenantScopedEntityWithUpdate {
     enum: ['male', 'female', 'other', 'prefer_not_to_say'],
     default: 'prefer_not_to_say',
   })
+  @Expose()
   gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @Column({ name: 'first_name', type: 'varchar', length: 100, nullable: true })

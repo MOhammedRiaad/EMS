@@ -39,9 +39,9 @@ Think of it as: **Stripe Dashboard + Firebase Console + Mindbody Ops Panel**
 #### 1. Permission System (Database-Driven RBAC)
 - **Entities**: `Permission`, `Role`, `RolePermission`, `UserRole`
 - **Roles**: 
-  - `platform_owner` - Super admin with all permissions
-  - `support_owner` - Read-only owner (view logs, send messages)
-  - `tenant_owner`, `admin`, `coach`, `client` - Standard roles
+  - `platform_owner` - Super administrator with full platform access (manage tenants, global roles, feature rollouts)
+  - `support_owner` - Support administrator with audit and messaging access (view logs, send broadcasts, non-mutative impersonation)
+  - `tenant_owner`, `admin`, `coach`, `client` - Standard transactional roles
 - **~50-100 Permissions**: Granular access control (e.g., `session.create`, `owner.tenant.suspend`)
 
 #### 2. Feature Flag System
@@ -138,7 +138,7 @@ Think of it as: **Stripe Dashboard + Firebase Console + Mindbody Ops Panel**
 | `permissions` | Granular permission definitions |
 | `roles` | Database-driven roles (system + custom) |
 | `role_permissions` | Many-to-many role ↔ permission |
-| `user_roles` | Many-to-many user ↔ role |
+| `user_roles` | User ↔ role assignment (Single role per user) |
 | `feature_flags` | Feature definitions and metadata |
 | `feature_assignments` | Tenant-specific feature overrides |
 | `plans` | Plan definitions with limits and features |
@@ -151,7 +151,7 @@ Think of it as: **Stripe Dashboard + Firebase Console + Mindbody Ops Panel**
 | Table | New Columns |
 |-------|-------------|
 | `tenants` | `status`, `suspendedAt`, `suspendedReason`, `lastActivityAt`, `usageStats`, `ownerNotes`, `isBlocked`, `blockReason` |
-| `users` | Relationship change: `@ManyToMany(() => Role)` instead of `role` enum |
+| `users` | Relationship change: Database-driven role assignment (single role per user) |
 
 ---
 
@@ -312,13 +312,17 @@ All features that will be controllable via feature flags:
 
 **Core Operations:**
 - `core.sessions` - Sessions & Scheduling
+- `core.coaches` - Coach Management
 - `core.group_sessions` - Group Sessions
 - `core.waiting_list` - Waiting List
 - `core.rooms_devices` - Rooms & Devices
+- `core.branding` - Custom Branding (Logo/Colors)
+- `core.cancellation_policy` - Cancellation Policy Control
 
 **Client Experience:**
 - `client.portal` - Client Portal
 - `client.gamification` - Gamification
+- `client.leaderboard` - Social Leaderboard
 - `client.activity_feed` - Activity Feed
 - `client.reviews` - Reviews
 - `client.progress_tracking` - Progress Tracking

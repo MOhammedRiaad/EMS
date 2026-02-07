@@ -394,6 +394,20 @@ export const ownerPortalService = {
         await api.delete(`/owner/roles/${roleId}`);
     },
 
+    createPermission: async (data: Partial<Permission>) => {
+        const response = await api.post('/owner/roles/permissions', data);
+        return response.data;
+    },
+
+    updatePermission: async (id: string, data: Partial<Permission>) => {
+        const response = await api.patch(`/owner/roles/permissions/${id}`, data);
+        return response.data;
+    },
+
+    deletePermission: async (id: string) => {
+        await api.delete(`/owner/roles/permissions/${id}`);
+    },
+
     assignRoleToUser: async (userId: string, roleId: string) => {
         const response = await api.post(`/owner/roles/${roleId}/users/${userId}`, {});
         return response.data;

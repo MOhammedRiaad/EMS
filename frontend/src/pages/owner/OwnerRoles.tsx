@@ -14,11 +14,14 @@ import { ownerPortalService } from '../../services/owner-portal.service';
 import type { Role, Permission } from '../../services/owner-portal.service';
 
 const OwnerRoles: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'roles' | 'permissions'>('roles');
     const [roles, setRoles] = useState<Role[]>([]);
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showPermissionModal, setShowPermissionModal] = useState(false);
     const [editingRole, setEditingRole] = useState<Partial<Role> & { permissionKeys?: string[] } | null>(null);
+    const [editingPermission, setEditingPermission] = useState<Partial<Permission> | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     const loadData = async () => {
@@ -42,14 +45,24 @@ const OwnerRoles: React.FC = () => {
     }, []);
 
     const handleCreate = () => {
-        setEditingRole({
-            name: '',
-            key: '',
-            description: '',
-            permissionKeys: [],
-            isSystemRole: false
-        });
-        setShowModal(true);
+        if (activeTab === 'roles') {
+            setEditingRole({
+                name: '',
+                key: '',
+                description: '',
+                permissionKeys: [],
+                isSystemRole: false
+            });
+            setShowModal(true);
+        } else {
+            setEditingPermission({
+                name: '',
+                key: '',
+                description: '',
+                category: 'owner'
+            });
+            setShowPermissionModal(true);
+        }
     };
 
     const handleEdit = (role: Role) => {
@@ -60,6 +73,11 @@ const OwnerRoles: React.FC = () => {
         setShowModal(true);
     };
 
+    const handleEditPermission = (perm: Permission) => {
+        setEditingPermission(perm);
+        setShowPermissionModal(true);
+    };
+
     const handleDelete = async (roleId: string) => {
         if (!confirm('Are you sure you want to delete this role? This cannot be undone.')) return;
         try {
@@ -67,6 +85,16 @@ const OwnerRoles: React.FC = () => {
             loadData();
         } catch (error) {
             alert('Failed to delete role');
+        }
+    };
+
+    const handleDeletePermission = async (permId: string) => {
+        if (!confirm('Are you sure you want to delete this permission? This may affect system security.')) return;
+        try {
+            await ownerPortalService.deletePermission(permId);
+            loadData();
+        } catch (error) {
+            alert('Failed to delete permission');
         }
     };
 
@@ -97,6 +125,24 @@ const OwnerRoles: React.FC = () => {
         }
     };
 
+    const handleSavePermission = async () => {
+        if (!editingPermission || !editingPermission.name || !editingPermission.key || !editingPermission.category) return;
+
+        try {
+            if (editingPermission.id) {
+                await ownerPortalService.updatePermission(editingPermission.id, editingPermission);
+            } else {
+                await ownerPortalService.createPermission(editingPermission);
+            }
+            setShowPermissionModal(false);
+            setEditingPermission(null);
+            loadData();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to save permission');
+        }
+    };
+
     const togglePermission = (key: string) => {
         if (!editingRole) return;
         const currentKeys = editingRole.permissionKeys || [];
@@ -118,7 +164,13 @@ const OwnerRoles: React.FC = () => {
         role.key.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    if (loading) return <div className="p-8 text-center text-gray-500">Loading roles...</div>;
+    const filteredPermissions = permissions.filter(perm =>
+        perm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        perm.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        perm.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (loading) return <div className="p-8 text-center text-gray-500">Loading data...</div>;
 
     return (
         <div className="space-y-6">
@@ -127,14 +179,14 @@ const OwnerRoles: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <Shield className="text-blue-600" /> Roles & Permissions
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400">Manage access control and system roles</p>
+                    <p className="text-gray-500 dark:text-gray-400">Manage access control and system permissions</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
                             type="text"
-                            placeholder="Search roles..."
+                            placeholder={activeTab === 'roles' ? "Search roles..." : "Search permissions..."}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
@@ -144,58 +196,123 @@ const OwnerRoles: React.FC = () => {
                         onClick={handleCreate}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 whitespace-nowrap"
                     >
-                        <Plus size={18} /> New Role
+                        <Plus size={18} /> New {activeTab === 'roles' ? 'Role' : 'Permission'}
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRoles.map(role => (
-                    <div key={role.id} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col">
-                        <div className="p-6 flex-1">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${role.isSystemRole ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                                        {role.isSystemRole ? <Lock size={20} /> : <Users size={20} />}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">{role.name}</h3>
-                                        <p className="text-xs text-gray-500 font-mono">{role.key}</p>
-                                    </div>
-                                </div>
-                                {role.isSystemRole && (
-                                    <span className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-xs text-gray-600 dark:text-gray-300 rounded font-medium">
-                                        SYSTEM
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 min-h-[40px]">{role.description}</p>
-
-                            <div className="text-xs text-gray-500">
-                                <span className="font-medium text-gray-900 dark:text-white">{role.permissions?.length || 0}</span> permissions assigned
-                            </div>
-                        </div>
-                        <div className="p-4 bg-gray-50 dark:bg-slate-700/50 flex justify-end gap-2 border-t border-gray-100 dark:border-slate-700">
-                            <button
-                                onClick={() => handleEdit(role)}
-                                className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-all flex items-center gap-1"
-                            >
-                                <Edit2 size={16} /> {role.isSystemRole ? 'View' : 'Edit'}
-                            </button>
-                            {!role.isSystemRole && (
-                                <button
-                                    onClick={() => handleDelete(role.id)}
-                                    className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
-                                >
-                                    <Trash2 size={16} /> Delete
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ))}
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 dark:border-slate-700">
+                <button
+                    onClick={() => setActiveTab('roles')}
+                    className={`px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'roles' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    Roles
+                </button>
+                <button
+                    onClick={() => setActiveTab('permissions')}
+                    className={`px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'permissions' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                    Permissions Library
+                </button>
             </div>
 
-            {/* Edit/Create Modal */}
+            {activeTab === 'roles' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredRoles.map(role => (
+                        <div key={role.id} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col">
+                            <div className="p-6 flex-1">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-lg ${role.isSystemRole ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {role.isSystemRole ? <Lock size={20} /> : <Users size={20} />}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 dark:text-white">{role.name}</h3>
+                                            <p className="text-xs text-gray-500 font-mono">{role.key}</p>
+                                        </div>
+                                    </div>
+                                    {role.isSystemRole && (
+                                        <span className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-xs text-gray-600 dark:text-gray-300 rounded font-medium">
+                                            SYSTEM
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 min-h-[40px]">{role.description}</p>
+
+                                <div className="text-xs text-gray-500">
+                                    <span className="font-medium text-gray-900 dark:text-white">{role.permissions?.length || 0}</span> permissions assigned
+                                </div>
+                            </div>
+                            <div className="p-4 bg-gray-50 dark:bg-slate-700/50 flex justify-end gap-2 border-t border-gray-100 dark:border-slate-700">
+                                <button
+                                    onClick={() => handleEdit(role)}
+                                    className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-all flex items-center gap-1"
+                                >
+                                    <Edit2 size={16} /> {role.isSystemRole ? 'View' : 'Edit'}
+                                </button>
+                                {!role.isSystemRole && (
+                                    <button
+                                        onClick={() => handleDelete(role.id)}
+                                        className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+                                    >
+                                        <Trash2 size={16} /> Delete
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-500 dark:text-gray-400 text-xs uppercase font-bold tracking-wider">
+                            <tr>
+                                <th className="px-6 py-4">Key / Name</th>
+                                <th className="px-6 py-4">Category</th>
+                                <th className="px-6 py-4">Description</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                            {filteredPermissions.map(perm => (
+                                <tr key={perm.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="font-medium text-gray-900 dark:text-white">{perm.name}</div>
+                                        <div className="text-xs text-gray-500 font-mono">{perm.key}</div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm">
+                                        <span className="px-2 py-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-xs font-semibold">
+                                            {perm.category}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                                        {perm.description || 'No description'}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => handleEditPermission(perm)}
+                                                className="p-1.5 text-gray-500 hover:text-blue-600 transition-colors"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeletePermission(perm.id)}
+                                                className="p-1.5 text-gray-500 hover:text-red-600 transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Role Modal */}
             {showModal && editingRole && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
                     <div className="bg-white dark:bg-slate-800 rounded-xl max-w-4xl w-full p-0 flex flex-col max-h-[90vh] my-8 shadow-2xl">
@@ -318,6 +435,79 @@ const OwnerRoles: React.FC = () => {
                                     <Check size={18} /> Save Role
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Permission Modal */}
+            {showPermissionModal && editingPermission && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {editingPermission.id ? 'Edit Permission' : 'Create Permission'}
+                            </h3>
+                            <button onClick={() => setShowPermissionModal(false)}><X className="text-gray-400 hover:text-gray-600" /></button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Permission Name</label>
+                                <input
+                                    type="text"
+                                    value={editingPermission.name}
+                                    onChange={e => setEditingPermission({ ...editingPermission, name: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2 dark:bg-slate-900 dark:border-slate-700"
+                                    placeholder="e.g. View Reports"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key (Unique ID)</label>
+                                <input
+                                    type="text"
+                                    value={editingPermission.key}
+                                    onChange={e => setEditingPermission({ ...editingPermission, key: e.target.value })}
+                                    disabled={!!editingPermission.id}
+                                    className="w-full border rounded-lg px-3 py-2 dark:bg-slate-900 dark:border-slate-700 font-mono text-sm"
+                                    placeholder="e.g. reports.view"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                                <input
+                                    type="text"
+                                    value={editingPermission.category}
+                                    onChange={e => setEditingPermission({ ...editingPermission, category: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2 dark:bg-slate-900 dark:border-slate-700"
+                                    placeholder="e.g. finance"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                                <textarea
+                                    value={editingPermission.description || ''}
+                                    onChange={e => setEditingPermission({ ...editingPermission, description: e.target.value })}
+                                    className="w-full border rounded-lg px-3 py-2 dark:bg-slate-900 dark:border-slate-700"
+                                    rows={3}
+                                    placeholder="What does this permission allow?"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowPermissionModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSavePermission}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                            >
+                                Save Permission
+                            </button>
                         </div>
                     </div>
                 </div>

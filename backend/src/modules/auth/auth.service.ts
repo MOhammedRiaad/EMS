@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,6 +26,7 @@ import { AuditService } from '../audit/audit.service';
 import { FeatureFlagService } from '../owner/services/feature-flag.service';
 import { PermissionService } from './services/permission.service';
 import { RoleService } from './services/role.service';
+import { SystemConfigService } from '../owner/services/system-config.service';
 import { isPermissionAllowed } from '../../config/permissions.config';
 
 @Injectable()
@@ -41,7 +43,8 @@ export class AuthService {
     private readonly permissionService: PermissionService,
     private readonly roleService: RoleService,
     private readonly featureFlagService: FeatureFlagService,
-  ) {}
+    private readonly systemConfigService: SystemConfigService,
+  ) { }
 
   // Public registration - creates new Tenant + Tenant Owner
   async register(dto: RegisterTenantOwnerDto) {
@@ -171,6 +174,26 @@ export class AuthService {
         throw new UnauthorizedException(
           'Tenant ID required for ambiguous user',
         );
+      }
+    }
+
+    // Maintenance Mode Check
+    const maintenanceMode = await this.systemConfigService.get<boolean>(
+      'system.maintenance_mode',
+      false,
+    );
+
+    if (maintenanceMode && user) {
+      // Only allow platform_owner during maintenance
+      const roles = await this.permissionService.getUserRoles(user.id);
+      const isOwner = roles.some((role) => role.key === 'platform_owner');
+
+      if (!isOwner) {
+        throw new ServiceUnavailableException({
+          message:
+            'System is currently under maintenance. Please try again later.',
+          code: 'MAINTENANCE_MODE',
+        });
       }
     }
 
@@ -511,9 +534,9 @@ export class AuthService {
       },
       tenant: tenant
         ? {
-            ...tenant,
-            features: enabledFeatures,
-          }
+          ...tenant,
+          features: enabledFeatures,
+        }
         : undefined,
     };
   }

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, DollarSign,
 import NotificationsWidget from '../../components/dashboard/NotificationsWidget';
 import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
 import SessionDetailsModal from '../sessions/SessionDetailsModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -22,7 +23,7 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
+    const { isEnabled } = useAuth();
     useEffect(() => {
         fetchData();
     }, [currentWeekStart]);
@@ -265,7 +266,7 @@ const Dashboard: React.FC = () => {
                 {/* Sidebar Widgets */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <NotificationsWidget />
-                    <CalendarSyncWidget />
+                    {isEnabled("core.calendar_sync") && <CalendarSyncWidget />}
                 </div>
 
                 {/* Session Detail Modal */}
