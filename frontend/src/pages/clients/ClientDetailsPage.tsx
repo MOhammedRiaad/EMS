@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Wallet, FileText, Phone, Mail, Building2, DollarSign, StickyNote, Heart, AlertTriangle, Shield, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, User, Wallet, FileText, Phone, Mail, Building2, DollarSign, StickyNote, Heart, AlertTriangle, Shield, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import FinanceTab from '../../components/clients/tabs/FinanceTab';
 import WaiversTab from '../../components/clients/tabs/WaiversTab';
 
@@ -9,6 +9,7 @@ import HealthAndProgressTab from '../../components/clients/tabs/HealthAndProgres
 import ClientSessionsTab from '../../components/clients/tabs/ClientSessionsTab';
 import ClientInBodyTab from '../../components/clients/tabs/ClientInBodyTab';
 import ClientReviewsTab from '../../components/clients/tabs/ClientReviewsTab';
+import WhatsAppMessageModal from '../../components/clients/WhatsAppMessageModal';
 import { Activity, Heart as HeartIcon, Calendar, Scale, Star } from 'lucide-react';
 import { clientsService } from '../../services/clients.service';
 import { api } from '../../services/api';
@@ -22,6 +23,7 @@ const ClientDetailsPage: React.FC = () => {
     const [client, setClient] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
+    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchClient = async () => {
@@ -85,6 +87,15 @@ const ClientDetailsPage: React.FC = () => {
                                         <div className="flex items-center space-x-2">
                                             <Phone className="w-4 h-4" />
                                             <span>{client.phone || 'No phone'}</span>
+                                            {client.phone && isEnabled('core.whatsapp') && (
+                                                <button
+                                                    onClick={() => setIsWhatsAppModalOpen(true)}
+                                                    className="ml-2 p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors"
+                                                    title="Send WhatsApp Message"
+                                                >
+                                                    <MessageSquare size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                         {client.studio && (
                                             <div className="flex items-center space-x-2">
@@ -432,6 +443,15 @@ const ClientDetailsPage: React.FC = () => {
             <div className="mt-6">
                 {renderTabContent()}
             </div>
+
+            {client && (
+                <WhatsAppMessageModal
+                    isOpen={isWhatsAppModalOpen}
+                    onClose={() => setIsWhatsAppModalOpen(false)}
+                    clientName={`${client.firstName} ${client.lastName}`}
+                    phoneNumber={client.phone}
+                />
+            )}
         </div>
     );
 };

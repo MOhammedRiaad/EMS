@@ -40,8 +40,8 @@ const SessionCreatePage: React.FC = () => {
 
     // Wrap the submit handler to navigate back on success
     const handleSubmit = async (e: React.FormEvent) => {
-        await (isEdit ? state.handleUpdate(e) : state.handleCreate(e));
-        if (!state.error) {
+        const success = await (isEdit ? state.handleUpdate(e) : state.handleCreate(e));
+        if (success) {
             navigate('/sessions');
         }
     };
@@ -83,7 +83,12 @@ const SessionCreatePage: React.FC = () => {
             <ConfirmDialog
                 isOpen={state.showTimeChangeConfirmation}
                 onClose={() => state.setShowTimeChangeConfirmation(false)}
-                onConfirm={state.handleConfirmTimeChange}
+                onConfirm={async () => {
+                    const success = await state.handleConfirmTimeChange();
+                    if (success) {
+                        navigate('/sessions');
+                    }
+                }}
                 title="Reschedule Warning"
                 message="This session time differs from the original booking. Proceeding will update the session and notify the client by email. Are you sure?"
                 confirmLabel="Confirm Reschedule"

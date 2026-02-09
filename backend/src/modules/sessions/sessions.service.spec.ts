@@ -22,6 +22,8 @@ import { FeatureFlagService } from '../owner/services/feature-flag.service';
 import { PermissionService } from '../auth/services/permission.service';
 import { RoleService } from '../auth/services/role.service';
 import { AuditService } from '../audit/audit.service';
+import { AutomationService } from '../marketing/automation.service';
+import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
 
 describe('SessionsService', () => {
   let service: SessionsService;
@@ -199,6 +201,12 @@ describe('SessionsService', () => {
           provide: RoleService,
           useValue: {
             findAll: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: AutomationService,
+          useValue: {
+            triggerEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -507,6 +515,72 @@ describe('SessionsService', () => {
       expect(
         gamificationService.checkAndUnlockAchievements,
       ).toHaveBeenCalledWith(mockSession.clientId, mockSession.tenantId);
+    });
+
+    it('should trigger automation on completion with client context', async () => {
+      const inProgressSession = {
+        ...mockSession,
+        status: 'in_progress' as const,
+      };
+      sessionRepository.findOne.mockResolvedValue(inProgressSession);
+      const mockClient = {
+        id: 'client-123',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        phone: '1234567890',
+        tenantId: 'tenant-123',
+        userId: 'user-123',
+        user: {
+          id: 'user-123',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          phone: '1234567890',
+        },
+      };
+      clientsService.findOne.mockResolvedValue(mockClient as any);
+
+      await service.updateStatus(
+        'session-123',
+        'tenant-123',
+        'completed',
+        undefined,
+        'user-123',
+      );
+
+      expect(clientsService.findOne).toHaveBeenCalledWith(
+        'client-123',
+        'tenant-123',
+        ['user'],
+      );
+      expect(
+        (service as any).automationService.triggerEvent,
+      ).toHaveBeenCalledWith(AutomationTriggerType.SESSION_COMPLETED, {
+        tenantId: 'tenant-123',
+        clientId: 'client-123',
+        client: {
+          id: mockClient.id,
+          firstName: mockClient.firstName,
+          lastName: mockClient.lastName,
+          email: mockClient.email,
+          phone: mockClient.phone,
+          tenantId: mockClient.tenantId,
+          userId: mockClient.userId,
+          user: {
+            id: mockClient.user.id,
+            email: mockClient.user.email,
+            firstName: mockClient.user.firstName,
+            lastName: mockClient.user.lastName,
+            phone: mockClient.user.phone,
+          },
+        },
+        session: {
+          id: 'session-123',
+          startTime: mockSession.startTime,
+          type: mockSession.type,
+        },
+      });
     });
 
     it('should deduct session on no_show', async () => {

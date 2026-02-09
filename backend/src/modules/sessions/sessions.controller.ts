@@ -43,16 +43,16 @@ export class SessionsController {
   ) {}
 
   @Get()
-  @UseInterceptors(CacheInterceptor)
-  @CacheTTL(60000) // 1 minute
+  // @UseInterceptors(CacheInterceptor)
+  // @CacheTTL(60000) // 1 minute
   @ApiOperation({ summary: 'List sessions with filters' })
   findAll(@Query() query: SessionQueryDto, @TenantId() tenantId: string) {
     return this.sessionsService.findAll(tenantId, query);
   }
 
   @Get(':id')
-  @UseInterceptors(CacheInterceptor)
-  @CacheTTL(60000) // 1 minute
+  // @UseInterceptors(CacheInterceptor)
+  // @CacheTTL(60000) // 1 minute
   @ApiOperation({ summary: 'Get session by ID' })
   findOne(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.sessionsService.findOne(id, tenantId);

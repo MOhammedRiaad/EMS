@@ -25,7 +25,7 @@ export class LeadService {
     private activityRepository: Repository<LeadActivity>,
     private readonly clientsService: ClientsService,
     private readonly automationService: AutomationService,
-  ) {}
+  ) { }
 
   async create(
     createLeadDto: any,
@@ -53,7 +53,7 @@ export class LeadService {
       // Trigger Automation
       await this.automationService.triggerEvent(
         AutomationTriggerType.NEW_LEAD,
-        { lead: savedLead },
+        { lead: savedLead, tenantId: savedLead.tenantId },
       );
     }
 
@@ -120,7 +120,12 @@ export class LeadService {
       // Trigger Automation
       await this.automationService.triggerEvent(
         AutomationTriggerType.LEAD_STATUS_CHANGED,
-        { lead, oldStatus: lead.status, newStatus: updateLeadDto.status },
+        {
+          lead,
+          oldStatus: lead.status,
+          newStatus: updateLeadDto.status,
+          tenantId: lead.tenantId,
+        },
       );
     }
 

@@ -40,6 +40,7 @@ import { MarketingModule } from './modules/marketing/marketing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { OwnerModule } from './modules/owner/owner.module';
 import { MaintenanceGuard } from './common/guards/maintenance.guard';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -62,11 +63,11 @@ import { MaintenanceGuard } from './common/guards/maintenance.guard';
             transport: isProduction
               ? undefined
               : {
-                target: 'pino-pretty',
-                options: {
-                  singleLine: true,
+                  target: 'pino-pretty',
+                  options: {
+                    singleLine: true,
+                  },
                 },
-              },
           },
         };
       },
@@ -137,6 +138,7 @@ import { MaintenanceGuard } from './common/guards/maintenance.guard';
     MarketingModule,
     AuditModule,
     OwnerModule,
+    WhatsAppModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -151,4 +153,4 @@ import { MaintenanceGuard } from './common/guards/maintenance.guard';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

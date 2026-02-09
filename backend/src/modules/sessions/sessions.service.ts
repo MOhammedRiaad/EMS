@@ -37,6 +37,9 @@ export interface ConflictResult {
 
 import { AuditService } from '../audit/audit.service';
 
+import { AutomationService } from '../marketing/automation.service';
+import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
+
 @Injectable()
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
@@ -60,7 +63,8 @@ export class SessionsService {
     private gamificationService: GamificationService,
     private readonly auditService: AuditService,
     private readonly featureFlagService: FeatureFlagService,
-  ) {}
+    private readonly automationService: AutomationService,
+  ) { }
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
     const qb = this.sessionRepository
@@ -1271,9 +1275,9 @@ export class SessionsService {
     if (availableSessions <= 0) {
       throw new BadRequestException(
         `Client has no available sessions for booking. ` +
-          `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
-          `Already scheduled: ${scheduledSessionsCount}. ` +
-          `Please complete existing sessions or renew the package.`,
+        `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+        `Already scheduled: ${scheduledSessionsCount}. ` +
+        `Please complete existing sessions or renew the package.`,
       );
     }
   }
@@ -1472,6 +1476,51 @@ export class SessionsService {
 
       // Gamification still triggers on completion
       if (status === 'completed' && previousStatus !== 'completed') {
+        const client = await this.clientsService.findOne(
+          session.clientId,
+          tenantId,
+          ['user'],
+        );
+
+        // Sanitize client context to avoid circular references (client -> user -> client)
+        const clientContext = {
+          id: client.id,
+          firstName: client.firstName,
+          lastName: client.lastName,
+          email: client.email,
+          phone: client.phone,
+          tenantId: client.tenantId,
+          userId: client.userId,
+          user: client.user
+            ? {
+              id: client.user.id,
+              email: client.user.email,
+              firstName: client.user.firstName,
+              lastName: client.user.lastName,
+              phone: client.user.phone,
+            }
+            : null,
+        };
+
+        // Trigger Automation: SESSION_COMPLETED
+        this.automationService
+          .triggerEvent(AutomationTriggerType.SESSION_COMPLETED, {
+            tenantId,
+            clientId: session.clientId,
+            client: clientContext,
+            session: {
+              id: session.id,
+              startTime: session.startTime,
+              type: session.type,
+            },
+          })
+          .catch((err: any) =>
+            this.logger.error(
+              `Failed to trigger SESSION_COMPLETED automation for session ${session.id}`,
+              err,
+            ),
+          );
+
         this.gamificationService
           .checkAndUnlockAchievements(session.clientId, tenantId)
           .catch((err) =>

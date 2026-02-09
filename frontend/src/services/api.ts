@@ -75,7 +75,12 @@ export const api = {
             throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
-        const data = await response.json();
+        if (response.status === 204) {
+            return { data: null as any };
+        }
+
+        const text = await response.text();
+        const data = text && text.trim() ? JSON.parse(text) : null;
         return { data };
     },
 
@@ -187,6 +192,6 @@ export const authenticatedFetch = async (endpoint: string, options: RequestInit 
     }
 
     const text = await response.text();
-    return text ? JSON.parse(text) : {};
+    return text && text.trim() ? JSON.parse(text) : {};
 };
 

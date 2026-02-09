@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
 import TwoFactorSetup from '../../components/auth/TwoFactorSetup';
 import PlanUsageOverview from '../../components/admin/PlanUsageOverview';
+import WhatsAppSettings from '../../components/admin/WhatsAppSettings';
 
 const AdminSettings: React.FC = () => {
     const { user, isEnabled } = useAuth();
@@ -23,6 +24,7 @@ const AdminSettings: React.FC = () => {
     const [allowCoachAvailabilityEdit, setAllowCoachAvailabilityEdit] = useState(false);
     const [brandingColor, setBrandingColor] = useState('#7c3aed'); // Default purple
     const [brandingLogo, setBrandingLogo] = useState('');
+    const [whatsappConfig, setWhatsappConfig] = useState<any>(null);
 
     const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
 
@@ -42,6 +44,7 @@ const AdminSettings: React.FC = () => {
                 setAllowCoachAvailabilityEdit(settings.allowCoachSelfEditAvailability ?? false);
                 setBrandingColor(settings.branding?.primaryColor ?? '#7c3aed');
                 setBrandingLogo(settings.branding?.logoUrl ?? '');
+                setWhatsappConfig(settings.whatsappConfig || { provider: 'meta', enabled: false, config: {} });
 
             } catch (err) {
                 console.error('Failed to fetch settings', err);
@@ -101,6 +104,25 @@ const AdminSettings: React.FC = () => {
             setError(err.message || 'Failed to save settings');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSaveWhatsApp = async (config: any) => {
+        if (!user?.tenantId) return;
+        try {
+            const currentTenant = await tenantService.get(user.tenantId);
+            const updatedSettings = {
+                ...currentTenant.settings,
+                whatsappConfig: config
+            };
+            await tenantService.update(user.tenantId, {
+                settings: updatedSettings
+            });
+            setWhatsappConfig(config);
+            setSuccessMessage('WhatsApp settings updated');
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save WhatsApp settings');
         }
     };
 
@@ -351,6 +373,14 @@ const AdminSettings: React.FC = () => {
                             </p>
                         </div>
                     </div>
+
+                    {/* WhatsApp Settings */}
+                    {isEnabled('core.whatsapp') && (
+                        <WhatsAppSettings
+                            initialConfig={whatsappConfig}
+                            onSave={handleSaveWhatsApp}
+                        />
+                    )}
 
                     {/* Coach Permissions */}
                     {isEnabled('coach.portal') && (

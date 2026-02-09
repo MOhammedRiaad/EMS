@@ -13,7 +13,7 @@ import { OwnerModule } from '../owner/owner.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Coach, CoachTimeOffRequest, Tenant]),
-    AuthModule,
+    forwardRef(() => AuthModule),
     AuditModule,
     MailerModule,
     forwardRef(() => OwnerModule),

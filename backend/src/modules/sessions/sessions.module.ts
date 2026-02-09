@@ -14,6 +14,7 @@ import { MailerModule } from '../mailer/mailer.module';
 import { PackagesModule } from '../packages/packages.module';
 import { AuditModule } from '../audit/audit.module';
 
+import { MarketingModule } from '../marketing/marketing.module';
 import { GamificationModule } from '../gamification/gamification.module';
 
 import { SessionParticipant } from './entities/session-participant.entity';
@@ -35,6 +36,7 @@ import { OwnerModule } from '../owner/owner.module';
     MailerModule,
     PackagesModule,
     PackagesModule,
+    MarketingModule,
     GamificationModule,
     AuditModule,
     forwardRef(() => OwnerModule),

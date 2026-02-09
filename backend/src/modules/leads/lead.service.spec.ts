@@ -29,6 +29,7 @@ describe('LeadService', () => {
 
   const mockLead = {
     id: 'lead-123',
+    tenantId: 'tenant-123',
     firstName: 'John',
     lastName: 'Doe',
     email: 'john.doe@example.com',
@@ -76,7 +77,7 @@ describe('LeadService', () => {
         {
           provide: AutomationService,
           useValue: {
-            triggerEvent: jest.fn(),
+            triggerEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -118,7 +119,7 @@ describe('LeadService', () => {
       expect(result).toEqual(mockLead);
       expect(automationService.triggerEvent).toHaveBeenCalledWith(
         AutomationTriggerType.NEW_LEAD,
-        { lead: mockLead },
+        { lead: mockLead, tenantId: mockUser.tenantId },
       );
     });
 
@@ -188,6 +189,7 @@ describe('LeadService', () => {
           lead: mockLead,
           oldStatus: LeadStatus.NEW,
           newStatus: LeadStatus.CONTACTED,
+          tenantId: mockUser.tenantId,
         },
       );
     });

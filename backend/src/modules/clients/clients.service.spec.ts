@@ -242,8 +242,13 @@ describe('ClientsService', () => {
       const result = await service.findOne('client-123', 'tenant-123');
 
       expect(result).toBe(mockClient);
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('client.id = :id', { id: 'client-123' });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('client.tenantId = :tenantId', { tenantId: 'tenant-123' });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('client.id = :id', {
+        id: 'client-123',
+      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'client.tenantId = :tenantId',
+        { tenantId: 'tenant-123' },
+      );
     });
 
     it('should throw NotFoundException if client not found', async () => {
@@ -271,7 +276,10 @@ describe('ClientsService', () => {
 
       await service.findOne('client-123', 'tenant-123', ['user']);
 
-      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('client.user', 'user');
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'client.user',
+        'user',
+      );
     });
 
     it('should include studio relation when specified', async () => {
@@ -285,7 +293,10 @@ describe('ClientsService', () => {
 
       await service.findOne('client-123', 'tenant-123', ['studio']);
 
-      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith('client.studio', 'studio');
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'client.studio',
+        'studio',
+      );
     });
   });
 

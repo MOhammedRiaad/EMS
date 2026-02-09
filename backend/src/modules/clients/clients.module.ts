@@ -17,7 +17,14 @@ import { Session } from '../sessions/entities/session.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Client, Transaction, ClientProgressPhoto, User, FavoriteCoach, Session]),
+    TypeOrmModule.forFeature([
+      Client,
+      Transaction,
+      ClientProgressPhoto,
+      User,
+      FavoriteCoach,
+      Session,
+    ]),
     AuthModule,
     MailerModule,
     forwardRef(() => WaiversModule),

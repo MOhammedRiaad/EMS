@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsNotEmpty, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNotEmpty,
+  MaxLength,
+  IsObject,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTenantDto {
@@ -73,6 +79,7 @@ export class UpdateTenantDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsObject()
   settings?: Record<string, any>;
 
   @ApiPropertyOptional()

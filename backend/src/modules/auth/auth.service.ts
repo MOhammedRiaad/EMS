@@ -44,7 +44,7 @@ export class AuthService {
     private readonly roleService: RoleService,
     private readonly featureFlagService: FeatureFlagService,
     private readonly systemConfigService: SystemConfigService,
-  ) { }
+  ) {}
 
   // Public registration - creates new Tenant + Tenant Owner
   async register(dto: RegisterTenantOwnerDto) {
@@ -534,9 +534,9 @@ export class AuthService {
       },
       tenant: tenant
         ? {
-          ...tenant,
-          features: enabledFeatures,
-        }
+            ...tenant,
+            features: enabledFeatures,
+          }
         : undefined,
     };
   }

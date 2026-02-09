@@ -206,6 +206,7 @@ export function useSessionsState() {
             setIsCreateModalOpen(false);
             resetForm();
             fetchData();
+            return true;
         } catch (err: unknown) {
             if (err instanceof ApiError && err.conflicts && Array.isArray(err.conflicts)) {
                 const conflictMessages = err.conflicts.map((c: { message: string }) => c.message).join('. ');
@@ -213,6 +214,7 @@ export function useSessionsState() {
             } else {
                 setError((err as Error).message || 'Failed to create session');
             }
+            return false;
         } finally {
             setSaving(false);
         }
@@ -245,7 +247,7 @@ export function useSessionsState() {
     }, []);
 
     const _update = useCallback(async (override: boolean) => {
-        if (!selectedSession) return;
+        if (!selectedSession) return false;
         setError(null);
         setSaving(true);
         try {
@@ -275,6 +277,7 @@ export function useSessionsState() {
             resetForm();
             fetchData();
             setShowTimeChangeConfirmation(false);
+            return true;
         } catch (err: unknown) {
             if (err instanceof ApiError && err.conflicts && Array.isArray(err.conflicts)) {
                 const conflictMessages = err.conflicts.map((c: { message: string }) => c.message).join('. ');
@@ -284,6 +287,7 @@ export function useSessionsState() {
             } else {
                 setError((err as Error).message || 'Failed to update session');
             }
+            return false;
         } finally {
             setSaving(false);
         }
@@ -291,11 +295,11 @@ export function useSessionsState() {
 
     const handleUpdate = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        await _update(false);
+        return await _update(false);
     }, [_update]);
 
     const handleConfirmTimeChange = useCallback(async () => {
-        await _update(true);
+        return await _update(true);
     }, [_update]);
 
     const [deleteSeries, setDeleteSeries] = useState(false);

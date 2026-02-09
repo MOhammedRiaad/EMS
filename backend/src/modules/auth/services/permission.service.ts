@@ -14,7 +14,7 @@ export class PermissionService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(UserRoleAssignment)
     private readonly userRoleRepository: Repository<UserRoleAssignment>,
-  ) { }
+  ) {}
 
   /**
    * Check if a user has a specific permission

@@ -17,6 +17,7 @@ import { FeatureFlagService } from '../owner/services/feature-flag.service';
 import { PermissionService } from '../auth/services/permission.service';
 import { RoleService } from '../auth/services/role.service';
 import { AuditService } from '../audit/audit.service';
+import { AutomationService } from '../marketing/automation.service';
 
 describe('SessionsService - Recurrence', () => {
   let service: SessionsService;
@@ -116,6 +117,12 @@ describe('SessionsService - Recurrence', () => {
           provide: RoleService,
           useValue: {
             findAll: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: AutomationService,
+          useValue: {
+            triggerEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

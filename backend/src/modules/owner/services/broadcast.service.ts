@@ -91,10 +91,10 @@ export class BroadcastService {
     );
 
     // Async processing
-    this.processBroadcast(broadcast).catch((err) => {
+    void this.processBroadcast(broadcast).catch(async (err) => {
       this.logger.error(`Failed to process broadcast ${broadcast.id}`, err);
       broadcast.status = BroadcastStatus.FAILED;
-      this.broadcastRepo.save(broadcast);
+      await this.broadcastRepo.save(broadcast);
     });
 
     return broadcast;

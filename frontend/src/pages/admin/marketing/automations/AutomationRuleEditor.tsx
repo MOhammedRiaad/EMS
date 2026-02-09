@@ -257,13 +257,76 @@ const AutomationRuleEditor: React.FC<AutomationRuleEditorProps> = ({ rule, onClo
                                                     </select>
                                                 </div>
 
-                                                <div className="md:col-span-5">
-                                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Configuration (JSON)</label>
-                                                    <textarea
-                                                        value={action.payload}
-                                                        onChange={(e) => updateAction(action.id, 'payload', e.target.value)}
-                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-mono text-xs h-[100px] bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
-                                                    />
+                                                <div className="md:col-span-12">
+                                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Configuration</label>
+                                                    {action.type === 'send_whatsapp' ? (
+                                                        <div className="space-y-3 bg-white dark:bg-slate-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                                                            <div className="flex gap-2 p-1 bg-gray-50 dark:bg-slate-900 rounded-md border border-gray-100 dark:border-slate-800 mb-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const p = typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload;
+                                                                        updateAction(action.id, 'payload', JSON.stringify({ ...p, body: p.body || '', templateName: undefined, components: undefined }, null, 2));
+                                                                    }}
+                                                                    className={`flex-1 py-1 px-2 rounded text-[10px] font-bold transition-colors ${(typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload).templateName ? 'text-gray-500' : 'bg-white dark:bg-slate-800 shadow-sm text-purple-600'}`}
+                                                                >
+                                                                    Plain Text
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const p = typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload;
+                                                                        updateAction(action.id, 'payload', JSON.stringify({ ...p, templateName: p.templateName || '', components: p.components || [], body: undefined }, null, 2));
+                                                                    }}
+                                                                    className={`flex-1 py-1 px-2 rounded text-[10px] font-bold transition-colors ${(typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload).templateName ? 'bg-white dark:bg-slate-800 shadow-sm text-purple-600' : 'text-gray-500'}`}
+                                                                >
+                                                                    Official Template
+                                                                </button>
+                                                            </div>
+
+                                                            {(typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload).templateName !== undefined ? (
+                                                                <div className="space-y-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Template Name (e.g. welcome_v1)"
+                                                                        value={(typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload).templateName || ''}
+                                                                        onChange={(e) => {
+                                                                            const p = typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload;
+                                                                            updateAction(action.id, 'payload', JSON.stringify({ ...p, templateName: e.target.value }, null, 2));
+                                                                        }}
+                                                                        className="w-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded text-sm bg-transparent"
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-400">
+                                                                        Note: Templates must be pre-approved in your Meta Business Suite.
+                                                                    </p>
+                                                                </div>
+                                                            ) : (
+                                                                <textarea
+                                                                    placeholder="Enter message text..."
+                                                                    value={(typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload).body || (typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload).text || ''}
+                                                                    onChange={(e) => {
+                                                                        const p = typeof action.payload === 'string' ? JSON.parse(action.payload) : action.payload;
+                                                                        updateAction(action.id, 'payload', JSON.stringify({ ...p, body: e.target.value }, null, 2));
+                                                                    }}
+                                                                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded text-sm bg-transparent h-20"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <textarea
+                                                            value={typeof action.payload === 'string' ? action.payload : JSON.stringify(action.payload, null, 2)}
+                                                            onChange={(e) => updateAction(action.id, 'payload', e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-mono text-xs h-[100px] bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                                            placeholder={
+                                                                action.type === 'send_notification'
+                                                                    ? '{ "title": "Reminder", "message": "Class in 24h!" }'
+                                                                    : '{ "subject": "Hello", "body": "..." }'
+                                                            }
+                                                        />
+                                                    )}
+                                                    <p className="text-[10px] text-gray-400 mt-1">
+                                                        Tip: Use variables like {"{{userName}}"} and {"{{sessionTime}}"} in your text or template parameters.
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>

@@ -21,7 +21,7 @@ export class FeatureFlagService {
     private readonly planRepository: Repository<Plan>,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
-  ) { }
+  ) {}
 
   /**
    * Check if a feature is enabled for a tenant

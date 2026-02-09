@@ -426,9 +426,8 @@ export class ClientsService {
 
     const firstName = mostAssignedCoach.firstName || '';
     const lastName = mostAssignedCoach.lastName || '';
-    const name = firstName && lastName
-      ? `${firstName} ${lastName}`
-      : 'Unknown Coach';
+    const name =
+      firstName && lastName ? `${firstName} ${lastName}` : 'Unknown Coach';
 
     return {
       id: mostAssignedCoach.coachId,

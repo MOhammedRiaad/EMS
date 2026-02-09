@@ -43,4 +43,4 @@ import { OwnerModule } from '../owner/owner.module';
     JwtModule,
   ],
 })
-export class AuthModule { }
+export class AuthModule {}

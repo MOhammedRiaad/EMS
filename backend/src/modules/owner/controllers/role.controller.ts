@@ -22,7 +22,7 @@ export class RoleController {
   constructor(
     private readonly roleService: RoleService,
     private readonly permissionService: PermissionService,
-  ) { }
+  ) {}
 
   /**
    * Get all roles

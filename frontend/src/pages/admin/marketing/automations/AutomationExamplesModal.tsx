@@ -78,6 +78,47 @@ const EXAMPLES = [
         conditions: {
             newStatus: 'new'
         }
+    },
+    {
+        title: 'WhatsApp Session Reminder',
+        description: 'Send an automated WhatsApp reminder 24 hours before a session starts.',
+        triggerType: 'session_reminder',
+        actions: [
+            {
+                type: 'send_whatsapp',
+                delayMinutes: 0,
+                payload: {
+                    templateName: 'session_reminder_v1',
+                    components: [
+                        {
+                            type: 'body',
+                            parameters: [
+                                { type: 'text', text: '{{clientName}}' },
+                                { type: 'text', text: '{{sessionTime}}' }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ],
+        icon: MessageSquare,
+        conditions: {}
+    },
+    {
+        title: 'WhatsApp Welcome Message',
+        description: 'Instantly greet new leads on WhatsApp to increase conversion rates.',
+        triggerType: 'new_lead',
+        actions: [
+            {
+                type: 'send_whatsapp',
+                delayMinutes: 0,
+                payload: {
+                    body: 'Hi {{leadName}}! Thanks for your interest in EMS Studio. Would you like to schedule a trial session?'
+                }
+            }
+        ],
+        icon: MessageSquare,
+        conditions: {}
     }
 ];
 
