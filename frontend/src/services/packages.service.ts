@@ -16,6 +16,7 @@ export interface Package {
     totalSessions: number;
     price: number;
     validityDays: number;
+    lowSessionThreshold?: number;
     isActive: boolean;
     createdAt: string;
 }
@@ -57,6 +58,7 @@ export interface CreatePackageDto {
     totalSessions: number;
     price: number;
     validityDays?: number;
+    lowSessionThreshold?: number;
 }
 
 export interface AssignPackageDto {

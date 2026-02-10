@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check } from 'lucide-react';
+import { Bell, Check, UserCheck, AlertTriangle, Package, Calendar, Info } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -7,11 +7,46 @@ interface Notification {
     id: string;
     title: string;
     message: string;
-    type: 'info' | 'success' | 'warning' | 'error';
+    type: 'info' | 'success' | 'warning' | 'error' | 'client_arrival' | 'low_session' | 'session_reminder';
     readAt: string | null;
     createdAt: string;
     data?: any;
 }
+
+const getNotificationIcon = (type: string) => {
+    switch (type) {
+        case 'client_arrival':
+            return <UserCheck size={16} className="text-amber-500" />;
+        case 'low_session':
+            return <Package size={16} className="text-orange-500" />;
+        case 'session_reminder':
+            return <Calendar size={16} className="text-blue-500" />;
+        case 'warning':
+            return <AlertTriangle size={16} className="text-yellow-500" />;
+        case 'error':
+            return <AlertTriangle size={16} className="text-red-500" />;
+        case 'success':
+            return <Check size={16} className="text-green-500" />;
+        default:
+            return <Info size={16} className="text-blue-500" />;
+    }
+};
+
+const getNotificationStyle = (type: string, isUnread: boolean) => {
+    if (!isUnread) return '';
+    switch (type) {
+        case 'client_arrival':
+            return 'bg-amber-50/50 dark:bg-amber-900/20 border-l-4 border-l-amber-500';
+        case 'low_session':
+            return 'bg-orange-50/50 dark:bg-orange-900/20 border-l-4 border-l-orange-500';
+        case 'warning':
+            return 'bg-yellow-50/50 dark:bg-yellow-900/20 border-l-4 border-l-yellow-500';
+        case 'error':
+            return 'bg-red-50/50 dark:bg-red-900/20 border-l-4 border-l-red-500';
+        default:
+            return 'bg-blue-50/30 dark:bg-blue-900/10';
+    }
+};
 
 export const NotificationCenter: React.FC = () => {
     const { isAuthenticated } = useAuth();
@@ -38,8 +73,8 @@ export const NotificationCenter: React.FC = () => {
     useEffect(() => {
         if (isAuthenticated) {
             fetchNotifications();
-            // Poll every minute
-            const interval = setInterval(fetchNotifications, 60000);
+            // Poll every 30 seconds for high-priority notifications like client arrivals
+            const interval = setInterval(fetchNotifications, 30000);
             return () => clearInterval(interval);
         }
     }, [isAuthenticated]);
@@ -80,6 +115,11 @@ export const NotificationCenter: React.FC = () => {
         }
     };
 
+    // Check for high-priority unread notifications
+    const hasHighPriority = notifications.some(n =>
+        !n.readAt && (n.type === 'client_arrival' || n.type === 'warning' || n.type === 'error')
+    );
+
     if (!isAuthenticated) return null;
 
     return (
@@ -90,7 +130,7 @@ export const NotificationCenter: React.FC = () => {
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                    <span className={`absolute top-1 right-1 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${hasHighPriority ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`} />
                 )}
             </button>
 
@@ -119,12 +159,14 @@ export const NotificationCenter: React.FC = () => {
                                 {notifications.map((notification) => (
                                     <div
                                         key={notification.id}
-                                        className={`p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors ${!notification.readAt ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
+                                        className={`p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors ${getNotificationStyle(notification.type, !notification.readAt)}`}
                                     >
                                         <div className="flex gap-3">
-                                            <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${!notification.readAt ? 'bg-blue-500' : 'bg-transparent'}`} />
+                                            <div className="mt-0.5 shrink-0">
+                                                {getNotificationIcon(notification.type)}
+                                            </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                <p className={`text-sm font-medium truncate ${!notification.readAt ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                                                     {notification.title}
                                                 </p>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
@@ -154,3 +196,4 @@ export const NotificationCenter: React.FC = () => {
         </div>
     );
 };
+

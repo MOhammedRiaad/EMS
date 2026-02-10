@@ -31,6 +31,12 @@ export class CreatePackageDto {
   @IsNumber()
   @IsOptional()
   validityDays?: number;
+
+  @ApiPropertyOptional({ default: 2, description: 'Threshold for low session notifications' })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  lowSessionThreshold?: number;
 }
 
 export class UpdatePackageDto {
@@ -63,4 +69,10 @@ export class UpdatePackageDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Threshold for low session notifications' })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  lowSessionThreshold?: number;
 }

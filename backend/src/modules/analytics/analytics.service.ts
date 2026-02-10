@@ -44,7 +44,7 @@ export class AnalyticsService {
     private readonly reviewRepo: Repository<ClientSessionReview>,
     @InjectRepository(Lead) // New Injection
     private readonly leadRepo: Repository<Lead>,
-  ) {}
+  ) { }
 
   // ============= Helper Methods =============
 
@@ -176,18 +176,27 @@ export class AnalyticsService {
       .andWhere('cp.paidAt IS NOT NULL')
       .select('p.id', 'packageId')
       .addSelect('p.name', 'packageName')
+      .addSelect('p.totalSessions', 'totalSessions')
       .addSelect('COALESCE(SUM(p.price), 0)', 'revenue')
       .addSelect('COUNT(cp.id)', 'count')
+      .addSelect('COALESCE(AVG(p.price), 0)', 'avgPrice')
       .groupBy('p.id')
       .addGroupBy('p.name')
+      .addGroupBy('p.totalSessions')
       .orderBy('revenue', 'DESC')
       .getRawMany();
 
     return results.map((r) => ({
       packageId: r.packageId,
       packageName: r.packageName,
+      totalSessions: parseInt(r.totalSessions || '0', 10),
       revenue: parseFloat(r.revenue || '0'),
       count: parseInt(r.count || '0', 10),
+      avgPrice: parseFloat(r.avgPrice || '0'),
+      costPerSession:
+        r.totalSessions && parseInt(r.totalSessions, 10) > 0
+          ? parseFloat(r.avgPrice || '0') / parseInt(r.totalSessions, 10)
+          : 0,
     }));
   }
 
@@ -476,14 +485,62 @@ export class AnalyticsService {
       .andWhere('s.startTime <= :to', { to })
       .select('EXTRACT(HOUR FROM s.startTime)', 'hour')
       .addSelect('COUNT(s.id)', 'sessionCount')
-      .groupBy('hour')
-      .orderBy('sessionCount', 'DESC')
+      .groupBy('EXTRACT(HOUR FROM s.startTime)')
+      .orderBy('"sessionCount"', 'DESC')
       .getRawMany();
 
     return results.map((r) => ({
       hour: parseInt(r.hour || '0', 10),
       sessionCount: parseInt(r.sessionCount || '0', 10),
     }));
+  }
+
+  /**
+   * Get session distribution heatmap by day-of-week and hour.
+   * Returns data suitable for heatmap visualization.
+   */
+  async getUtilizationHeatmap(tenantId: string, query: DateRangeQueryDto) {
+    const { from, to } = this.getDateRange(query);
+
+    const results = await this.sessionRepo
+      .createQueryBuilder('s')
+      .where('s.tenantId = :tenantId', { tenantId })
+      .andWhere('s.startTime >= :from', { from })
+      .andWhere('s.startTime <= :to', { to })
+      .select('EXTRACT(DOW FROM s.startTime)', 'dayOfWeek') // 0 = Sunday, 6 = Saturday
+      .addSelect('EXTRACT(HOUR FROM s.startTime)', 'hour')
+      .addSelect('COUNT(s.id)', 'sessionCount')
+      .groupBy('EXTRACT(DOW FROM s.startTime)')
+      .addGroupBy('EXTRACT(HOUR FROM s.startTime)')
+      .orderBy('EXTRACT(DOW FROM s.startTime)', 'ASC')
+      .addOrderBy('EXTRACT(HOUR FROM s.startTime)', 'ASC')
+      .getRawMany();
+
+    // Build a complete 7x24 matrix with defaults of 0
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const heatmapData: { day: string; dayIndex: number; hour: number; count: number }[] = [];
+
+    // Create lookup map
+    const dataMap = new Map<string, number>();
+    for (const r of results) {
+      const key = `${r.dayOfWeek}-${r.hour}`;
+      dataMap.set(key, parseInt(r.sessionCount || '0', 10));
+    }
+
+    // Fill complete matrix
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      for (let hour = 0; hour < 24; hour++) {
+        const key = `${dayIndex}-${hour}`;
+        heatmapData.push({
+          day: dayNames[dayIndex],
+          dayIndex,
+          hour,
+          count: dataMap.get(key) || 0,
+        });
+      }
+    }
+
+    return heatmapData;
   }
 
   // ============= Waiting List Analytics =============
@@ -576,6 +633,7 @@ export class AnalyticsService {
       .leftJoin('cp.client', 'c')
       .where('cp.tenantId = :tenantId', { tenantId })
       .andWhere('cp.paidAt IS NULL')
+      .andWhere('p.price > 0')
       .select('cp.id', 'id')
       .addSelect('c.firstName', 'clientFirstName')
       .addSelect('c.lastName', 'clientLastName')
@@ -667,10 +725,34 @@ export class AnalyticsService {
       .orderBy('count', 'DESC')
       .getRawMany();
 
+    // 4. Packages Sold to Leads
+    const packagesSold = await this.clientPackageRepo
+      .createQueryBuilder('cp')
+      .where('cp.tenantId = :tenantId', { tenantId })
+      .andWhere('cp.leadId IS NOT NULL')
+      .andWhere('cp.createdAt >= :from', { from })
+      .andWhere('cp.createdAt <= :to', { to })
+      .getCount();
+
+    // 5. Lead Revenue
+    const revenueResult = await this.clientPackageRepo
+      .createQueryBuilder('cp')
+      .leftJoin('cp.package', 'p')
+      .where('cp.tenantId = :tenantId', { tenantId })
+      .andWhere('cp.leadId IS NOT NULL')
+      .andWhere('cp.createdAt >= :from', { from })
+      .andWhere('cp.createdAt <= :to', { to })
+      .select('COALESCE(SUM(p.price), 0)', 'total')
+      .getRawOne();
+
+    const revenue = parseFloat(revenueResult?.total || '0');
+
     return {
       total,
       converted,
       conversionRate: Math.round(conversionRate * 10) / 10,
+      packagesSold,
+      revenue,
       sources: sourceBreakdown.map((s) => ({
         source: s.source || 'Unknown',
         count: parseInt(s.count || '0', 10),
@@ -715,7 +797,8 @@ export class AnalyticsService {
     if (n < 2) {
       return {
         forecast: 0,
-        trend: 'insufficient_data',
+        trend: 'flat',
+        growthRate: 0,
         confidence: 'low',
       };
     }
@@ -750,8 +833,8 @@ export class AnalyticsService {
       growthRate:
         dataPoints.length > 0 && dataPoints[dataPoints.length - 1].y > 0
           ? ((predictedRevenue - dataPoints[dataPoints.length - 1].y) /
-              dataPoints[dataPoints.length - 1].y) *
-            100
+            dataPoints[dataPoints.length - 1].y) *
+          100
           : 0,
       history: dataPoints,
     };

@@ -39,6 +39,9 @@ export class Session extends TenantScopedEntityWithUpdate {
   @Column({ name: 'ems_device_id', type: 'uuid', nullable: true })
   emsDeviceId: string | null;
 
+  @Column({ name: 'lead_id', type: 'uuid', nullable: true })
+  leadId: string | null;
+
   @Column({ name: 'start_time', type: 'timestamptz' })
   startTime: Date;
 
@@ -124,6 +127,10 @@ export class Session extends TenantScopedEntityWithUpdate {
   @ManyToOne(() => Client, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'client_id' })
   client: Client;
+
+  @ManyToOne('Lead', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'lead_id' })
+  lead: any;
 
   @OneToMany(() => SessionParticipant, (participant) => participant.session)
   participants: SessionParticipant[];

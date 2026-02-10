@@ -10,6 +10,7 @@ import Coaches from './pages/coaches/Coaches';
 import CreateCoach from './pages/coaches/CreateCoach';
 import CoachAvailabilityPage from './pages/coaches/CoachAvailabilityPage';
 import Sessions from './pages/sessions/Sessions';
+import DailyPlannerPage from './pages/sessions/DailyPlannerPage';
 import SessionCreatePage from './pages/sessions/SessionCreatePage';
 import Studios from './pages/studios/Studios';
 import Rooms from './pages/rooms/Rooms';
@@ -26,6 +27,7 @@ import Analytics from './pages/admin/Analytics';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
 import Reviews from './pages/admin/Reviews';
 import TimeOffRequests from './pages/admin/TimeOffRequests';
+import DataImport from './pages/admin/DataImport';
 import ProductListPage from './pages/admin/retail/ProductListPage';
 import InventoryPage from './pages/admin/retail/InventoryPage';
 import POSPage from './pages/admin/retail/POSPage';
@@ -60,6 +62,7 @@ import HelpSupport from './pages/client/HelpSupport';
 import { LeaderboardPage } from './pages/client/LeaderboardPage';
 
 import PermissionGuard from './components/auth/PermissionGuard';
+import FeatureGuard from './components/auth/FeatureGuard';
 
 import CoachLayout from './components/layout/CoachLayout';
 import CoachHome from './pages/coach/CoachHome';
@@ -140,6 +143,11 @@ function App() {
                 <Route element={<PermissionGuard requiredPermissions={['tenant.settings.read']} />}>
                   <Route path="/" element={<Layout />}>
                     <Route index element={<Dashboard />} />
+                    <Route path="calendar" element={
+                      <FeatureGuard feature="core.sessions">
+                        <DailyPlannerPage />
+                      </FeatureGuard>
+                    } />
                     <Route path="sessions" element={<Sessions />} />
                     <Route path="sessions/new" element={<SessionCreatePage />} />
                     <Route path="sessions/:id/edit" element={<SessionCreatePage />} />
@@ -175,6 +183,11 @@ function App() {
                     <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                     <Route path="admin/announcements" element={<AnnouncementManager />} />
                     <Route path="admin/time-off" element={<TimeOffRequests />} />
+                    <Route path="admin/import" element={
+                      <FeatureGuard feature="core.data_import">
+                        <DataImport />
+                      </FeatureGuard>
+                    } />
 
                     {/* Marketing Routes */}
                     <Route path="admin/marketing" element={<MarketingDashboard />}>

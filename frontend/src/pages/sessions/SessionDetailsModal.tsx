@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/common/Modal';
 import { sessionsService, type Session } from '../../services/sessions.service';
 import ParticipantList from '../../components/sessions/ParticipantList';
 import AddParticipantModal from '../../components/sessions/AddParticipantModal';
-import { Users, Clock, MapPin, User, Loader2, CheckCircle, XCircle, Monitor, Calendar } from 'lucide-react';
+import { Users, Clock, MapPin, User, Loader2, CheckCircle, XCircle, Monitor, Calendar, RefreshCw } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { api } from '../../services/api';
 
@@ -15,6 +16,7 @@ interface SessionDetailsModalProps {
 }
 
 const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClose, session, onSessionUpdated }) => {
+    const navigate = useNavigate();
     const [currentSession, setCurrentSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -105,6 +107,44 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
         }
     };
 
+    const handleRebook = () => {
+        if (!displaySession) return;
+
+        // Calculate duration in minutes from start and end time
+        const startTime = new Date(displaySession.startTime);
+        const endTime = new Date(displaySession.endTime);
+        const duration = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+
+        // Build query params with session data for pre-filling
+        const params = new URLSearchParams({
+            rebook: 'true',
+            type: displaySession.type,
+            studioId: displaySession.studioId || '',
+            roomId: displaySession.roomId || '',
+            coachId: displaySession.coachId || '',
+            duration: duration.toString(),
+        });
+
+        if (displaySession.emsDeviceId) {
+            params.set('emsDeviceId', displaySession.emsDeviceId);
+        }
+
+        if (displaySession.type === 'individual' && displaySession.clientId) {
+            params.set('clientId', displaySession.clientId);
+        }
+
+        if (displaySession.intensityLevel) {
+            params.set('intensityLevel', displaySession.intensityLevel.toString());
+        }
+
+        if (displaySession.type === 'group' && displaySession.capacity) {
+            params.set('capacity', displaySession.capacity.toString());
+        }
+
+        onClose();
+        navigate(`/sessions/new?${params.toString()}`);
+    };
+
     if (!session) return null;
 
     const displaySession = currentSession || session;
@@ -134,9 +174,10 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                             <span>{displaySession.participants?.length || 0} Participants</span>
                                         </div>
                                     </div>
-                                    {displaySession.status === 'scheduled' && (
+                                    {(displaySession.status === 'scheduled' || displaySession.status === 'in_progress') && (
                                         <div className="flex gap-2">
                                             <button
+                                                type="button"
                                                 onClick={handleDownloadIcs}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 rounded-md text-sm font-medium transition-colors"
                                                 title="Add to Calendar"
@@ -145,6 +186,26 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                                 <span className="hidden sm:inline">Add to Calendar</span>
                                             </button>
                                             <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (!currentSession) return;
+                                                    if (!window.confirm('Mark client as arrived?')) return;
+                                                    try {
+                                                        await sessionsService.markArrived(currentSession.id);
+                                                        await loadSessionDetails(currentSession.id);
+                                                        onSessionUpdated();
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        alert('Failed to mark as arrived');
+                                                    }
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium transition-colors"
+                                            >
+                                                <CheckCircle size={16} />
+                                                Mark Arrived
+                                            </button>
+                                            <button
+                                                type="button"
                                                 onClick={() => handleAction('completed')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors"
                                             >
@@ -152,6 +213,7 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                                 Complete
                                             </button>
                                             <button
+                                                type="button"
                                                 onClick={() => handleAction('cancelled')}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition-colors"
                                             >
@@ -159,6 +221,17 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                                 Cancel
                                             </button>
                                         </div>
+                                    )}
+                                    {(displaySession.status === 'completed' || displaySession.status === 'cancelled') && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRebook}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+                                            title="Rebook with same settings"
+                                        >
+                                            <RefreshCw size={16} />
+                                            Rebook
+                                        </button>
                                     )}
                                 </div>
 
@@ -195,7 +268,7 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                     </div>
                                     <div className="space-y-1">
                                         <div className="text-xs text-gray-500 uppercase font-semibold tracking-wide">
-                                            {displaySession.type === 'group' ? 'Capacity' : 'Client'}
+                                            {displaySession.type === 'group' ? 'Capacity' : (displaySession.lead ? 'Lead' : 'Client')}
                                         </div>
                                         <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                             {displaySession.type === 'group' ? (
@@ -205,8 +278,12 @@ const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({ isOpen, onClo
                                                 </>
                                             ) : (
                                                 <>
-                                                    <User size={16} className="text-blue-500" />
-                                                    {displaySession.client ? `${displaySession.client.firstName} ${displaySession.client.lastName}` : 'Unknown Client'}
+                                                    <User size={16} className={displaySession.lead ? "text-purple-500" : "text-blue-500"} />
+                                                    {displaySession.client
+                                                        ? `${displaySession.client.firstName} ${displaySession.client.lastName}`
+                                                        : displaySession.lead
+                                                            ? `${displaySession.lead.firstName} ${displaySession.lead.lastName} (Lead)`
+                                                            : 'Unknown Client'}
                                                 </>
                                             )}
                                         </div>

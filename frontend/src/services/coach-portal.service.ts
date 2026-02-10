@@ -19,6 +19,11 @@ export interface CoachSession {
         lastName: string;
         profileImage?: string;
     } | null;
+    lead?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    } | null;
     participants?: Array<{
         id: string;
         status: string;

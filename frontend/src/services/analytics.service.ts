@@ -20,6 +20,16 @@ export interface RevenueByPackage {
     packageName: string;
     revenue: number;
     count: number;
+    avgPrice: number;
+    costPerSession: number;
+    totalSessions: number;
+}
+
+export interface UtilizationHeatmapItem {
+    day: string;
+    dayIndex: number; // 0-6
+    hour: number; // 0-23
+    count: number;
 }
 
 export interface ClientSummary {
@@ -189,6 +199,11 @@ class AnalyticsService {
 
     async getPeakHours(params?: DateRangeQuery): Promise<PeakHour[]> {
         const response = await api.get<PeakHour[]>(`/analytics/operations/peak-hours${this.buildQuery(params)}`);
+        return response.data;
+    }
+
+    async getUtilizationHeatmap(params?: DateRangeQuery): Promise<UtilizationHeatmapItem[]> {
+        const response = await api.get<UtilizationHeatmapItem[]>(`/analytics/operations/heatmap${this.buildQuery(params)}`);
         return response.data;
     }
 

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import SessionForm from './SessionForm';
 import { useSessionsState } from './useSessionsState';
@@ -9,9 +9,51 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 const SessionCreatePage: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
     const state = useSessionsState();
     const { sessions, handleEdit } = state;
     const isEdit = !!id;
+    const isRebook = searchParams.get('rebook') === 'true';
+
+    // Pre-fill form data from URL query params (for rebooking)
+    useEffect(() => {
+        if (!isRebook || isEdit) return;
+
+        const prefillData: Partial<typeof state.formData> = {};
+
+        const type = searchParams.get('type');
+        if (type === 'individual' || type === 'group') {
+            prefillData.type = type;
+        }
+
+        const studioId = searchParams.get('studioId');
+        if (studioId) prefillData.studioId = studioId;
+
+        const roomId = searchParams.get('roomId');
+        if (roomId) prefillData.roomId = roomId;
+
+        const coachId = searchParams.get('coachId');
+        if (coachId) prefillData.coachId = coachId;
+
+        const clientId = searchParams.get('clientId');
+        if (clientId) prefillData.clientId = clientId;
+
+        const emsDeviceId = searchParams.get('emsDeviceId');
+        if (emsDeviceId) prefillData.emsDeviceId = emsDeviceId;
+
+        const duration = searchParams.get('duration');
+        if (duration) prefillData.duration = parseInt(duration) || 20;
+
+        const intensityLevel = searchParams.get('intensityLevel');
+        if (intensityLevel) prefillData.intensityLevel = parseInt(intensityLevel) || 5;
+
+        const capacity = searchParams.get('capacity');
+        if (capacity) prefillData.capacity = parseInt(capacity) || 1;
+
+        if (Object.keys(prefillData).length > 0) {
+            state.setFormData(prev => ({ ...prev, ...prefillData }));
+        }
+    }, [isRebook, isEdit, searchParams]);
 
     useEffect(() => {
         if (isEdit && id && sessions.length > 0) {

@@ -14,6 +14,7 @@ import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
+import { Lead } from '../leads/entities/lead.entity';
 import {
   CreateSessionDto,
   SessionQueryDto,
@@ -39,6 +40,7 @@ import { AuditService } from '../audit/audit.service';
 
 import { AutomationService } from '../marketing/automation.service';
 import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SessionsService {
@@ -57,6 +59,8 @@ export class SessionsService {
     private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(Lead)
+    private readonly leadRepository: Repository<Lead>,
     private mailerService: MailerService,
     private clientsService: ClientsService,
     private packagesService: PackagesService,
@@ -64,6 +68,7 @@ export class SessionsService {
     private readonly auditService: AuditService,
     private readonly featureFlagService: FeatureFlagService,
     private readonly automationService: AutomationService,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
@@ -74,6 +79,7 @@ export class SessionsService {
       .leftJoinAndSelect('s.coach', 'coach')
       .leftJoinAndSelect('coach.user', 'coachUser')
       .leftJoinAndSelect('s.client', 'client')
+      .leftJoinAndSelect('s.lead', 'lead')
       .leftJoinAndSelect('s.review', 'review')
       .leftJoinAndSelect('s.participants', 'participants')
       .leftJoinAndSelect('participants.client', 'participantClient');
@@ -113,6 +119,7 @@ export class SessionsService {
         'coach',
         'coach.user',
         'client',
+        'lead',
         'participants',
         'participants.client',
       ],
@@ -180,12 +187,35 @@ export class SessionsService {
     if (dto.clientId && (!dto.type || dto.type === 'individual')) {
       const bestPackage = await this.packagesService.findBestPackageForSession(
         dto.clientId,
+        null,
         tenantId,
       );
 
       if (!bestPackage) {
         throw new BadRequestException(
           'Client does not have an active package with remaining sessions. Please renew.',
+        );
+      }
+
+      await this.packagesService.useSession(bestPackage.id, tenantId);
+      clientPackageId = bestPackage.id;
+    }
+
+    // Handle Lead Booking (Deduct from Lead Package)
+    if (dto.leadId && (!dto.type || dto.type === 'individual')) {
+      // Validate Lead
+      const lead = await this.leadRepository.findOne({ where: { id: dto.leadId, tenantId } });
+      if (!lead) throw new NotFoundException('Lead not found');
+
+      const bestPackage = await this.packagesService.findBestPackageForSession(
+        null,
+        dto.leadId,
+        tenantId,
+      );
+
+      if (!bestPackage) {
+        throw new BadRequestException(
+          'Lead does not have an active package with remaining sessions. Please assign a trial package.',
         );
       }
 
@@ -338,16 +368,6 @@ export class SessionsService {
           activePackage.sessionsRemaining - scheduledSessionsCount,
         );
 
-        // If parent session took the last spot, maxSessionsFromPackage for recurrence is 0
-        // But we already saved parent.
-        // If we are checking BEFORE parent save, logic differs. Here parent IS saved.
-        // scheduledSessionsCount INCLUDES the parent session we just saved?
-        // "savedSession" is saved at line 136. `scheduled` status is default.
-
-        // If parent is newly saved, it contributes to count.
-        // If we had 10 rem. Parent saved. Rem is 10-1 = 9.
-        // maxSessionsFromPackage = 9.
-
         maxSessionsFromPackage = remainingInPackage;
 
         // Limit by package expiry date
@@ -357,6 +377,39 @@ export class SessionsService {
             recurrenceEndDate = packageExpiry;
             this.logger.log(
               `Limiting recurrence end date to package expiry: ${recurrenceEndDate.toISOString()}`,
+            );
+          }
+        }
+      }
+    } else if (dto.leadId) {
+      const leadPackages = await this.packagesService.getLeadPackages(
+        dto.leadId,
+        tenantId,
+      );
+      const activePackage = leadPackages.find((cp) => cp.status === 'active');
+
+      if (activePackage) {
+        const scheduledSessionsCount = await this.sessionRepository.count({
+          where: {
+            leadId: dto.leadId,
+            tenantId,
+            status: 'scheduled' as any,
+          },
+        });
+
+        const remainingInPackage = Math.max(
+          0,
+          activePackage.sessionsRemaining - scheduledSessionsCount,
+        );
+
+        maxSessionsFromPackage = remainingInPackage;
+
+        if (activePackage.expiryDate) {
+          const packageExpiry = new Date(activePackage.expiryDate);
+          if (packageExpiry < recurrenceEndDate) {
+            recurrenceEndDate = packageExpiry;
+            this.logger.log(
+              `Limiting recurrence end date to package expiry (Lead): ${recurrenceEndDate.toISOString()}`,
             );
           }
         }
@@ -645,6 +698,37 @@ export class SessionsService {
         // Logic below uses validSessions.length to stop?
         // Or we iterate dates and stop when remaining == 0?
         // Let's create a limit
+
+        maxValidSessions = sessionsRemaining;
+      }
+    } else if (dto.leadId) {
+      const leadPackages = await this.packagesService.getLeadPackages(
+        dto.leadId,
+        tenantId,
+      );
+      const activePackage = leadPackages.find((cp) => cp.status === 'active');
+
+      if (activePackage) {
+        const scheduled = await this.sessionRepository.count({
+          where: {
+            leadId: dto.leadId,
+            tenantId,
+            status: 'scheduled' as any,
+          },
+        });
+
+        const sessionsRemaining = activePackage.sessionsRemaining - scheduled;
+
+        if (activePackage.expiryDate) {
+          const expiry = new Date(activePackage.expiryDate);
+          if (expiry < recurrenceEndDate) {
+            recurrenceEndDate = expiry;
+          }
+        }
+
+        if (sessionsRemaining <= 0) {
+          return { validSessions: [], conflicts: [] };
+        }
 
         maxValidSessions = sessionsRemaining;
       }
@@ -956,8 +1040,26 @@ export class SessionsService {
     }
 
     const originalTime = session.startTime.getTime();
-    Object.assign(session, dto);
-    const saved = await this.sessionRepository.save(session);
+
+    // Selectively assign updatable fields, converting dates properly
+    if (dto.startTime) session.startTime = new Date(dto.startTime);
+    if (dto.endTime) session.endTime = new Date(dto.endTime);
+    if (dto.coachId) session.coachId = dto.coachId;
+    if (dto.roomId) session.roomId = dto.roomId;
+    if (dto.studioId) session.studioId = dto.studioId;
+    if (dto.clientId !== undefined) session.clientId = dto.clientId;
+    if (dto.leadId !== undefined) session.leadId = dto.leadId;
+    if (dto.emsDeviceId !== undefined) session.emsDeviceId = dto.emsDeviceId;
+    if (dto.programType !== undefined) session.programType = dto.programType;
+    if (dto.intensityLevel !== undefined) session.intensityLevel = dto.intensityLevel;
+    if (dto.notes !== undefined) session.notes = dto.notes;
+    if (dto.type) session.type = dto.type;
+    if (dto.capacity !== undefined) session.capacity = dto.capacity;
+
+    await this.sessionRepository.save(session);
+
+    // Reload with relations so the response includes updated room/coach/studio objects
+    const saved = await this.findOne(id, tenantId);
 
     if (dto.startTime && new Date(dto.startTime).getTime() !== originalTime) {
       await this.auditService.log(
@@ -1463,6 +1565,7 @@ export class SessionsService {
           const bestPackage =
             await this.packagesService.findBestPackageForSession(
               session.clientId,
+              session.leadId,
               tenantId,
             );
           if (!bestPackage)
@@ -2074,5 +2177,56 @@ export class SessionsService {
     }
 
     return { roomId: availableRoom.id, coachId: availableCoach.id };
+  }
+
+  /**
+   * Mark a client as arrived for a session and notify the coach.
+   */
+  async markArrived(sessionId: string, tenantId: string): Promise<Session> {
+    const session = await this.sessionRepository.findOne({
+      where: { id: sessionId, tenantId },
+      relations: ['client', 'coach', 'coach.user'],
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    if (session.status !== 'scheduled') {
+      throw new BadRequestException(
+        `Cannot mark arrival for a session with status: ${session.status}`,
+      );
+    }
+
+    // Update session with arrival timestamp
+    session.status = 'in_progress' as SessionStatus;
+    const saved = await this.sessionRepository.save(session);
+
+    // Create high-priority notification for the coach
+    if (session.coach?.user?.id) {
+      const clientName = session.client
+        ? `${session.client.firstName} ${session.client.lastName}`
+        : 'A client';
+
+      await this.notificationsService.createNotification({
+        tenantId,
+        userId: session.coach.user.id,
+        type: 'client_arrival',
+        title: 'Client Arrived',
+        message: `${clientName} has arrived at the reception.`,
+        data: { sessionId, priority: 'high', link: `/sessions/${sessionId}` },
+      });
+    }
+
+    await this.auditService.log(
+      tenantId,
+      'SESSION_ARRIVAL',
+      'Session',
+      sessionId,
+      'API_USER',
+      { clientId: session.clientId, coachId: session.coachId },
+    );
+
+    return saved;
   }
 }

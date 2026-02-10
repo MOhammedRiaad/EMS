@@ -597,6 +597,129 @@ describe('Sessions E2E Tests', () => {
     });
   });
 
+  describe('PATCH /sessions/:id - Reschedule', () => {
+    let rescheduleSessionId: string;
+    let rescheduleStart: Date;
+
+    beforeAll(async () => {
+      // Create a session to reschedule
+      rescheduleStart = new Date();
+      rescheduleStart.setDate(rescheduleStart.getDate() + 8);
+      rescheduleStart.setHours(9, 0, 0, 0);
+
+      while (rescheduleStart.getDay() === 0 || rescheduleStart.getDay() === 6) {
+        rescheduleStart.setDate(rescheduleStart.getDate() + 1);
+      }
+
+      const createRes = await request(app.getHttpServer())
+        .post('/sessions')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          studioId,
+          roomId,
+          coachId,
+          clientId,
+          startTime: rescheduleStart.toISOString(),
+          endTime: new Date(rescheduleStart.getTime() + 20 * 60000).toISOString(),
+        })
+        .expect(201);
+
+      rescheduleSessionId = createRes.body.id;
+    });
+
+    it('should reschedule a session with allowTimeChangeOverride', async () => {
+      const newStart = new Date(rescheduleStart);
+      newStart.setHours(11, 0, 0, 0);
+      const newEnd = new Date(newStart.getTime() + 20 * 60000);
+
+      const response = await request(app.getHttpServer())
+        .patch(`/sessions/${rescheduleSessionId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+          allowTimeChangeOverride: true,
+        })
+        .expect(200);
+
+      expect(new Date(response.body.startTime).getTime()).toBe(newStart.getTime());
+      expect(new Date(response.body.endTime).getTime()).toBe(newEnd.getTime());
+      // Verify relations are returned
+      expect(response.body.room).toBeDefined();
+      expect(response.body.coach).toBeDefined();
+    });
+
+    it('should reject reschedule without allowTimeChangeOverride', async () => {
+      const newStart = new Date(rescheduleStart);
+      newStart.setHours(12, 0, 0, 0);
+      const newEnd = new Date(newStart.getTime() + 20 * 60000);
+
+      await request(app.getHttpServer())
+        .patch(`/sessions/${rescheduleSessionId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+        })
+        .expect(409);
+    });
+
+    it('should reject reschedule to conflicting time', async () => {
+      // Create another session at a specific time
+      const conflictStart = new Date(rescheduleStart);
+      conflictStart.setHours(15, 0, 0, 0);
+      const conflictEnd = new Date(conflictStart.getTime() + 20 * 60000);
+
+      await request(app.getHttpServer())
+        .post('/sessions')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          studioId,
+          roomId,
+          coachId,
+          clientId,
+          startTime: conflictStart.toISOString(),
+          endTime: conflictEnd.toISOString(),
+        })
+        .expect(201);
+
+      // Try to reschedule our session to the same time/room
+      await request(app.getHttpServer())
+        .patch(`/sessions/${rescheduleSessionId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          startTime: conflictStart.toISOString(),
+          endTime: conflictEnd.toISOString(),
+          allowTimeChangeOverride: true,
+        })
+        .expect(400);
+    });
+
+    it('should return updated relations after editing room or coach', async () => {
+      // First, get the current session data
+      const before = await request(app.getHttpServer())
+        .get(`/sessions/${rescheduleSessionId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(before.body.room).toBeDefined();
+      expect(before.body.coach).toBeDefined();
+
+      // Update just the notes (no conflict) — verify response includes relations
+      const response = await request(app.getHttpServer())
+        .patch(`/sessions/${rescheduleSessionId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          notes: 'Updated via reschedule test',
+        })
+        .expect(200);
+
+      expect(response.body.notes).toBe('Updated via reschedule test');
+      expect(response.body.room).toBeDefined();
+      expect(response.body.room.name).toBeDefined();
+      expect(response.body.coach).toBeDefined();
+    });
+  });
   describe('Time-Off', () => {
     // Use outer coachToken
 

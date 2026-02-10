@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository, Brackets, In, LessThan, MoreThan } from 'typeorm';
 import { Coach } from './entities/coach.entity';
 import {
   CoachTimeOffRequest,
@@ -15,6 +16,7 @@ import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { AuditService } from '../audit/audit.service';
+import { Session } from '../sessions/entities/session.entity';
 
 @Injectable()
 export class CoachesService {
@@ -25,10 +27,12 @@ export class CoachesService {
     private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly mailerService: MailerService,
-  ) {}
+  ) { }
 
   async findAll(tenantId: string, search?: string): Promise<Coach[]> {
     const query = this.coachRepository
@@ -328,6 +332,32 @@ export class CoachesService {
       throw new ForbiddenException(
         `Request has already been ${request.status}`,
       );
+    }
+
+    // Conflict check: prevent approval if coach has sessions during this period
+    if (status === 'approved') {
+      const conflictingSessions = await this.sessionRepository.find({
+        where: {
+          coachId: request.coachId,
+          tenantId,
+          status: In(['scheduled', 'in_progress']),
+        },
+      });
+
+      // Filter sessions that overlap with the time-off period
+      const overlapping = conflictingSessions.filter((session) => {
+        const sessionStart = new Date(session.startTime);
+        const sessionEnd = new Date(session.endTime);
+        const timeOffStart = new Date(request.startDate);
+        const timeOffEnd = new Date(request.endDate);
+        return sessionStart < timeOffEnd && sessionEnd > timeOffStart;
+      });
+
+      if (overlapping.length > 0) {
+        throw new ConflictException(
+          `Coach has ${overlapping.length} session(s) booked during this period. Please reassign or cancel them first.`,
+        );
+      }
     }
 
     request.status = status;

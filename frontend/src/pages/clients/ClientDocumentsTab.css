@@ -1,0 +1,276 @@
+.client-documents-tab {
+    padding: 1.5rem;
+}
+
+.documents-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.documents-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.category-filter {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.upload-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.upload-button:hover {
+    background-color: var(--color-primary-dark);
+}
+
+.drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    transition: all 0.2s;
+    background-color: var(--color-bg-secondary);
+}
+
+.drop-zone.active {
+    border-color: var(--color-primary);
+    background-color: rgba(99, 102, 241, 0.05);
+}
+
+.drop-zone svg {
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.drop-zone p {
+    margin: 0.5rem 0;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+.file-hint {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+}
+
+.documents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.document-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    transition: all 0.2s;
+}
+
+.document-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.document-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: var(--color-bg-tertiary);
+    border-radius: var(--border-radius-md);
+    color: var(--color-primary);
+}
+
+.document-info {
+    flex: 1;
+}
+
+.document-name {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--color-text-primary);
+}
+
+.document-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    flex-wrap: wrap;
+}
+
+.category-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.category-badge.contract {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.category-badge.waiver {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.category-badge.medical {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.category-badge.certificate {
+    background-color: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+}
+
+.category-badge.other {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.document-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background-color: var(--color-bg-tertiary);
+}
+
+.action-btn.download:hover {
+    color: var(--color-primary);
+}
+
+.action-btn.delete:hover {
+    color: var(--color-danger);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.loading,
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-muted);
+}
+
+.empty-state svg {
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background-color: var(--color-bg-secondary);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.125rem;
+}
+
+.modal p {
+    margin: 0 0 1.5rem 0;
+    color: var(--color-text-secondary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.modal-actions button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-actions button:first-child {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.modal-actions button.danger {
+    background-color: var(--color-danger);
+    color: white;
+}
+
+.upload-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.upload-spinner {
+    background-color: var(--color-bg-secondary);
+    padding: 2rem 3rem;
+    border-radius: var(--border-radius-lg);
+    font-weight: 500;
+}

@@ -17,6 +17,7 @@ interface MenuSectionProps {
     defaultExpanded?: boolean;
     collapsible?: boolean;
     onPinItem?: (itemPath: string) => void;
+    isCollapsed?: boolean;
 }
 
 export const MenuSection: React.FC<MenuSectionProps> = ({
@@ -25,7 +26,8 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
     items,
     // defaultExpanded is part of the interface but handled internally via context
     collapsible = true,
-    onPinItem
+    onPinItem,
+    isCollapsed = false
 }) => {
     const { isSectionExpanded, toggleSection, isPinned, togglePinItem } = useMenuPreferences();
     const [showPinButtons, setShowPinButtons] = useState(false);
@@ -50,7 +52,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
             onMouseEnter={() => setShowPinButtons(true)}
             onMouseLeave={() => setShowPinButtons(false)}
         >
-            {title && (
+            {title && !isCollapsed && (
                 <div
                     className={`menu-section-header ${collapsible ? 'collapsible' : ''}`}
                     onClick={toggleExpanded}
@@ -62,6 +64,8 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                     )}
                 </div>
             )}
+            {/* When collapsed, we can show a separator or just nothing if we rely on vertical spacing */}
+            {isCollapsed && <div className="menu-section-divider"></div>}
             {isExpanded && (
                 <div className="menu-section-items">
                     {items.map((item) => {
@@ -69,15 +73,16 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                         const pinned = isPinned(item.path);
 
                         return (
-                            <div key={item.path} className="menu-item-wrapper">
+                            <div key={item.path} className={`menu-item-wrapper ${isCollapsed ? 'collapsed' : ''}`}>
                                 <NavLink
                                     to={item.path}
                                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${pinned ? 'pinned' : ''}`}
+                                    title={isCollapsed ? item.label : undefined}
                                 >
-                                    <Icon className="nav-icon" size={18} />
-                                    <span>{item.label}</span>
+                                    <Icon className="nav-icon" size={20} />
+                                    {!isCollapsed && <span>{item.label}</span>}
                                 </NavLink>
-                                {showPinButtons && (
+                                {!isCollapsed && showPinButtons && (
                                     <button
                                         className="pin-button"
                                         onClick={(e) => handlePinClick(e, item.path)}

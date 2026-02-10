@@ -23,7 +23,7 @@ import {
 @Controller('leads')
 @UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
 export class LeadController {
-  constructor(private readonly leadService: LeadService) {}
+  constructor(private readonly leadService: LeadService) { }
 
   @Post()
   create(
@@ -72,5 +72,23 @@ export class LeadController {
   @CheckPlanLimit('clients')
   convert(@Param('id') id: string, @CurrentUser() user: User) {
     return this.leadService.convertToClient(id, user);
+  }
+
+  @Post(':id/book-trial')
+  bookTrial(
+    @Param('id') id: string,
+    @Body() dto: any,
+    @CurrentUser() user: User,
+  ) {
+    return this.leadService.bookTrial(id, dto, user);
+  }
+
+  @Post(':id/assign-package')
+  assignPackage(
+    @Param('id') id: string,
+    @Body() dto: any,
+    @CurrentUser() user: User,
+  ) {
+    return this.leadService.assignPackage(id, dto, user);
   }
 }

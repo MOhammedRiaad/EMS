@@ -8,6 +8,8 @@ import { LeadService } from './lead.service';
 import { ClientsModule } from '../clients/clients.module';
 import { MarketingModule } from '../marketing/marketing.module';
 import { OwnerModule } from '../owner/owner.module';
+import { SessionsModule } from '../sessions/sessions.module';
+import { PackagesModule } from '../packages/packages.module';
 
 @Module({
   imports: [
@@ -15,9 +17,11 @@ import { OwnerModule } from '../owner/owner.module';
     ClientsModule,
     MarketingModule,
     OwnerModule,
+    SessionsModule,
+    PackagesModule,
   ],
   controllers: [LeadController],
   providers: [LeadService],
   exports: [TypeOrmModule, LeadService],
 })
-export class LeadsModule {}
+export class LeadsModule { }

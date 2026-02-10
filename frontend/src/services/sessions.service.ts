@@ -6,6 +6,7 @@ export interface Session {
     roomId: string;
     coachId: string;
     clientId: string;
+    leadId?: string | null;
     startTime: string;
     endTime: string;
     status: string;
@@ -14,6 +15,7 @@ export interface Session {
     intensityLevel?: number;
     emsDeviceId?: string;
     client?: { id: string; firstName: string; lastName: string; avatarUrl?: string };
+    lead?: { id: string; firstName: string; lastName: string };
     coach?: {
         id: string;
         user?: { firstName: string | null; lastName: string | null };
@@ -40,6 +42,11 @@ export interface SessionParticipant {
         firstName: string;
         lastName: string;
         email?: string;
+    };
+    lead?: {
+        id: string;
+        firstName: string;
+        lastName: string;
     };
 }
 
@@ -126,6 +133,12 @@ export const sessionsService = {
         return authenticatedFetch(`/sessions/${id}/status`, {
             method: 'PATCH',
             body: JSON.stringify({ status, cancelledReason, deductSession })
+        });
+    },
+
+    async markArrived(id: string): Promise<Session> {
+        return authenticatedFetch(`/sessions/${id}/arrive`, {
+            method: 'POST'
         });
     },
 

@@ -15,11 +15,13 @@ import {
   TransactionCategory,
 } from '../packages/entities/transaction.entity';
 import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
+import { ClientDocument, DocumentCategory } from './entities/client-document.entity';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { AuditService } from '../audit/audit.service';
 import { User } from '../auth/entities/user.entity';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 import { Session } from '../sessions/entities/session.entity';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class ClientsService {
@@ -36,10 +38,13 @@ export class ClientsService {
     private readonly favoriteCoachRepository: Repository<FavoriteCoach>,
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
+    @InjectRepository(ClientDocument)
+    private readonly documentRepository: Repository<ClientDocument>,
     private readonly authService: AuthService,
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
-  ) {}
+    private readonly storageService: StorageService,
+  ) { }
 
   async findAll(tenantId: string, search?: string): Promise<Client[]> {
     const query = this.clientRepository
@@ -471,6 +476,147 @@ export class ClientsService {
       roomId: roomUsage.roomId,
       roomName: roomUsage.roomName || 'Unknown Room',
       usageCount: parseInt(roomUsage.usageCount, 10),
+    };
+  }
+
+  // ==================== Document Management ====================
+
+  async uploadDocument(
+    clientId: string,
+    tenantId: string,
+    file: Express.Multer.File,
+    uploadedBy: string,
+    category: DocumentCategory = DocumentCategory.OTHER,
+  ): Promise<ClientDocument> {
+    // Verify client exists
+    await this.findOne(clientId, tenantId);
+
+    // Upload to MinIO
+    const storagePath = `${tenantId}/clients/${clientId}`;
+    const fileUrl = await this.storageService.uploadFile(file, storagePath);
+
+    // Create document record
+    const document = this.documentRepository.create({
+      clientId,
+      tenantId,
+      fileName: file.originalname,
+      fileType: file.mimetype,
+      fileSize: file.size,
+      fileUrl,
+      uploadedBy,
+      category,
+    });
+
+    const savedDocument = await this.documentRepository.save(document);
+
+    // Audit log
+    await this.auditService.log(
+      tenantId,
+      'client_document_uploaded',
+      'client_document',
+      savedDocument.id,
+      uploadedBy,
+      {
+        clientId,
+        fileName: file.originalname,
+        fileSize: file.size,
+        category,
+      },
+    );
+
+    return savedDocument;
+  }
+
+  async getClientDocuments(
+    clientId: string,
+    tenantId: string,
+    category?: DocumentCategory,
+  ): Promise<ClientDocument[]> {
+    const query = this.documentRepository
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.uploader', 'uploader')
+      .where('document.clientId = :clientId', { clientId })
+      .andWhere('document.tenantId = :tenantId', { tenantId });
+
+    if (category) {
+      query.andWhere('document.category = :category', { category });
+    }
+
+    query.orderBy('document.createdAt', 'DESC');
+
+    return query.getMany();
+  }
+
+  async deleteDocument(
+    documentId: string,
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, tenantId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    // Delete from MinIO (optional - you might want to keep for audit)
+    // await this.storageService.deleteFile(document.fileUrl);
+
+    // Delete from database
+    await this.documentRepository.remove(document);
+
+    // Audit log
+    await this.auditService.log(
+      tenantId,
+      'client_document_deleted',
+      'client_document',
+      documentId,
+      userId,
+      {
+        clientId: document.clientId,
+        fileName: document.fileName,
+      },
+    );
+  }
+
+  async getDocumentDownloadUrl(
+    documentId: string,
+    tenantId: string,
+  ): Promise<{ url: string; fileName: string }> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, tenantId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    // For now, return the storage key - in production, generate a signed URL
+    return {
+      url: `/api/clients/${document.clientId}/documents/${documentId}/download`,
+      fileName: document.fileName,
+    };
+  }
+
+  async streamDocument(
+    documentId: string,
+    tenantId: string,
+  ): Promise<{ stream: any; fileName: string; contentType: string }> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, tenantId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    const stream = await this.storageService.getFile(document.fileUrl);
+
+    return {
+      stream,
+      fileName: document.fileName,
+      contentType: document.fileType,
     };
   }
 }

@@ -178,7 +178,8 @@ export const authenticatedFetch = async (endpoint: string, options: RequestInit 
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
-        headers
+        headers,
+        cache: 'no-store'
     });
 
     if (!response.ok) {

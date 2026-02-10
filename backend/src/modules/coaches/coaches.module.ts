@@ -9,10 +9,16 @@ import { AuthModule } from '../auth/auth.module';
 import { AuditModule } from '../audit/audit.module';
 import { MailerModule } from '../mailer/mailer.module';
 import { OwnerModule } from '../owner/owner.module';
+import { Session } from '../sessions/entities/session.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Coach, CoachTimeOffRequest, Tenant]),
+    TypeOrmModule.forFeature([
+      Coach,
+      CoachTimeOffRequest,
+      Tenant,
+      Session,
+    ]),
     forwardRef(() => AuthModule),
     AuditModule,
     MailerModule,
@@ -22,4 +28,4 @@ import { OwnerModule } from '../owner/owner.module';
   providers: [CoachesService],
   exports: [CoachesService],
 })
-export class CoachesModule {}
+export class CoachesModule { }

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
     LogOut,
+    ChevronLeft,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
@@ -19,6 +20,17 @@ const Layout: React.FC = () => {
     const { user, tenant, logout, isAuthenticated } = useAuth();
     const { isPinned } = useMenuPreferences();
     const { items: allItems, sections: navSections } = useNavigation();
+    const [isCollapsed, setIsCollapsed] = React.useState(() => {
+        return localStorage.getItem('sidebar_collapsed') === 'true';
+    });
+
+    const toggleSidebar = () => {
+        setIsCollapsed(prev => {
+            const newState = !prev;
+            localStorage.setItem('sidebar_collapsed', String(newState));
+            return newState;
+        });
+    };
 
     // Redirect to login if not authenticated
     React.useEffect(() => {
@@ -58,7 +70,7 @@ const Layout: React.FC = () => {
 
     return (
         <div className="container">
-            <aside className="sidebar">
+            <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="logo-area">
                     {tenant?.settings?.branding?.logoUrl ? (
                         <img
@@ -72,7 +84,7 @@ const Layout: React.FC = () => {
                 </div>
 
                 {/* Menu Search */}
-                <MenuSearch allItems={allItems} onNavigate={navigate} />
+                <MenuSearch allItems={allItems} onNavigate={navigate} isCollapsed={isCollapsed} />
 
                 <nav className="nav">
                     {/* Pinned Items */}
@@ -82,6 +94,7 @@ const Layout: React.FC = () => {
                             title="Pinned"
                             collapsible={false}
                             items={pinnedItems}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -92,6 +105,7 @@ const Layout: React.FC = () => {
                             title="Core"
                             collapsible={false}
                             items={navSections.core}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -101,6 +115,7 @@ const Layout: React.FC = () => {
                             id="management"
                             title="Management"
                             items={navSections.management}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -110,6 +125,7 @@ const Layout: React.FC = () => {
                             id="client-business"
                             title="Client & Business"
                             items={navSections['client-business']}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -119,6 +135,7 @@ const Layout: React.FC = () => {
                             id="retail"
                             title="Retail"
                             items={navSections.retail}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -128,6 +145,7 @@ const Layout: React.FC = () => {
                             id="marketing"
                             title="Marketing"
                             items={navSections.marketing}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -137,6 +155,7 @@ const Layout: React.FC = () => {
                             id="analytics"
                             title="Analytics"
                             items={navSections.analytics}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
@@ -146,6 +165,7 @@ const Layout: React.FC = () => {
                             id="administration"
                             title="Administration"
                             items={navSections.administration}
+                            isCollapsed={isCollapsed}
                         />
                     )}
                 </nav>
@@ -155,11 +175,16 @@ const Layout: React.FC = () => {
                         className="nav-item"
                         style={{ color: 'var(--color-danger)', cursor: 'pointer' }}
                         onClick={handleLogout}
+                        title={isCollapsed ? 'Logout' : undefined}
                     >
                         <LogOut className="nav-icon" />
-                        <span>Logout</span>
+                        {!isCollapsed && <span>Logout</span>}
                     </div>
                 </div>
+
+                <button className="sidebar-toggle" onClick={toggleSidebar}>
+                    <ChevronLeft size={16} />
+                </button>
             </aside>
 
             <main className="main-content">

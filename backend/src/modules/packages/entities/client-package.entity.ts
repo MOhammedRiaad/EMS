@@ -28,12 +28,19 @@ export class ClientPackage {
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 
-  @Column({ name: 'client_id' })
+  @Column({ name: 'client_id', nullable: true })
   clientId: string;
 
   @ManyToOne(() => Client)
   @JoinColumn({ name: 'client_id' })
   client: Client;
+
+  @Column({ name: 'lead_id', nullable: true })
+  leadId: string;
+
+  @ManyToOne('Lead', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'lead_id' })
+  lead: any;
 
   @Column({ name: 'package_id' })
   packageId: string;

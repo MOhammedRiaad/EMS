@@ -40,7 +40,7 @@ export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
     private readonly participantsService: SessionParticipantsService,
-  ) {}
+  ) { }
 
   @Get()
   // @UseInterceptors(CacheInterceptor)
@@ -137,6 +137,12 @@ export class SessionsController {
       dto.deductSession,
       req.user?.id || 'API_USER',
     );
+  }
+
+  @Post(':id/arrive')
+  @ApiOperation({ summary: 'Mark a client as arrived and notify the coach' })
+  markArrived(@Param('id') id: string, @TenantId() tenantId: string) {
+    return this.sessionsService.markArrived(id, tenantId);
   }
 
   // ===== Participant Endpoints =====

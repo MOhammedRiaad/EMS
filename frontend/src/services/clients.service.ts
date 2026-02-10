@@ -138,5 +138,44 @@ export const clientsService = {
 
     async getMostUsedRoom(id: string): Promise<{ roomId: string; roomName: string; usageCount: number } | null> {
         return authenticatedFetch(`/clients/${id}/most-used-room`);
+    },
+
+    // ==================== Document Management ====================
+
+    async uploadDocument(clientId: string, file: File, category: string): Promise<any> {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', category);
+
+        return authenticatedFetch(`/clients/${clientId}/documents`, {
+            method: 'POST',
+            body: formData
+        });
+    },
+
+    async getDocuments(clientId: string, category?: string): Promise<any[]> {
+        const query = category ? `?category=${category}` : '';
+        return authenticatedFetch(`/clients/${clientId}/documents${query}`);
+    },
+
+    async deleteDocument(clientId: string, documentId: string): Promise<void> {
+        return authenticatedFetch(`/clients/${clientId}/documents/${documentId}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async downloadDocument(clientId: string, documentId: string): Promise<Blob> {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${API_URL}/clients/${clientId}/documents/${documentId}/download`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to download document');
+        }
+
+        return response.blob();
     }
 };

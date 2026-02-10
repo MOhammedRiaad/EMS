@@ -21,12 +21,12 @@ import { CoachesService } from '../coaches/coaches.service';
 export interface DashboardNotification {
   id: string;
   type:
-    | 'session_today'
-    | 'session_upcoming'
-    | 'package_expiring'
-    | 'package_low'
-    | 'waitlist_update'
-    | 'time_off_request';
+  | 'session_today'
+  | 'session_upcoming'
+  | 'package_expiring'
+  | 'package_low'
+  | 'waitlist_update'
+  | 'time_off_request';
   title: string;
   message: string;
   link?: string;
@@ -51,7 +51,7 @@ export class NotificationsService {
     @InjectRepository(AnnouncementRead)
     private readonly announcementReadRepository: Repository<AnnouncementRead>,
     private readonly coachesService: CoachesService,
-  ) {}
+  ) { }
 
   // --- In-App Notifications ---
 
@@ -263,18 +263,21 @@ export class NotificationsService {
       });
     }
 
-    // 3. Low session packages (2 or fewer remaining)
-    const lowSessionPackages = await this.clientPackageRepository.find({
+    // 3. Low session packages (using per-package threshold)
+    const activePackages = await this.clientPackageRepository.find({
       where: {
         tenantId,
         status: ClientPackageStatus.ACTIVE,
-        sessionsRemaining: LessThan(3),
       },
       relations: ['client', 'package'],
     });
 
-    // Filter out ones with 0 sessions (already depleted in status)
-    const trulyLow = lowSessionPackages.filter((p) => p.sessionsRemaining > 0);
+    // Filter packages where sessions remaining is at or below the package's threshold
+    const trulyLow = activePackages.filter(
+      (p) =>
+        p.sessionsRemaining > 0 &&
+        p.sessionsRemaining <= (p.package?.lowSessionThreshold ?? 2),
+    );
 
     if (trulyLow.length > 0) {
       notifications.push({

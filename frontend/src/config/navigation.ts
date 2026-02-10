@@ -20,7 +20,8 @@ import {
     Target,
     Megaphone,
     Home,
-    Trophy
+    Trophy,
+    Upload
 } from 'lucide-react';
 
 export type NavSection = 'core' | 'management' | 'client-business' | 'retail' | 'marketing' | 'analytics' | 'administration' | 'client-portal' | 'coach-portal';
@@ -40,6 +41,7 @@ export interface NavItem {
 export const NAVIGATION_ITEMS: NavItem[] = [
     // Core
     { id: 'dashboard', path: '/', label: 'Dashboard', icon: LayoutDashboard, section: 'core' },
+    { id: 'calendar', path: '/calendar', label: 'Calendar', icon: Calendar, section: 'core', requiredFeature: 'core.sessions' },
     { id: 'sessions', path: '/sessions', label: 'Sessions', icon: Calendar, section: 'core', requiredFeature: 'core.sessions' },
     { id: 'clients', path: '/clients', label: 'Clients', icon: Users, section: 'core', requiredFeature: 'core.sessions' }, // Linked to sessions for now
 
@@ -75,6 +77,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     { id: 'branding', path: '/admin/branding', label: 'Branding', icon: Palette, section: 'administration', adminOnly: true, requiredFeature: 'core.branding' },
     { id: 'announcements', path: '/admin/announcements', label: 'Announcements', icon: Megaphone, section: 'administration', adminOnly: true, requiredFeature: 'communication.announcements' },
     { id: 'audit-logs', path: '/admin/audit-logs', label: 'Audit Logs', icon: FileText, section: 'administration', adminOnly: true, requiredFeature: 'compliance.audit_logs' },
+    { id: 'data-import', path: '/admin/import', label: 'Data Import', icon: Upload, section: 'administration', adminOnly: true, requiredFeature: 'core.data_import' },
 
     // Client Portal
     { id: 'client-home', path: '/client/home', label: 'Home', icon: Home, section: 'client-portal', requiredRole: ['client'] },

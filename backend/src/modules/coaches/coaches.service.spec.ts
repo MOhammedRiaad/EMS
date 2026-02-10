@@ -8,7 +8,8 @@ import { Tenant } from '../tenants/entities/tenant.entity';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { AuditService } from '../audit/audit.service';
-import { NotFoundException } from '@nestjs/common';
+import { Session } from '../sessions/entities/session.entity';
+import { NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 
 describe('CoachesService', () => {
   let service: CoachesService;
@@ -83,6 +84,12 @@ describe('CoachesService', () => {
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: getRepositoryToken(Session),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -269,6 +276,57 @@ describe('CoachesService', () => {
       expect(repository.save).toHaveBeenCalledWith(
         expect.objectContaining({ active: false }),
       );
+    });
+  });
+
+  describe('updateTimeOffStatus', () => {
+    const mockTimeOffRequest = {
+      id: 'request-123',
+      coachId: 'coach-123',
+      tenantId: 'tenant-123',
+      startDate: new Date('2026-03-01'),
+      endDate: new Date('2026-03-05'),
+      status: 'pending',
+    };
+    let timeOffRepo: jest.Mocked<Repository<CoachTimeOffRequest>>;
+    let sessionRepo: jest.Mocked<Repository<Session>>;
+
+    beforeEach(() => {
+      timeOffRepo = service['timeOffRepository'] as any;
+      sessionRepo = service['sessionRepository'] as any;
+    });
+
+    it('should throw ConflictException if coach has sessions during time-off period', async () => {
+      timeOffRepo.findOne = jest.fn().mockResolvedValue({ ...mockTimeOffRequest });
+      sessionRepo.find = jest.fn().mockResolvedValue([
+        { id: 'session-1', startTime: new Date('2026-03-02'), endTime: new Date('2026-03-02T01:00:00'), status: 'scheduled' },
+      ]);
+
+      await expect(
+        service.updateTimeOffStatus('request-123', 'approved', 'reviewer-1', 'tenant-123'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should approve if no conflicting sessions', async () => {
+      timeOffRepo.findOne = jest.fn().mockResolvedValue({ ...mockTimeOffRequest });
+      timeOffRepo.save = jest.fn().mockImplementation(async (r) => r);
+      sessionRepo.find = jest.fn().mockResolvedValue([]);
+      repository.findOne.mockResolvedValue(mockCoach);
+
+      const result = await service.updateTimeOffStatus('request-123', 'approved', 'reviewer-1', 'tenant-123');
+
+      expect(result.status).toBe('approved');
+    });
+
+    it('should reject without conflict check', async () => {
+      timeOffRepo.findOne = jest.fn().mockResolvedValue({ ...mockTimeOffRequest });
+      timeOffRepo.save = jest.fn().mockImplementation(async (r) => r);
+      repository.findOne.mockResolvedValue(mockCoach);
+
+      const result = await service.updateTimeOffStatus('request-123', 'rejected', 'reviewer-1', 'tenant-123');
+
+      expect(result.status).toBe('rejected');
+      expect(sessionRepo.find).not.toHaveBeenCalled();
     });
   });
 });

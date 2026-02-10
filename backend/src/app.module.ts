@@ -41,6 +41,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { OwnerModule } from './modules/owner/owner.module';
 import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { ImportModule } from './modules/import/import.module';
 
 @Module({
   imports: [
@@ -63,11 +64,11 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
             transport: isProduction
               ? undefined
               : {
-                  target: 'pino-pretty',
-                  options: {
-                    singleLine: true,
-                  },
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
                 },
+              },
           },
         };
       },
@@ -139,6 +140,7 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
     AuditModule,
     OwnerModule,
     WhatsAppModule,
+    ImportModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -153,4 +155,4 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

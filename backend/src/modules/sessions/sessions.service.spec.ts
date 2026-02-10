@@ -24,6 +24,8 @@ import { RoleService } from '../auth/services/role.service';
 import { AuditService } from '../audit/audit.service';
 import { AutomationService } from '../marketing/automation.service';
 import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
+import { Lead } from '../leads/entities/lead.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('SessionsService', () => {
   let service: SessionsService;
@@ -209,6 +211,20 @@ describe('SessionsService', () => {
             triggerEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
+        {
+          provide: getRepositoryToken(Lead),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            createNotification: jest.fn().mockResolvedValue(undefined),
+            sendNotification: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -274,6 +290,7 @@ describe('SessionsService', () => {
           'coach',
           'coach.user',
           'client',
+          'lead',
           'participants',
           'participants.client',
         ],
@@ -672,6 +689,12 @@ describe('SessionsService', () => {
       sessionRepository.createQueryBuilder.mockReturnValue(
         createMockQueryBuilder([]) as any,
       );
+      clientsService.findOne.mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'Jane',
+        studioId: 'studio-123',
+        user: { gender: 'female' },
+      } as any);
     });
 
     it('should update session successfully', async () => {
@@ -723,6 +746,120 @@ describe('SessionsService', () => {
         role: 'admin',
       });
       expect(sessionRepository.save).toHaveBeenCalled();
+    });
+
+    it('should send reschedule email when time changes with override', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+
+      expect(mailerService.sendMail).toHaveBeenCalledWith(
+        'test@example.com',
+        'Session Rescheduled - EMS Studio',
+        expect.any(String),
+        expect.stringContaining('rescheduled'),
+      );
+    });
+
+    it('should log audit entry on reschedule', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+
+      expect((service as any).auditService.log).toHaveBeenCalledWith(
+        'tenant-123',
+        'RESCHEDULE_SESSION',
+        'Session',
+        'session-123',
+        'API_USER',
+        expect.objectContaining({
+          oldTime: expect.any(Date),
+          newTime: expect.any(Date),
+        }),
+      );
+    });
+
+    it('should not send email if client has no email', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      clientsService.findOne.mockResolvedValue({
+        email: null,
+        firstName: 'Jane',
+        studioId: 'studio-123',
+      } as any);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should detect scheduling conflicts on reschedule', async () => {
+      const conflictDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        roomId: 'room-123',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      // Mock conflict detected
+      const conflictQb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'conflicting', roomId: 'room-123' })
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+      };
+      sessionRepository.createQueryBuilder.mockReturnValue(conflictQb as any);
+
+      await expect(
+        service.update('session-123', conflictDto, 'tenant-123', {
+          role: 'admin',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

@@ -5,6 +5,7 @@ import { Plus, Phone, Mail, Clock } from 'lucide-react';
 import LeadForm from './LeadForm';
 import LeadActionMenu from './LeadActionMenu';
 import LeadConversionModal from './LeadConversionModal';
+import { LeadBookTrialModal } from './LeadBookTrialModal';
 
 import LeadDetailsModal from './LeadDetailsModal';
 
@@ -15,6 +16,7 @@ const LeadKanbanBoard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+    const [isBookTrialModalOpen, setIsBookTrialModalOpen] = useState(false);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
     const [leadToEdit, setLeadToEdit] = useState<Lead | undefined>(undefined);
@@ -111,6 +113,12 @@ const LeadKanbanBoard: React.FC = () => {
     const handleConvert = (lead: Lead) => {
         setSelectedLead(lead);
         setIsConvertModalOpen(true);
+        setIsDetailsModalOpen(false);
+    };
+
+    const handleBookTrial = (lead: Lead) => {
+        setSelectedLead(lead);
+        setIsBookTrialModalOpen(true);
         setIsDetailsModalOpen(false);
     };
 
@@ -255,6 +263,7 @@ const LeadKanbanBoard: React.FC = () => {
                                                                             onEdit={handleEdit}
                                                                             onDelete={handleDelete}
                                                                             onConvert={handleConvert}
+                                                                            onBookTrial={handleBookTrial}
                                                                             vertical
                                                                         />
                                                                     </div>
@@ -384,6 +393,14 @@ const LeadKanbanBoard: React.FC = () => {
                 onSuccess={() => {
                     loadLeads();
                     setIsConvertModalOpen(false);
+                }}
+            />
+            <LeadBookTrialModal
+                open={isBookTrialModalOpen}
+                onClose={() => setIsBookTrialModalOpen(false)}
+                leadId={selectedLead?.id || ''}
+                onSuccess={() => {
+                    loadLeads();
                 }}
             />
             <LeadDetailsModal

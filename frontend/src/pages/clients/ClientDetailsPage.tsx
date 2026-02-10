@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Wallet, FileText, Phone, Mail, Building2, DollarSign, StickyNote, Heart, AlertTriangle, Shield, Eye, EyeOff, MessageSquare } from 'lucide-react';
+import { ArrowLeft, User, Wallet, FileText, Phone, Mail, Building2, DollarSign, StickyNote, Heart, AlertTriangle, Shield, Eye, EyeOff, MessageSquare, FolderOpen } from 'lucide-react';
 import FinanceTab from '../../components/clients/tabs/FinanceTab';
 import WaiversTab from '../../components/clients/tabs/WaiversTab';
 
@@ -9,6 +9,7 @@ import HealthAndProgressTab from '../../components/clients/tabs/HealthAndProgres
 import ClientSessionsTab from '../../components/clients/tabs/ClientSessionsTab';
 import ClientInBodyTab from '../../components/clients/tabs/ClientInBodyTab';
 import ClientReviewsTab from '../../components/clients/tabs/ClientReviewsTab';
+import { ClientDocumentsTab } from './ClientDocumentsTab';
 import WhatsAppMessageModal from '../../components/clients/WhatsAppMessageModal';
 import { Activity, Heart as HeartIcon, Calendar, Scale, Star } from 'lucide-react';
 import { clientsService } from '../../services/clients.service';
@@ -391,6 +392,8 @@ const ClientDetailsPage: React.FC = () => {
                 return <ClientInBodyTab clientId={id!} />;
             case 'reviews':
                 return <ClientReviewsTab clientId={id!} />;
+            case 'documents':
+                return <ClientDocumentsTab clientId={id!} />;
             default:
                 return null;
         }
@@ -417,6 +420,7 @@ const ClientDetailsPage: React.FC = () => {
                         { id: 'parq', label: 'PAR-Q', icon: Activity, feature: 'compliance.parq' },
                         { id: 'health', label: 'Health & Progress', icon: Heart, feature: 'client.progress_tracking' },
                         { id: 'sessions', label: 'Sessions', icon: Calendar, feature: 'core.sessions' },
+                        { id: 'documents', label: 'Documents', icon: FolderOpen, feature: 'client.documents' },
                         { id: 'inbody', label: 'InBody', icon: Scale, feature: 'client.inbody_scans' },
                         { id: 'reviews', label: 'Reviews', icon: Star, feature: 'client.reviews' },
                     ]

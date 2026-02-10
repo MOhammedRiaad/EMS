@@ -15,6 +15,8 @@ import { User } from '../auth/entities/user.entity';
 import { ClientsService } from '../clients/clients.service';
 import { AutomationService } from '../marketing/automation.service';
 import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
+import { SessionsService } from '../sessions/sessions.service';
+import { PackagesService } from '../packages/packages.service';
 
 @Injectable()
 export class LeadService {
@@ -25,6 +27,8 @@ export class LeadService {
     private activityRepository: Repository<LeadActivity>,
     private readonly clientsService: ClientsService,
     private readonly automationService: AutomationService,
+    private readonly sessionsService: SessionsService,
+    private readonly packagesService: PackagesService,
   ) { }
 
   async create(
@@ -175,6 +179,63 @@ export class LeadService {
       createdBy: user,
     });
     return this.activityRepository.save(activity);
+  }
+
+  async bookTrial(leadId: string, dto: any, user: User) {
+    const lead = await this.findOne(leadId, user.tenantId);
+
+    // Book session via SessionsService
+    // Assuming dto is CreateSessionDto but we inject leadId
+    const sessionDto = { ...dto, leadId, clientId: undefined };
+    const session = await this.sessionsService.create(
+      sessionDto,
+      user.tenantId,
+      user,
+    );
+
+    // Update status to TRIAL_BOOKED if not already converted or higher
+    if (
+      lead.status !== LeadStatus.CONVERTED &&
+      lead.status !== LeadStatus.TRIAL_BOOKED
+    ) {
+      await this.update(
+        leadId,
+        { status: LeadStatus.TRIAL_BOOKED },
+        user.tenantId,
+        user,
+      );
+    }
+
+    await this.logActivity(
+      leadId,
+      LeadActivityType.NOTE,
+      `Trial Session Booked: ${session.startTime}`,
+      user,
+    );
+
+    return session;
+  }
+
+  async assignPackage(leadId: string, dto: any, user: User) {
+    const lead = await this.findOne(leadId, user.tenantId);
+
+    // Assign package via PackagesService
+    // DTO expects clientId or leadId
+    const assignDto = { ...dto, leadId, clientId: undefined };
+    const clientPackage = await this.packagesService.assignPackage(
+      assignDto,
+      user.tenantId,
+      user.id,
+    );
+
+    await this.logActivity(
+      leadId,
+      LeadActivityType.NOTE,
+      `Trial Package Assigned: ${clientPackage.packageId}`, // Improve logging to show package name if possible
+      user,
+    );
+
+    return clientPackage;
   }
 
   // Conversion Logic

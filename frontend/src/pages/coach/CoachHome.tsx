@@ -130,24 +130,31 @@ const CoachHome = () => {
                                 </h3>
                                 <div className="space-y-3">
                                     {groupedSessions[dateKey].map(session => (
-                                        <div key={session.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 relative overflow-hidden transition-all hover:shadow-md">
+                                        <div
+                                            key={session.id}
+                                            className={`bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border ${session.lead ? 'border-purple-200 dark:border-purple-900/50' : 'border-gray-100 dark:border-slate-800'} relative overflow-hidden transition-all hover:shadow-md`}
+                                        >
+                                            {session.lead && <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/5 translate-x-8 -translate-y-8 rotate-45 pointer-events-none" />}
                                             <div className="flex justify-between items-start mb-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-lg text-sm">
                                                         {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-gray-900 dark:text-white">
+                                                        <div className={`font-bold ${session.lead ? 'text-purple-600 dark:text-purple-400' : 'text-gray-900 dark:text-white'}`}>
                                                             {session.client
                                                                 ? `${session.client.firstName} ${session.client.lastName}`
-                                                                : session.type === 'group'
-                                                                    ? `Group Session (${session.participants?.length || 0} participants)`
-                                                                    : 'No Client Assigned'}
+                                                                : session.lead
+                                                                    ? `${session.lead.firstName} ${session.lead.lastName} (Lead)`
+                                                                    : session.type === 'group'
+                                                                        ? `Group Session (${session.participants?.length || 0} participants)`
+                                                                        : 'No Client Assigned'}
                                                         </div>
                                                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                                                            <div className={`w-2 h-2 rounded-full ${session.status === 'scheduled' ? 'bg-blue-500' :
-                                                                session.status === 'completed' ? 'bg-green-500' :
-                                                                    session.status === 'no_show' ? 'bg-red-500' : 'bg-gray-400'
+                                                            <div className={`w-2 h-2 rounded-full ${session.lead ? 'bg-purple-500' :
+                                                                session.status === 'scheduled' ? 'bg-blue-500' :
+                                                                    session.status === 'completed' ? 'bg-green-500' :
+                                                                        session.status === 'no_show' ? 'bg-red-500' : 'bg-gray-400'
                                                                 }`}></div>
                                                             {session.status.replace('_', ' ').toUpperCase()}
                                                         </div>
