@@ -98,6 +98,7 @@ import { ImportModule } from './modules/import/import.module';
         synchronize: false,
         migrationsRun: true, // Auto-run migrations on startup
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+        migrationsTransactionMode: 'each',
         logging: configService.get('NODE_ENV') === 'development',
         ssl:
           configService.get('NODE_ENV') === 'production'

@@ -22,6 +22,7 @@ export const dataSourceOptions: DataSourceOptions = {
   database: process.env.POSTGRES_DB || 'ems_studio',
   entities: [join(__dirname, 'modules/**/*.entity{.ts,.js}')],
   migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
+  migrationsTransactionMode: 'each',
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
   ssl:
