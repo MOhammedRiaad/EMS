@@ -43,7 +43,10 @@ import { Session } from '../sessions/entities/session.entity';
         if (allowedMimes.includes(file.mimetype)) {
           cb(null, true);
         } else {
-          cb(new Error('Invalid file type. Only PDF and images are allowed.'), false);
+          cb(
+            new Error('Invalid file type. Only PDF and images are allowed.'),
+            false,
+          );
         }
       },
     }),
@@ -58,4 +61,4 @@ import { Session } from '../sessions/entities/session.entity';
   providers: [ClientsService],
   exports: [ClientsService],
 })
-export class ClientsModule { }
+export class ClientsModule {}

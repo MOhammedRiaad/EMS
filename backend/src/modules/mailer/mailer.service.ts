@@ -16,8 +16,8 @@ export class MailerService {
         'maildev',
       port: parseInt(
         this.configService.get('SMTP_PORT') ||
-        this.configService.get('MAIL_PORT') ||
-        '1025',
+          this.configService.get('MAIL_PORT') ||
+          '1025',
       ),
       ignoreTLS: true,
     });
@@ -55,14 +55,23 @@ export class MailerService {
       Object.keys(context).forEach((key) => {
         const value = context[key] || '';
         const regex = new RegExp(`{{${key}}}`, 'g');
-        result = result.replace(regex, typeof value === 'object' ? JSON.stringify(value) : value.toString());
+        result = result.replace(
+          regex,
+          typeof value === 'object' ? JSON.stringify(value) : value.toString(),
+        );
       });
       // Handle nested client/user if needed but standard flattening is usually better
       // For now handle common nested ones
       if (context.client) {
-        result = result.replace(/{{userName}}/g, context.client.firstName || 'Customer');
+        result = result.replace(
+          /{{userName}}/g,
+          context.client.firstName || 'Customer',
+        );
       } else if (context.user) {
-        result = result.replace(/{{userName}}/g, context.user.firstName || 'Customer');
+        result = result.replace(
+          /{{userName}}/g,
+          context.user.firstName || 'Customer',
+        );
       }
 
       // Default fallbacks

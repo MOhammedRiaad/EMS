@@ -69,7 +69,7 @@ export class SessionsService {
     private readonly featureFlagService: FeatureFlagService,
     private readonly automationService: AutomationService,
     private readonly notificationsService: NotificationsService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
     const qb = this.sessionRepository
@@ -204,7 +204,9 @@ export class SessionsService {
     // Handle Lead Booking (Deduct from Lead Package)
     if (dto.leadId && (!dto.type || dto.type === 'individual')) {
       // Validate Lead
-      const lead = await this.leadRepository.findOne({ where: { id: dto.leadId, tenantId } });
+      const lead = await this.leadRepository.findOne({
+        where: { id: dto.leadId, tenantId },
+      });
       if (!lead) throw new NotFoundException('Lead not found');
 
       const bestPackage = await this.packagesService.findBestPackageForSession(
@@ -1051,7 +1053,8 @@ export class SessionsService {
     if (dto.leadId !== undefined) session.leadId = dto.leadId;
     if (dto.emsDeviceId !== undefined) session.emsDeviceId = dto.emsDeviceId;
     if (dto.programType !== undefined) session.programType = dto.programType;
-    if (dto.intensityLevel !== undefined) session.intensityLevel = dto.intensityLevel;
+    if (dto.intensityLevel !== undefined)
+      session.intensityLevel = dto.intensityLevel;
     if (dto.notes !== undefined) session.notes = dto.notes;
     if (dto.type) session.type = dto.type;
     if (dto.capacity !== undefined) session.capacity = dto.capacity;
@@ -1377,9 +1380,9 @@ export class SessionsService {
     if (availableSessions <= 0) {
       throw new BadRequestException(
         `Client has no available sessions for booking. ` +
-        `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
-        `Already scheduled: ${scheduledSessionsCount}. ` +
-        `Please complete existing sessions or renew the package.`,
+          `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+          `Already scheduled: ${scheduledSessionsCount}. ` +
+          `Please complete existing sessions or renew the package.`,
       );
     }
   }
@@ -1596,12 +1599,12 @@ export class SessionsService {
           userId: client.userId,
           user: client.user
             ? {
-              id: client.user.id,
-              email: client.user.email,
-              firstName: client.user.firstName,
-              lastName: client.user.lastName,
-              phone: client.user.phone,
-            }
+                id: client.user.id,
+                email: client.user.email,
+                firstName: client.user.firstName,
+                lastName: client.user.lastName,
+                phone: client.user.phone,
+              }
             : null,
         };
 

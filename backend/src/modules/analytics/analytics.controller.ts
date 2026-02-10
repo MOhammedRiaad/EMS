@@ -17,7 +17,7 @@ import { DateRangeQueryDto, RevenueQueryDto, PeriodType } from './dto';
 @Roles('tenant_owner', 'admin')
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) { }
+  constructor(private readonly analyticsService: AnalyticsService) {}
 
   // ============= Revenue Endpoints =============
 

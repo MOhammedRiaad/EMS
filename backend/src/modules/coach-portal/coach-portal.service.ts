@@ -32,7 +32,7 @@ export class CoachPortalService {
     private coachesRepository: Repository<Coach>,
     @InjectRepository(CoachTimeOffRequest)
     private timeOffRepository: Repository<CoachTimeOffRequest>,
-  ) { }
+  ) {}
 
   private async getCoachId(userId: string): Promise<string> {
     const coach = await this.coachesRepository.findOne({ where: { userId } });

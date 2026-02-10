@@ -35,7 +35,7 @@ export class PackagesService {
     @InjectRepository(Transaction)
     private transactionRepo: Repository<Transaction>,
     private readonly auditService: AuditService,
-  ) { }
+  ) {}
 
   // ===== PACKAGES =====
   async findAllPackages(tenantId: string, includeInactive = false) {
@@ -129,7 +129,7 @@ export class PackagesService {
 
     // Only create transaction if clientId is present (Lead packages might not be paid yet or need different logic)
     // Or we assume leads pay too?
-    // If Lead pays, we might need a dummy transaction or just log it. 
+    // If Lead pays, we might need a dummy transaction or just log it.
     // For now, let's create transaction only if clientId is present as Transaction entity likely requires clientId.
     // Let's check Transaction entity.
 
@@ -156,7 +156,12 @@ export class PackagesService {
       'ClientPackage',
       saved.id,
       userId,
-      { clientId: dto.clientId, leadId: dto.leadId, packageId: dto.packageId, price: pkg.price },
+      {
+        clientId: dto.clientId,
+        leadId: dto.leadId,
+        packageId: dto.packageId,
+        price: pkg.price,
+      },
     );
 
     return saved;
@@ -364,7 +369,7 @@ export class PackagesService {
     const currentBalance = lastTx ? Number(lastTx.runningBalance) : 0;
     const newBalance =
       dto.type === TransactionType.EXPENSE ||
-        dto.type === TransactionType.REFUND
+      dto.type === TransactionType.REFUND
         ? currentBalance - Math.abs(dto.amount)
         : currentBalance + Math.abs(dto.amount);
 

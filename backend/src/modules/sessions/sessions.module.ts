@@ -48,4 +48,4 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers: [SessionsService, SessionParticipantsService],
   exports: [SessionsService, SessionParticipantsService],
 })
-export class SessionsModule { }
+export class SessionsModule {}

@@ -59,7 +59,7 @@ export class OwnerService {
     private readonly auditService: OwnerAuditService,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   /**
    * Get dashboard overview stats
@@ -820,24 +820,24 @@ export class OwnerService {
         marketingConsentRate:
           activeClientsCount > 0
             ? Math.round(
-              (parseInt(marketingConsentCount[0].count) /
-                activeClientsCount) *
-              100,
-            )
+                (parseInt(marketingConsentCount[0].count) /
+                  activeClientsCount) *
+                  100,
+              )
             : 0,
         dataProcessingConsentRate:
           activeClientsCount > 0
             ? Math.round(
-              (parseInt(dataProcessingConsentCount[0].count) /
-                activeClientsCount) *
-              100,
-            )
+                (parseInt(dataProcessingConsentCount[0].count) /
+                  activeClientsCount) *
+                  100,
+              )
             : 0,
         termsAcceptanceRate:
           activeClientsCount > 0
             ? Math.round(
-              (parseInt(termsAcceptedCount.count) / activeClientsCount) * 100,
-            )
+                (parseInt(termsAcceptedCount.count) / activeClientsCount) * 100,
+              )
             : 0,
       },
       rightToBeForgotten: {

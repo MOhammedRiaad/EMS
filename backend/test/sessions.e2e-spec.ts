@@ -620,7 +620,9 @@ describe('Sessions E2E Tests', () => {
           coachId,
           clientId,
           startTime: rescheduleStart.toISOString(),
-          endTime: new Date(rescheduleStart.getTime() + 20 * 60000).toISOString(),
+          endTime: new Date(
+            rescheduleStart.getTime() + 20 * 60000,
+          ).toISOString(),
         })
         .expect(201);
 
@@ -642,7 +644,9 @@ describe('Sessions E2E Tests', () => {
         })
         .expect(200);
 
-      expect(new Date(response.body.startTime).getTime()).toBe(newStart.getTime());
+      expect(new Date(response.body.startTime).getTime()).toBe(
+        newStart.getTime(),
+      );
       expect(new Date(response.body.endTime).getTime()).toBe(newEnd.getTime());
       // Verify relations are returned
       expect(response.body.room).toBeDefined();

@@ -40,7 +40,7 @@ export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
     private readonly participantsService: SessionParticipantsService,
-  ) { }
+  ) {}
 
   @Get()
   // @UseInterceptors(CacheInterceptor)

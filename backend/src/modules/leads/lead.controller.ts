@@ -23,7 +23,7 @@ import {
 @Controller('leads')
 @UseGuards(AuthGuard('jwt'), TenantGuard, PlanLimitGuard)
 export class LeadController {
-  constructor(private readonly leadService: LeadService) { }
+  constructor(private readonly leadService: LeadService) {}
 
   @Post()
   create(

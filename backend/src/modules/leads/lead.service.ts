@@ -29,7 +29,7 @@ export class LeadService {
     private readonly automationService: AutomationService,
     private readonly sessionsService: SessionsService,
     private readonly packagesService: PackagesService,
-  ) { }
+  ) {}
 
   async create(
     createLeadDto: any,

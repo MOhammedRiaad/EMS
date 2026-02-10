@@ -432,6 +432,12 @@ export const ownerPortalService = {
     getComplianceStats: async () => {
         const response = await api.get('/owner/compliance/stats');
         return response.data;
+    },
+
+    // --- Users ---
+    searchUsers: async (params: { search?: string; role?: string; limit?: number; offset?: number }) => {
+        const response = await api.get('/owner/users', params);
+        return response.data;
     }
 };
 

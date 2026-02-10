@@ -44,7 +44,7 @@ export class AnalyticsService {
     private readonly reviewRepo: Repository<ClientSessionReview>,
     @InjectRepository(Lead) // New Injection
     private readonly leadRepo: Repository<Lead>,
-  ) { }
+  ) {}
 
   // ============= Helper Methods =============
 
@@ -517,8 +517,21 @@ export class AnalyticsService {
       .getRawMany();
 
     // Build a complete 7x24 matrix with defaults of 0
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const heatmapData: { day: string; dayIndex: number; hour: number; count: number }[] = [];
+    const dayNames = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    const heatmapData: {
+      day: string;
+      dayIndex: number;
+      hour: number;
+      count: number;
+    }[] = [];
 
     // Create lookup map
     const dataMap = new Map<string, number>();
@@ -833,8 +846,8 @@ export class AnalyticsService {
       growthRate:
         dataPoints.length > 0 && dataPoints[dataPoints.length - 1].y > 0
           ? ((predictedRevenue - dataPoints[dataPoints.length - 1].y) /
-            dataPoints[dataPoints.length - 1].y) *
-          100
+              dataPoints[dataPoints.length - 1].y) *
+            100
           : 0,
       history: dataPoints,
     };

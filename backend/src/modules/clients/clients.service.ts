@@ -15,7 +15,10 @@ import {
   TransactionCategory,
 } from '../packages/entities/transaction.entity';
 import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
-import { ClientDocument, DocumentCategory } from './entities/client-document.entity';
+import {
+  ClientDocument,
+  DocumentCategory,
+} from './entities/client-document.entity';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { AuditService } from '../audit/audit.service';
 import { User } from '../auth/entities/user.entity';
@@ -44,7 +47,7 @@ export class ClientsService {
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
     private readonly storageService: StorageService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, search?: string): Promise<Client[]> {
     const query = this.clientRepository

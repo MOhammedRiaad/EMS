@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -8,364 +12,376 @@ import { Coach } from '../coaches/entities/coach.entity';
 import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 
 export interface ImportClientRow {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
-    dateOfBirth?: string;
-    notes?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  dateOfBirth?: string;
+  notes?: string;
 }
 
 export interface ImportCoachRow {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-    bio?: string;
-    specializations?: string; // comma-separated
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  bio?: string;
+  specializations?: string; // comma-separated
 }
 
 export interface ImportResult {
-    totalRows: number;
-    successCount: number;
-    failedCount: number;
-    errors: { row: number; error: string }[];
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  errors: { row: number; error: string }[];
 }
 
 export interface ImportValidation {
-    canImport: boolean;
-    requestedCount: number;
-    currentCount: number;
-    limit: number;
-    availableSlots: number;
-    wouldExceedBy: number;
-    importableCount: number; // How many can be imported within limits
-    message: string;
+  canImport: boolean;
+  requestedCount: number;
+  currentCount: number;
+  limit: number;
+  availableSlots: number;
+  wouldExceedBy: number;
+  importableCount: number; // How many can be imported within limits
+  message: string;
 }
 
 @Injectable()
 export class ImportService {
-    constructor(
-        private readonly dataSource: DataSource,
-        private readonly usageTrackingService: UsageTrackingService,
-        @InjectRepository(User)
-        private readonly userRepo: Repository<User>,
-        @InjectRepository(Client)
-        private readonly clientRepo: Repository<Client>,
-        @InjectRepository(Coach)
-        private readonly coachRepo: Repository<Coach>,
-    ) { }
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly usageTrackingService: UsageTrackingService,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(Client)
+    private readonly clientRepo: Repository<Client>,
+    @InjectRepository(Coach)
+    private readonly coachRepo: Repository<Coach>,
+  ) {}
 
-    /**
-     * Validate client import against package limits
-     */
-    async validateClientImport(
-        tenantId: string,
-        rowCount: number,
-    ): Promise<ImportValidation> {
-        const snapshot = await this.usageTrackingService.getUsageSnapshot(tenantId);
-        const { current, limit } = snapshot.clients;
+  /**
+   * Validate client import against package limits
+   */
+  async validateClientImport(
+    tenantId: string,
+    rowCount: number,
+  ): Promise<ImportValidation> {
+    const snapshot = await this.usageTrackingService.getUsageSnapshot(tenantId);
+    const { current, limit } = snapshot.clients;
 
-        // If limit is -1, it means unlimited
-        if (limit === -1) {
-            return {
-                canImport: true,
-                requestedCount: rowCount,
-                currentCount: current,
-                limit: -1,
-                availableSlots: -1,
-                wouldExceedBy: 0,
-                importableCount: rowCount,
-                message: 'Unlimited clients allowed. All rows can be imported.',
-            };
-        }
-
-        const availableSlots = Math.max(0, limit - current);
-        const wouldExceedBy = Math.max(0, rowCount - availableSlots);
-        const importableCount = Math.min(rowCount, availableSlots);
-        const canImport = availableSlots > 0;
-
-        let message: string;
-        if (wouldExceedBy > 0) {
-            message = `Import would exceed client limit. Current: ${current}/${limit}. Requested: ${rowCount}. Only ${importableCount} can be imported. Upgrade your plan for more clients.`;
-        } else {
-            message = `All ${rowCount} clients can be imported. Current: ${current}/${limit}.`;
-        }
-
-        return {
-            canImport,
-            requestedCount: rowCount,
-            currentCount: current,
-            limit,
-            availableSlots,
-            wouldExceedBy,
-            importableCount,
-            message,
-        };
+    // If limit is -1, it means unlimited
+    if (limit === -1) {
+      return {
+        canImport: true,
+        requestedCount: rowCount,
+        currentCount: current,
+        limit: -1,
+        availableSlots: -1,
+        wouldExceedBy: 0,
+        importableCount: rowCount,
+        message: 'Unlimited clients allowed. All rows can be imported.',
+      };
     }
 
-    /**
-     * Validate coach import against package limits
-     */
-    async validateCoachImport(
-        tenantId: string,
-        rowCount: number,
-    ): Promise<ImportValidation> {
-        const snapshot = await this.usageTrackingService.getUsageSnapshot(tenantId);
-        const { current, limit } = snapshot.coaches;
+    const availableSlots = Math.max(0, limit - current);
+    const wouldExceedBy = Math.max(0, rowCount - availableSlots);
+    const importableCount = Math.min(rowCount, availableSlots);
+    const canImport = availableSlots > 0;
 
-        if (limit === -1) {
-            return {
-                canImport: true,
-                requestedCount: rowCount,
-                currentCount: current,
-                limit: -1,
-                availableSlots: -1,
-                wouldExceedBy: 0,
-                importableCount: rowCount,
-                message: 'Unlimited coaches allowed. All rows can be imported.',
-            };
-        }
-
-        const availableSlots = Math.max(0, limit - current);
-        const wouldExceedBy = Math.max(0, rowCount - availableSlots);
-        const importableCount = Math.min(rowCount, availableSlots);
-        const canImport = availableSlots > 0;
-
-        let message: string;
-        if (wouldExceedBy > 0) {
-            message = `Import would exceed coach limit. Current: ${current}/${limit}. Requested: ${rowCount}. Only ${importableCount} can be imported. Upgrade your plan for more coaches.`;
-        } else {
-            message = `All ${rowCount} coaches can be imported. Current: ${current}/${limit}.`;
-        }
-
-        return {
-            canImport,
-            requestedCount: rowCount,
-            currentCount: current,
-            limit,
-            availableSlots,
-            wouldExceedBy,
-            importableCount,
-            message,
-        };
+    let message: string;
+    if (wouldExceedBy > 0) {
+      message = `Import would exceed client limit. Current: ${current}/${limit}. Requested: ${rowCount}. Only ${importableCount} can be imported. Upgrade your plan for more clients.`;
+    } else {
+      message = `All ${rowCount} clients can be imported. Current: ${current}/${limit}.`;
     }
 
-    /**
-     * Generate a random password for imported users
-     */
-    private generateRandomPassword(length = 12): string {
-        const chars =
-            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-        let password = '';
-        for (let i = 0; i < length; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return password;
+    return {
+      canImport,
+      requestedCount: rowCount,
+      currentCount: current,
+      limit,
+      availableSlots,
+      wouldExceedBy,
+      importableCount,
+      message,
+    };
+  }
+
+  /**
+   * Validate coach import against package limits
+   */
+  async validateCoachImport(
+    tenantId: string,
+    rowCount: number,
+  ): Promise<ImportValidation> {
+    const snapshot = await this.usageTrackingService.getUsageSnapshot(tenantId);
+    const { current, limit } = snapshot.coaches;
+
+    if (limit === -1) {
+      return {
+        canImport: true,
+        requestedCount: rowCount,
+        currentCount: current,
+        limit: -1,
+        availableSlots: -1,
+        wouldExceedBy: 0,
+        importableCount: rowCount,
+        message: 'Unlimited coaches allowed. All rows can be imported.',
+      };
     }
 
-    /**
-     * Import clients from parsed CSV/Excel data
-     */
-    async importClients(
-        tenantId: string,
-        rows: ImportClientRow[],
-    ): Promise<ImportResult> {
-        const result: ImportResult = {
-            totalRows: rows.length,
-            successCount: 0,
-            failedCount: 0,
-            errors: [],
-        };
+    const availableSlots = Math.max(0, limit - current);
+    const wouldExceedBy = Math.max(0, rowCount - availableSlots);
+    const importableCount = Math.min(rowCount, availableSlots);
+    const canImport = availableSlots > 0;
 
-        const queryRunner = this.dataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
+    let message: string;
+    if (wouldExceedBy > 0) {
+      message = `Import would exceed coach limit. Current: ${current}/${limit}. Requested: ${rowCount}. Only ${importableCount} can be imported. Upgrade your plan for more coaches.`;
+    } else {
+      message = `All ${rowCount} coaches can be imported. Current: ${current}/${limit}.`;
+    }
+
+    return {
+      canImport,
+      requestedCount: rowCount,
+      currentCount: current,
+      limit,
+      availableSlots,
+      wouldExceedBy,
+      importableCount,
+      message,
+    };
+  }
+
+  /**
+   * Generate a random password for imported users
+   */
+  private generateRandomPassword(length = 12): string {
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
+  /**
+   * Import clients from parsed CSV/Excel data
+   */
+  async importClients(
+    tenantId: string,
+    rows: ImportClientRow[],
+  ): Promise<ImportResult> {
+    const result: ImportResult = {
+      totalRows: rows.length,
+      successCount: 0,
+      failedCount: 0,
+      errors: [],
+    };
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2; // +2 for 1-indexed and header row
 
         try {
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const rowNum = i + 2; // +2 for 1-indexed and header row
+          // Validate required fields
+          if (!row.email || !row.firstName || !row.lastName) {
+            throw new Error(
+              'Missing required fields: email, firstName, lastName',
+            );
+          }
 
-                try {
-                    // Validate required fields
-                    if (!row.email || !row.firstName || !row.lastName) {
-                        throw new Error('Missing required fields: email, firstName, lastName');
-                    }
+          // Check if email already exists
+          const existingUser = await queryRunner.manager.findOne(User, {
+            where: { email: row.email.toLowerCase(), tenantId },
+          });
 
-                    // Check if email already exists
-                    const existingUser = await queryRunner.manager.findOne(User, {
-                        where: { email: row.email.toLowerCase(), tenantId },
-                    });
+          if (existingUser) {
+            throw new Error(`Email ${row.email} already exists`);
+          }
 
-                    if (existingUser) {
-                        throw new Error(`Email ${row.email} already exists`);
-                    }
+          // Generate password and hash
+          const tempPassword = this.generateRandomPassword();
+          const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-                    // Generate password and hash
-                    const tempPassword = this.generateRandomPassword();
-                    const passwordHash = await bcrypt.hash(tempPassword, 10);
+          // Create user
+          const user = queryRunner.manager.create(User, {
+            tenantId,
+            email: row.email.toLowerCase(),
+            passwordHash,
+            firstName: row.firstName,
+            lastName: row.lastName,
+            phone: row.phone || null,
+            gender: row.gender || 'prefer_not_to_say',
+            role: 'client',
+            mustChangePassword: true, // Force password change on first login
+            active: true,
+          });
+          const savedUser = await queryRunner.manager.save(User, user);
 
-                    // Create user
-                    const user = queryRunner.manager.create(User, {
-                        tenantId,
-                        email: row.email.toLowerCase(),
-                        passwordHash,
-                        firstName: row.firstName,
-                        lastName: row.lastName,
-                        phone: row.phone || null,
-                        gender: row.gender || 'prefer_not_to_say',
-                        role: 'client',
-                        mustChangePassword: true, // Force password change on first login
-                        active: true,
-                    });
-                    const savedUser = await queryRunner.manager.save(User, user);
+          // Create client profile
+          const client = queryRunner.manager.create(Client, {
+            userId: savedUser.id,
+            firstName: row.firstName,
+            lastName: row.lastName,
+            email: row.email.toLowerCase(),
+            phone: row.phone || null,
+            dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
+            notes: row.notes || null,
+            status: 'active',
+          });
+          // Set tenantId separately since it's from base entity
+          (client as any).tenantId = tenantId;
+          await queryRunner.manager.save(Client, client);
 
-                    // Create client profile
-                    const client = queryRunner.manager.create(Client, {
-                        userId: savedUser.id,
-                        firstName: row.firstName,
-                        lastName: row.lastName,
-                        email: row.email.toLowerCase(),
-                        phone: row.phone || null,
-                        dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
-                        notes: row.notes || null,
-                        status: 'active',
-                    });
-                    // Set tenantId separately since it's from base entity
-                    (client as any).tenantId = tenantId;
-                    await queryRunner.manager.save(Client, client);
-
-                    result.successCount++;
-                } catch (error: any) {
-                    result.failedCount++;
-                    result.errors.push({ row: rowNum, error: error.message });
-                }
-            }
-
-            await queryRunner.commitTransaction();
-        } catch (error) {
-            await queryRunner.rollbackTransaction();
-            throw error;
-        } finally {
-            await queryRunner.release();
+          result.successCount++;
+        } catch (error: any) {
+          result.failedCount++;
+          result.errors.push({ row: rowNum, error: error.message });
         }
+      }
 
-        return result;
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
 
-    /**
-     * Import coaches from parsed CSV/Excel data
-     */
-    async importCoaches(
-        tenantId: string,
-        rows: ImportCoachRow[],
-    ): Promise<ImportResult> {
-        const result: ImportResult = {
-            totalRows: rows.length,
-            successCount: 0,
-            failedCount: 0,
-            errors: [],
-        };
+    return result;
+  }
 
-        const queryRunner = this.dataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
+  /**
+   * Import coaches from parsed CSV/Excel data
+   */
+  async importCoaches(
+    tenantId: string,
+    rows: ImportCoachRow[],
+  ): Promise<ImportResult> {
+    const result: ImportResult = {
+      totalRows: rows.length,
+      successCount: 0,
+      failedCount: 0,
+      errors: [],
+    };
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
 
         try {
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const rowNum = i + 2;
+          if (!row.email || !row.firstName || !row.lastName) {
+            throw new Error(
+              'Missing required fields: email, firstName, lastName',
+            );
+          }
 
-                try {
-                    if (!row.email || !row.firstName || !row.lastName) {
-                        throw new Error('Missing required fields: email, firstName, lastName');
-                    }
+          const existingUser = await queryRunner.manager.findOne(User, {
+            where: { email: row.email.toLowerCase(), tenantId },
+          });
 
-                    const existingUser = await queryRunner.manager.findOne(User, {
-                        where: { email: row.email.toLowerCase(), tenantId },
-                    });
+          if (existingUser) {
+            throw new Error(`Email ${row.email} already exists`);
+          }
 
-                    if (existingUser) {
-                        throw new Error(`Email ${row.email} already exists`);
-                    }
+          const tempPassword = this.generateRandomPassword();
+          const passwordHash = await bcrypt.hash(tempPassword, 10);
 
-                    const tempPassword = this.generateRandomPassword();
-                    const passwordHash = await bcrypt.hash(tempPassword, 10);
+          // Create user with coach role
+          const user = queryRunner.manager.create(User, {
+            tenantId,
+            email: row.email.toLowerCase(),
+            passwordHash,
+            firstName: row.firstName,
+            lastName: row.lastName,
+            phone: row.phone || null,
+            role: 'coach',
+            mustChangePassword: true,
+            active: true,
+          });
+          const savedUser = await queryRunner.manager.save(User, user);
 
-                    // Create user with coach role
-                    const user = queryRunner.manager.create(User, {
-                        tenantId,
-                        email: row.email.toLowerCase(),
-                        passwordHash,
-                        firstName: row.firstName,
-                        lastName: row.lastName,
-                        phone: row.phone || null,
-                        role: 'coach',
-                        mustChangePassword: true,
-                        active: true,
-                    });
-                    const savedUser = await queryRunner.manager.save(User, user);
+          // Parse specializations
+          const specializations = row.specializations
+            ? row.specializations.split(',').map((s) => s.trim())
+            : [];
 
-                    // Parse specializations
-                    const specializations = row.specializations
-                        ? row.specializations.split(',').map((s) => s.trim())
-                        : [];
+          // Create coach profile
+          const coach = queryRunner.manager.create(Coach, {
+            tenantId,
+            userId: savedUser.id,
+            bio: row.bio || null,
+            specializations,
+            isActive: true,
+          });
+          await queryRunner.manager.save(Coach, coach);
 
-                    // Create coach profile
-                    const coach = queryRunner.manager.create(Coach, {
-                        tenantId,
-                        userId: savedUser.id,
-                        bio: row.bio || null,
-                        specializations,
-                        isActive: true,
-                    });
-                    await queryRunner.manager.save(Coach, coach);
-
-                    result.successCount++;
-                } catch (error: any) {
-                    result.failedCount++;
-                    result.errors.push({ row: rowNum, error: error.message });
-                }
-            }
-
-            await queryRunner.commitTransaction();
-        } catch (error) {
-            await queryRunner.rollbackTransaction();
-            throw error;
-        } finally {
-            await queryRunner.release();
+          result.successCount++;
+        } catch (error: any) {
+          result.failedCount++;
+          result.errors.push({ row: rowNum, error: error.message });
         }
+      }
 
-        return result;
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
 
-    /**
-     * Parse CSV string to array of objects
-     */
-    parseCSV<T>(csvContent: string): T[] {
-        const lines = csvContent.trim().split('\n');
-        if (lines.length < 2) {
-            throw new BadRequestException('CSV must have at least a header row and one data row');
-        }
+    return result;
+  }
 
-        const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
-        const rows: T[] = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
-            const row: any = {};
-
-            headers.forEach((header, index) => {
-                // Convert header to camelCase
-                const key = header.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-                row[key] = values[index] || undefined;
-            });
-
-            rows.push(row as T);
-        }
-
-        return rows;
+  /**
+   * Parse CSV string to array of objects
+   */
+  parseCSV<T>(csvContent: string): T[] {
+    const lines = csvContent.trim().split('\n');
+    if (lines.length < 2) {
+      throw new BadRequestException(
+        'CSV must have at least a header row and one data row',
+      );
     }
+
+    const headers = lines[0]
+      .split(',')
+      .map((h) => h.trim().replace(/^"|"$/g, ''));
+    const rows: T[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i]
+        .split(',')
+        .map((v) => v.trim().replace(/^"|"$/g, ''));
+      const row: any = {};
+
+      headers.forEach((header, index) => {
+        // Convert header to camelCase
+        const key = header.replace(/_([a-z])/g, (_, letter) =>
+          letter.toUpperCase(),
+        );
+        row[key] = values[index] || undefined;
+      });
+
+      rows.push(row as T);
+    }
+
+    return rows;
+  }
 }

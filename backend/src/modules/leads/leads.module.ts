@@ -24,4 +24,4 @@ import { PackagesModule } from '../packages/packages.module';
   providers: [LeadService],
   exports: [TypeOrmModule, LeadService],
 })
-export class LeadsModule { }
+export class LeadsModule {}

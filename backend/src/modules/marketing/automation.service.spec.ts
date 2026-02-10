@@ -86,7 +86,9 @@ describe('AutomationService', () => {
           provide: MailerService,
           useValue: {
             sendMail: jest.fn().mockResolvedValue({ messageId: '123' }),
-            sendTemplatedMail: jest.fn().mockResolvedValue({ messageId: '123' }),
+            sendTemplatedMail: jest
+              .fn()
+              .mockResolvedValue({ messageId: '123' }),
           },
         },
         {

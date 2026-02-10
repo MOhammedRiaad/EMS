@@ -49,8 +49,6 @@ export class CreateSessionDto {
   @IsUUID()
   leadId?: string;
 
-
-
   @ApiPropertyOptional({ enum: ['individual', 'group'] })
   @IsOptional()
   @IsIn(['individual', 'group'])

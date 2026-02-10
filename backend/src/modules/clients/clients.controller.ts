@@ -38,7 +38,7 @@ export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly waiversService: WaiversService,
-  ) { }
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all clients for tenant' })

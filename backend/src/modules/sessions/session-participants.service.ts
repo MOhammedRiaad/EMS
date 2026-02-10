@@ -20,7 +20,7 @@ export class SessionParticipantsService {
     @InjectRepository(Session)
     private sessionRepo: Repository<Session>,
     private packagesService: PackagesService,
-  ) { }
+  ) {}
 
   async addParticipant(sessionId: string, clientId: string, tenantId: string) {
     const session = await this.sessionRepo.findOne({

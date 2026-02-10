@@ -29,7 +29,7 @@ export class AutomationService {
     private usageTrackingService: UsageTrackingService,
     private whatsappService: WhatsAppService,
     private notificationsService: NotificationsService,
-  ) { }
+  ) {}
 
   async create(createDto: any, tenantId: string): Promise<AutomationRule> {
     const rule = this.ruleRepository.create({

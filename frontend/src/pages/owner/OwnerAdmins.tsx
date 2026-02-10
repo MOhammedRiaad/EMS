@@ -8,14 +8,20 @@ import {
 import { ownerPortalService } from '../../services/owner-portal.service';
 import type { Role } from '../../services/owner-portal.service';
 
-interface AdminUser {
+interface AdminUserResponse {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-    roles: Role[];
+    role: string; // API returns string key
+    roles?: Role[]; // Future proofing
     lastLoginAt?: string;
     active: boolean;
+}
+
+interface AdminUser extends AdminUserResponse {
+    roles: Role[]; // UI expects this
+    // We will map 'role' string to this array if 'roles' is missing from API
 }
 
 const OwnerAdmins: React.FC = () => {
@@ -27,26 +33,36 @@ const OwnerAdmins: React.FC = () => {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<AdminUser[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
 
-    // Mock data loader until we wire up the specific endpoint
     const loadData = async () => {
         setLoading(true);
         try {
             const rolesData = await ownerPortalService.getAllRoles();
             setRoles(rolesData);
 
-            // Fetch users - mocked for now
-            setUsers([
-                {
-                    id: '1',
-                    email: 'owner@platform.com',
-                    firstName: 'System',
-                    lastName: 'Owner',
-                    roles: rolesData.filter((r: Role) => r.key === 'platform_owner'),
-                    active: true,
-                    lastLoginAt: new Date().toISOString()
-                }
-            ]);
+            // Fetch users with owner/admin roles
+            // For now, we search for all users to display list, or specifically filter by role if backend supports
+            // The new endpoint supports 'role', but we might want multiple. 
+            // Let's list all users for now and we can filter client-side or assume the endpoint returns default list.
+            const response = await ownerPortalService.searchUsers({ limit: 50 });
+
+            // Map API response to UI model
+            const mappedUsers: AdminUser[] = response.items.map((u: any) => {
+                const userRoleKey = u.role;
+                // Find role object matching the key
+                const matchedRole = rolesData.find(r => r.key === userRoleKey);
+
+                return {
+                    ...u,
+                    // If API doesn't return roles array, construct it from the single role key
+                    roles: u.roles || (matchedRole ? [matchedRole] : []),
+                };
+            });
+
+            setUsers(mappedUsers);
 
         } catch (error) {
             console.error('Failed to load admin users', error);
@@ -58,6 +74,44 @@ const OwnerAdmins: React.FC = () => {
     useEffect(() => {
         loadData();
     }, []);
+
+    const handleSearch = async (term: string) => {
+        setSearchTerm(term);
+        if (!term) {
+            setSearchResults([]);
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const response = await ownerPortalService.searchUsers({ search: term, limit: 10 });
+            // Map search results too
+            const mappedResults: AdminUser[] = response.items.map((u: any) => {
+                const userRoleKey = u.role;
+                const matchedRole = roles.find(r => r.key === userRoleKey);
+                return {
+                    ...u,
+                    roles: u.roles || (matchedRole ? [matchedRole] : []),
+                };
+            });
+            setSearchResults(mappedResults);
+        } catch (error) {
+            console.error('Search failed', error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleAssignContextUser = (user: AdminUser) => {
+        // If user is from search results, check if already in list
+        if (!users.find(u => u.id === user.id)) {
+            setUsers([...users, user]);
+        }
+        setSelectedUser(user);
+        setShowRoleModal(true);
+        setSearchResults([]); // Clear search suggestions
+        setSearchTerm('');
+    };
 
     const handleAssignRole = async (roleId: string) => {
         if (!selectedUser) return;
@@ -106,12 +160,56 @@ const OwnerAdmins: React.FC = () => {
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">Manage owner team access and roles</p>
                 </div>
-                <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
-                >
-                    <UserPlus size={18} /> Invite Admin
-                </button>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        {/* Search Input */}
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Search users to add..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                className="w-full pl-4 pr-10 py-2 border rounded-lg bg-white dark:bg-slate-800 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            {isSearching ? (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                searchTerm && <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={14} /></button>
+                            )}
+                        </div>
+
+                        {/* Search Results Dropdown */}
+                        {searchResults.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 overflow-hidden max-h-64 overflow-y-auto">
+                                <div className="p-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-700/50">
+                                    Found Users
+                                </div>
+                                {searchResults.map(user => (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => handleAssignContextUser(user)}
+                                        className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-3 transition-colors border-b border-gray-50 dark:border-slate-700 last:border-0"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                            {user.firstName[0]}{user.lastName[0]}
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-gray-900 dark:text-white text-sm">{user.firstName} {user.lastName}</div>
+                                            <div className="text-xs text-gray-500">{user.email}</div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => setShowInviteModal(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 whitespace-nowrap"
+                    >
+                        <UserPlus size={18} /> Invite Admin
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -143,8 +241,8 @@ const OwnerAdmins: React.FC = () => {
                                     <div className="flex flex-wrap gap-1">
                                         {user.roles.map(role => (
                                             <span key={role.id} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${role.isSystemRole
-                                                    ? 'bg-purple-100 text-purple-700 border border-purple-200'
-                                                    : 'bg-gray-100 text-gray-700 border border-gray-200'
+                                                ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                                : 'bg-gray-100 text-gray-700 border border-gray-200'
                                                 }`}>
                                                 {role.name}
                                             </span>
@@ -214,8 +312,8 @@ const OwnerAdmins: React.FC = () => {
                                         <button
                                             onClick={() => handleAssignRole(role.id)}
                                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${isAssigned
-                                                    ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-700'
-                                                    : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                                                ? 'bg-blue-100 text-blue-700 hover:bg-red-100 hover:text-red-700'
+                                                : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
                                                 }`}
                                         >
                                             {isAssigned ? 'Assigned' : 'Assign'}

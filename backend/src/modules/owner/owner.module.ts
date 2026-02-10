@@ -59,6 +59,7 @@ import {
 import { OwnerAnalyticsController } from './controllers/analytics.controller';
 import { AlertsController } from './controllers/alerts.controller';
 import { RoleController } from './controllers/role.controller';
+import { OwnerUsersController } from './controllers/owner-users.controller';
 
 import { MarketingModule } from '../marketing/marketing.module';
 
@@ -105,6 +106,7 @@ import { MarketingModule } from '../marketing/marketing.module';
     OwnerAnalyticsController,
     AlertsController,
     RoleController,
+    OwnerUsersController,
   ],
   providers: [
     // Services

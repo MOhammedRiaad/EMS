@@ -6,10 +6,10 @@ import { TenantsModule } from '../tenants/tenants.module';
 import { OwnerModule } from '../owner/owner.module';
 
 @Module({
-    imports: [TenantsModule, forwardRef(() => OwnerModule)],
-    controllers: [WhatsAppController, WhatsAppWebhookController],
-    providers: [WhatsAppService],
-    exports: [WhatsAppService],
+  imports: [TenantsModule, forwardRef(() => OwnerModule)],
+  controllers: [WhatsAppController, WhatsAppWebhookController],
+  providers: [WhatsAppService],
+  exports: [WhatsAppService],
 })
 // Updated for Webhook
-export class WhatsAppModule { }
+export class WhatsAppModule {}

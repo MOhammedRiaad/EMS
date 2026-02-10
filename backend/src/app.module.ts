@@ -64,11 +64,11 @@ import { ImportModule } from './modules/import/import.module';
             transport: isProduction
               ? undefined
               : {
-                target: 'pino-pretty',
-                options: {
-                  singleLine: true,
+                  target: 'pino-pretty',
+                  options: {
+                    singleLine: true,
+                  },
                 },
-              },
           },
         };
       },
@@ -156,4 +156,4 @@ import { ImportModule } from './modules/import/import.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

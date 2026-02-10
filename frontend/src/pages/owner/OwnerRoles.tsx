@@ -249,7 +249,7 @@ const OwnerRoles: React.FC = () => {
                                     onClick={() => handleEdit(role)}
                                     className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-white rounded-lg border border-transparent hover:border-gray-200 transition-all flex items-center gap-1"
                                 >
-                                    <Edit2 size={16} /> {role.isSystemRole ? 'View' : 'Edit'}
+                                    <Edit2 size={16} /> Edit
                                 </button>
                                 {!role.isSystemRole && (
                                     <button
@@ -370,7 +370,6 @@ const OwnerRoles: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Permissions Grid */}
                             <div className="flex-1 p-6 overflow-y-auto">
                                 <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center justify-between">
                                     <span>Permissions</span>
@@ -378,6 +377,15 @@ const OwnerRoles: React.FC = () => {
                                         {editingRole.permissionKeys?.length || 0} selected
                                     </span>
                                 </h4>
+
+                                {editingRole.isSystemRole && (
+                                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex items-start gap-2">
+                                        <div className="mt-0.5"><Shield size={16} /></div>
+                                        <div>
+                                            <span className="font-bold">Warning: System Role.</span> Modifying permissions for this role will affect all users with this role. Please proceed with caution.
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="space-y-6">
                                     {Object.entries(permissionsByCategory).map(([category, perms]) => (
@@ -394,7 +402,6 @@ const OwnerRoles: React.FC = () => {
                                                             ${editingRole.permissionKeys?.includes(perm.key)
                                                                 ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
                                                                 : 'border-gray-100 dark:border-slate-700 hover:border-gray-300'}
-                                                            ${editingRole.isSystemRole ? 'pointer-events-none opacity-80' : ''}
                                                         `}
                                                     >
                                                         <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${editingRole.permissionKeys?.includes(perm.key) ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
@@ -405,7 +412,6 @@ const OwnerRoles: React.FC = () => {
                                                             className="hidden"
                                                             checked={editingRole.permissionKeys?.includes(perm.key) || false}
                                                             onChange={() => togglePermission(perm.key)}
-                                                            disabled={!!editingRole.isSystemRole}
                                                         />
                                                         <div>
                                                             <div className="text-sm font-medium text-gray-900 dark:text-white">{perm.name}</div>
@@ -425,16 +431,14 @@ const OwnerRoles: React.FC = () => {
                                 onClick={() => setShowModal(false)}
                                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
                             >
-                                {editingRole.isSystemRole ? 'Close' : 'Cancel'}
+                                Cancel
                             </button>
-                            {!editingRole.isSystemRole && (
-                                <button
-                                    onClick={handleSave}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium"
-                                >
-                                    <Check size={18} /> Save Role
-                                </button>
-                            )}
+                            <button
+                                onClick={handleSave}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium"
+                            >
+                                <Check size={18} /> Save {editingRole.isSystemRole ? 'System Role' : 'Role'}
+                            </button>
                         </div>
                     </div>
                 </div>

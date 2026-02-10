@@ -32,7 +32,7 @@ export class CoachesService {
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly mailerService: MailerService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, search?: string): Promise<Coach[]> {
     const query = this.coachRepository

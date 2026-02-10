@@ -1,12 +1,12 @@
 export interface EmailTemplate {
-    subject: string;
-    html: string;
+  subject: string;
+  html: string;
 }
 
 export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
-    welcome_v1: {
-        subject: 'Welcome to EMS Studio!',
-        html: `
+  welcome_v1: {
+    subject: 'Welcome to EMS Studio!',
+    html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <h2 style="color: #6366f1;">Welcome to the Family!</h2>
         <p>Hi {{userName}},</p>
@@ -19,10 +19,10 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
         <p>Best regards,<br>The {{studioName}} Team</p>
       </div>
     `,
-    },
-    birthday_promo: {
-        subject: 'Happy Birthday! A Special Gift Inside 🎂',
-        html: `
+  },
+  birthday_promo: {
+    subject: 'Happy Birthday! A Special Gift Inside 🎂',
+    html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; text-align: center;">
         <h1 style="color: #ec4899;">Happy Birthday, {{userName}}! 🥳</h1>
         <p style="font-size: 18px;">We want to celebrate your special day with a special offer.</p>
@@ -37,10 +37,10 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
         <p style="font-size: 14px; color: #666;">Valid for 7 days from today.</p>
       </div>
     `,
-    },
-    session_reminder_v1: {
-        subject: 'Reminder: Your Upcoming Session ⚡',
-        html: `
+  },
+  session_reminder_v1: {
+    subject: 'Reminder: Your Upcoming Session ⚡',
+    html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <h2 style="color: #0ea5e9;">Session Reminder</h2>
         <p>Hi {{userName}},</p>
@@ -55,10 +55,10 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
         </div>
       </div>
     `,
-    },
-    Session_complete: {
-        subject: 'Great Session! How was it? 💪',
-        html: `
+  },
+  Session_complete: {
+    subject: 'Great Session! How was it? 💪',
+    html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <h2 style="color: #10b981;">Session Completed!</h2>
         <p>Hi {{userName}},</p>
@@ -72,5 +72,5 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
         <p>Best regards,<br>The {{studioName}} Team</p>
       </div>
     `,
-    },
+  },
 };

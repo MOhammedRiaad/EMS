@@ -13,12 +13,7 @@ import { Session } from '../sessions/entities/session.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Coach,
-      CoachTimeOffRequest,
-      Tenant,
-      Session,
-    ]),
+    TypeOrmModule.forFeature([Coach, CoachTimeOffRequest, Tenant, Session]),
     forwardRef(() => AuthModule),
     AuditModule,
     MailerModule,
@@ -28,4 +23,4 @@ import { Session } from '../sessions/entities/session.entity';
   providers: [CoachesService],
   exports: [CoachesService],
 })
-export class CoachesModule { }
+export class CoachesModule {}
