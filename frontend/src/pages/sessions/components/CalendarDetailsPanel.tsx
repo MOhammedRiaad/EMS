@@ -25,9 +25,7 @@ const getRoomColor = (roomName?: string): { bg: string; border: string; text: st
 };
 
 const CalendarDetailsPanel: React.FC<CalendarDetailsPanelProps> = ({
-    date,
     selectedSession,
-    sessionsToday,
     onClose,
     onViewDetails,
     onCreateSession,
