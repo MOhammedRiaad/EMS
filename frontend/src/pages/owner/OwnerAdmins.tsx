@@ -239,7 +239,7 @@ const OwnerAdmins: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-wrap gap-1">
-                                        {user.roles.map(role => (
+                                        {user.roles?.map(role => (
                                             <span key={role.id} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${role.isSystemRole
                                                 ? 'bg-purple-100 text-purple-700 border border-purple-200'
                                                 : 'bg-gray-100 text-gray-700 border border-gray-200'
@@ -247,7 +247,7 @@ const OwnerAdmins: React.FC = () => {
                                                 {role.name}
                                             </span>
                                         ))}
-                                        {user.roles.length === 0 && <span className="text-gray-400 text-xs italic">No roles</span>}
+                                        {(!user.roles || user.roles.length === 0) && <span className="text-gray-400 text-xs italic">No roles</span>}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
