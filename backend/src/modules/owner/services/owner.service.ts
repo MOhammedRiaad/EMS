@@ -59,7 +59,7 @@ export class OwnerService {
     private readonly auditService: OwnerAuditService,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Get dashboard overview stats
@@ -601,10 +601,7 @@ export class OwnerService {
         `DELETE FROM automation_rules WHERE "tenant_id" = $1`,
         [tenantId],
       );
-      await manager.query(
-        `DELETE FROM notification_preferences WHERE "tenantId" = $1`,
-        [tenantId],
-      ); // If table exists? No, it's a column on user.
+      // Notification preferences are stored as a column on the User entity, so no need to delete from a separate table.
       // Check notifications table
       await manager.query(`DELETE FROM notifications WHERE "tenantId" = $1`, [
         tenantId,
@@ -823,24 +820,24 @@ export class OwnerService {
         marketingConsentRate:
           activeClientsCount > 0
             ? Math.round(
-                (parseInt(marketingConsentCount[0].count) /
-                  activeClientsCount) *
-                  100,
-              )
+              (parseInt(marketingConsentCount[0].count) /
+                activeClientsCount) *
+              100,
+            )
             : 0,
         dataProcessingConsentRate:
           activeClientsCount > 0
             ? Math.round(
-                (parseInt(dataProcessingConsentCount[0].count) /
-                  activeClientsCount) *
-                  100,
-              )
+              (parseInt(dataProcessingConsentCount[0].count) /
+                activeClientsCount) *
+              100,
+            )
             : 0,
         termsAcceptanceRate:
           activeClientsCount > 0
             ? Math.round(
-                (parseInt(termsAcceptedCount.count) / activeClientsCount) * 100,
-              )
+              (parseInt(termsAcceptedCount.count) / activeClientsCount) * 100,
+            )
             : 0,
       },
       rightToBeForgotten: {
