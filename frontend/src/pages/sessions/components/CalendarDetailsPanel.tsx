@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Calendar, Clock, MapPin, User, Users, Plus, X, Eye, Edit } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Users, Plus, X, Eye } from 'lucide-react';
 import type { Session } from '../../../services/sessions.service';
 
 interface CalendarDetailsPanelProps {
@@ -9,7 +9,7 @@ interface CalendarDetailsPanelProps {
     sessionsToday: Session[];
     onClose: () => void;
     onViewDetails: () => void;
-    onCreateSession: () => void;
+    onCreateSession: () => void | Promise<void>;
 }
 
 // Color mapping for room-based styling
