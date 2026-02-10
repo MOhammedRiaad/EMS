@@ -5,8 +5,10 @@ interface User {
     email: string;
     firstName: string | null;
     lastName: string | null;
-    role: 'tenant_owner' | 'admin' | 'coach' | 'client';
+    role: 'owner' | 'tenant_owner' | 'admin' | 'coach' | 'client';
     tenantId: string;
+    permissions?: string[];
+    features?: string[];
 }
 
 interface Tenant {
@@ -21,6 +23,7 @@ interface Tenant {
         };
         [key: string]: any;
     };
+    features?: string[];
 }
 
 interface AuthContextType {
@@ -32,6 +35,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     needsOnboarding: boolean;
     setTenant: (tenant: Tenant) => void;
+    isEnabled: (featureKey: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,6 +76,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('tenant', JSON.stringify(newTenant));
     };
 
+    const isEnabled = (featureKey: string): boolean => {
+        // Check tenant features first (highest priority for billing/plans)
+        if (tenant?.features?.includes(featureKey)) {
+            return true;
+        }
+        // Fallback to user features (if we decide to merge them)
+        if (user?.features?.includes(featureKey)) {
+            return true;
+        }
+        return false;
+    };
+
     // Check if tenant owner needs to complete onboarding
     const needsOnboarding = !!user && user.role === 'tenant_owner' && !!tenant && !tenant.isComplete;
 
@@ -85,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isAuthenticated: !!token,
             needsOnboarding,
             setTenant,
+            isEnabled,
         }}>
             {children}
         </AuthContext.Provider>

@@ -7,7 +7,7 @@ export interface User {
     lastName: string | null;
     role: string;
     phone?: string | null;
-    gender?: 'male' | 'female' | 'other' | 'pnts';
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     active?: boolean;
     tenantId?: string;
 }
@@ -18,7 +18,7 @@ export interface CreateUserDto {
     firstName?: string;
     lastName?: string;
     role: 'admin' | 'coach' | 'client';
-    gender?: 'male' | 'female' | 'other' | 'pnts';
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     phone?: string;
 }
 
@@ -27,7 +27,7 @@ export interface UpdateUserDto {
     lastName?: string;
     email?: string;
     role?: 'admin' | 'coach' | 'client';
-    gender?: 'male' | 'female' | 'other' | 'pnts';
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     phone?: string;
     active?: boolean;
 }

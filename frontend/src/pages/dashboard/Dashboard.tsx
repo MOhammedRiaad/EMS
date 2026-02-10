@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, DollarSign,
 import NotificationsWidget from '../../components/dashboard/NotificationsWidget';
 import CalendarSyncWidget from '../../components/dashboard/CalendarSyncWidget';
 import SessionDetailsModal from '../sessions/SessionDetailsModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -22,7 +23,7 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
+    const { isEnabled } = useAuth();
     useEffect(() => {
         fetchData();
     }, [currentWeekStart]);
@@ -164,7 +165,7 @@ const Dashboard: React.FC = () => {
                                                 borderRadius: '8px',
                                                 backgroundColor: 'var(--color-bg-primary)',
                                                 border: '1px solid var(--border-color)',
-                                                borderLeft: `3px solid ${getSessionColor(session.status)}`,
+                                                borderLeft: `3px solid ${getSessionColor(session.status, false, !!session.lead)}`,
                                                 cursor: 'pointer',
                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                                                 transition: 'transform 0.1s'
@@ -174,7 +175,7 @@ const Dashboard: React.FC = () => {
                                         >
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formatTime(session.startTime)}</span>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '1px 6px', borderRadius: '4px', backgroundColor: getSessionColor(session.status, true), color: getSessionColor(session.status) }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '1px 6px', borderRadius: '4px', backgroundColor: getSessionColor(session.status, true, !!session.lead), color: getSessionColor(session.status, false, !!session.lead) }}>
                                                     {session.status}
                                                 </span>
                                             </div>
@@ -183,7 +184,11 @@ const Dashboard: React.FC = () => {
                                                 <span style={{ fontWeight: 500 }}>
                                                     {session.type === 'group'
                                                         ? `Group Session (${session.participants?.length || 0})`
-                                                        : `${session.client?.firstName} ${session.client?.lastName}`}
+                                                        : session.client
+                                                            ? `${session.client.firstName} ${session.client.lastName}`
+                                                            : session.lead
+                                                                ? `${session.lead.firstName} ${session.lead.lastName} (Lead)`
+                                                                : 'Unknown Client'}
                                                 </span>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
@@ -238,7 +243,7 @@ const Dashboard: React.FC = () => {
                                                 borderRadius: '6px',
                                                 backgroundColor: 'var(--color-bg-primary)',
                                                 border: '1px solid var(--border-color)',
-                                                borderLeft: `3px solid ${getSessionColor(session.status)}`,
+                                                borderLeft: `3px solid ${getSessionColor(session.status, false, !!session.lead)}`,
                                                 cursor: 'pointer',
                                                 fontSize: '0.75rem',
                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
@@ -250,7 +255,11 @@ const Dashboard: React.FC = () => {
                                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {session.type === 'group'
                                                         ? `Group (${session.participants?.length || 0})`
-                                                        : `${session.client?.firstName} ${session.client?.lastName}`}
+                                                        : session.client
+                                                            ? `${session.client.firstName} ${session.client.lastName}`
+                                                            : session.lead
+                                                                ? `${session.lead.firstName} ${session.lead.lastName} (Lead)`
+                                                                : 'Unknown'}
                                                 </span>
                                             </div>
                                         </div>
@@ -265,7 +274,7 @@ const Dashboard: React.FC = () => {
                 {/* Sidebar Widgets */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <NotificationsWidget />
-                    <CalendarSyncWidget />
+                    {isEnabled("core.calendar_sync") && <CalendarSyncWidget />}
                 </div>
 
                 {/* Session Detail Modal */}
@@ -297,7 +306,8 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
     </div>
 );
 
-const getSessionColor = (status: string, bg = false) => {
+const getSessionColor = (status: string, bg = false, isLead = false) => {
+    if (isLead) return bg ? 'rgba(147, 51, 234, 0.1)' : '#9333ea'; // Purple for leads
     switch (status) {
         case 'scheduled': return bg ? 'rgba(59, 130, 246, 0.1)' : '#3b82f6';
         case 'completed': return bg ? 'rgba(16, 185, 129, 0.1)' : '#10b981';

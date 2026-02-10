@@ -25,6 +25,7 @@ async function bootstrap() {
 
   // Global prefix
   app.setGlobalPrefix('api');
+  // Trigger reload for webhook
 
   // Validation pipe
   app.useGlobalPipes(
@@ -69,4 +70,4 @@ async function bootstrap() {
   logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
 }
 
-bootstrap();
+void bootstrap();

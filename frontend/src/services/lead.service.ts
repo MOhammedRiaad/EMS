@@ -76,5 +76,15 @@ export const leadService = {
     async addActivity(id: string, type: string, content: string) {
         const res = await api.post(`/leads/${id}/activities`, { type, content });
         return res.data;
+    },
+
+    async bookTrial(id: string, dto: any) {
+        const res = await api.post(`/leads/${id}/book-trial`, dto);
+        return res.data;
+    },
+
+    async assignPackage(id: string, dto: any) {
+        const res = await api.post(`/leads/${id}/assign-package`, dto);
+        return res.data;
     }
 };

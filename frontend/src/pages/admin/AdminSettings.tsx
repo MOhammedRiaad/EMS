@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, AlertCircle, Users } from 'lucide-react';
+import { Settings, Save, AlertCircle, Users, Palette, Upload } from 'lucide-react';
 import { tenantService } from '../../services/tenant.service';
 import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
 import TwoFactorSetup from '../../components/auth/TwoFactorSetup';
+import PlanUsageOverview from '../../components/admin/PlanUsageOverview';
+import WhatsAppSettings from '../../components/admin/WhatsAppSettings';
 
 const AdminSettings: React.FC = () => {
-    const { user } = useAuth();
+    const { user, isEnabled } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,9 @@ const AdminSettings: React.FC = () => {
     const [timezone, setTimezone] = useState('UTC');
     const [reviewFilter, setReviewFilter] = useState<'all' | 'positive'>('all');
     const [allowCoachAvailabilityEdit, setAllowCoachAvailabilityEdit] = useState(false);
+    const [brandingColor, setBrandingColor] = useState('#7c3aed'); // Default purple
+    const [brandingLogo, setBrandingLogo] = useState('');
+    const [whatsappConfig, setWhatsappConfig] = useState<any>(null);
 
     const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
 
@@ -37,6 +42,9 @@ const AdminSettings: React.FC = () => {
                 setTimezone(settings.localization?.timezone ?? 'UTC');
                 setReviewFilter(settings.notifications?.reviewFilter ?? 'all');
                 setAllowCoachAvailabilityEdit(settings.allowCoachSelfEditAvailability ?? false);
+                setBrandingColor(settings.branding?.primaryColor ?? '#7c3aed');
+                setBrandingLogo(settings.branding?.logoUrl ?? '');
+                setWhatsappConfig(settings.whatsappConfig || { provider: 'meta', enabled: false, config: {} });
 
             } catch (err) {
                 console.error('Failed to fetch settings', err);
@@ -78,7 +86,12 @@ const AdminSettings: React.FC = () => {
                     ...currentSettings.notifications,
                     reviewFilter
                 },
-                allowCoachSelfEditAvailability: allowCoachAvailabilityEdit
+                allowCoachSelfEditAvailability: allowCoachAvailabilityEdit,
+                branding: {
+                    ...currentSettings.branding,
+                    primaryColor: brandingColor,
+                    logoUrl: brandingLogo
+                }
             };
 
             await tenantService.update(user.tenantId, {
@@ -94,6 +107,25 @@ const AdminSettings: React.FC = () => {
         }
     };
 
+    const handleSaveWhatsApp = async (config: any) => {
+        if (!user?.tenantId) return;
+        try {
+            const currentTenant = await tenantService.get(user.tenantId);
+            const updatedSettings = {
+                ...currentTenant.settings,
+                whatsappConfig: config
+            };
+            await tenantService.update(user.tenantId, {
+                settings: updatedSettings
+            });
+            setWhatsappConfig(config);
+            setSuccessMessage('WhatsApp settings updated');
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save WhatsApp settings');
+        }
+    };
+
     if (loading) return <div>Loading settings...</div>;
 
     return (
@@ -104,6 +136,9 @@ const AdminSettings: React.FC = () => {
             />
 
             <div className="max-w-3xl space-y-8">
+
+                {/* Plan & Usage Overview */}
+                <PlanUsageOverview />
 
                 {/* Status Messages */}
                 {error && (
@@ -122,33 +157,98 @@ const AdminSettings: React.FC = () => {
                 <form onSubmit={handleSave} className="space-y-8">
 
                     {/* Cancellation Policy */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
-                            <Settings className="text-gray-500" size={24} />
-                            <div>
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Cancellation Policy</h2>
-                                <p className="text-sm text-gray-500">Manage booking rules</p>
+                    {isEnabled('core.cancellation_policy') && (
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                                <Settings className="text-gray-500" size={24} />
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Cancellation Policy</h2>
+                                    <p className="text-sm text-gray-500">Manage booking rules</p>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Cancellation Window (Hours)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={cancellationWindow}
-                                    onChange={(e) => setCancellationWindow(Number(e.target.value))}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                                <p className="text-xs text-gray-400 mt-2">
-                                    Sessions cancelled fewer than this many hours in advance will assume a credit was used.
-                                </p>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Cancellation Window (Hours)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={cancellationWindow}
+                                        onChange={(e) => setCancellationWindow(Number(e.target.value))}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        Sessions cancelled fewer than this many hours in advance will assume a credit was used.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Branding Settings */}
+                    {isEnabled('core.branding') && (
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                                <Palette className="text-pink-500" size={24} />
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Branding & Appearance</h2>
+                                    <p className="text-sm text-gray-500">Customize the look of your portal</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Primary Brand Color
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="color"
+                                            value={brandingColor}
+                                            onChange={(e) => setBrandingColor(e.target.value)}
+                                            className="h-10 w-20 rounded cursor-pointer border-0 p-0"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={brandingColor}
+                                            onChange={(e) => setBrandingColor(e.target.value)}
+                                            className="uppercase w-32 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        Used for buttons, links, and accents.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Logo URL
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-gray-200 dark:border-slate-700">
+                                            {brandingLogo ? (
+                                                <img src={brandingLogo} alt="Logo" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <Upload size={16} className="text-gray-400" />
+                                            )}
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={brandingLogo}
+                                            onChange={(e) => setBrandingLogo(e.target.value)}
+                                            placeholder="https://..."
+                                            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2">
+                                        Direct link to your square logo image (PNG/JPG).
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Security Settings */}
                     <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
@@ -274,34 +374,44 @@ const AdminSettings: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Coach Permissions */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
-                            <Users className="text-green-500" size={24} />
-                            <div>
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Coach Permissions</h2>
-                                <p className="text-sm text-gray-500">Manage what coaches can do</p>
-                            </div>
-                        </div>
+                    {/* WhatsApp Settings */}
+                    {isEnabled('core.whatsapp') && (
+                        <WhatsAppSettings
+                            initialConfig={whatsappConfig}
+                            onSave={handleSaveWhatsApp}
+                        />
+                    )}
 
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-medium text-gray-900 dark:text-white">Allow Availability Editing</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    If enabled, coaches can set their own working hours and time off.
-                                </p>
+                    {/* Coach Permissions */}
+                    {isEnabled('coach.portal') && (
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-800">
+                                <Users className="text-green-500" size={24} />
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Coach Permissions</h2>
+                                    <p className="text-sm text-gray-500">Manage what coaches can do</p>
+                                </div>
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={allowCoachAvailabilityEdit}
-                                    onChange={(e) => setAllowCoachAvailabilityEdit(e.target.checked)}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                            </label>
+
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-medium text-gray-900 dark:text-white">Allow Availability Editing</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        If enabled, coaches can set their own working hours and time off.
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={allowCoachAvailabilityEdit}
+                                        onChange={(e) => setAllowCoachAvailabilityEdit(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="flex justify-end pt-4">
                         <button

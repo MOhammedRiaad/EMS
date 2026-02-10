@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const getHeaders = () => {
@@ -12,13 +13,15 @@ export class ApiError extends Error {
     statusCode?: number;
     error?: string;
     conflicts?: any[];
+    data?: any;
 
-    constructor(message: string, statusCode?: number, error?: string, conflicts?: any[]) {
+    constructor(message: string, statusCode?: number, error?: string, conflicts?: any[], data?: any) {
         super(message);
         this.name = 'ApiError';
         this.statusCode = statusCode;
         this.error = error;
         this.conflicts = conflicts;
+        this.data = data;
     }
 }
 
@@ -46,6 +49,8 @@ const formatErrorMessage = (errorData: any): string => {
     return errorData.error || 'API request failed';
 };
 
+export const apiEvents = new EventTarget();
+
 export const api = {
     async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<{ data: T }> {
         const url = new URL(`${API_URL}${endpoint}`);
@@ -63,11 +68,19 @@ export const api = {
 
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
-        const data = await response.json();
+        if (response.status === 204) {
+            return { data: null as any };
+        }
+
+        const text = await response.text();
+        const data = text && text.trim() ? JSON.parse(text) : null;
         return { data };
     },
 
@@ -81,8 +94,11 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -98,8 +114,11 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -115,8 +134,11 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -131,8 +153,11 @@ export const api = {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if (response.status === 402) {
+                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+            }
             const message = formatErrorMessage(data);
-            throw new ApiError(message, response.status, data.error, data.conflicts);
+            throw new ApiError(message, response.status, data.error, data.conflicts, data);
         }
 
         return { data };
@@ -153,17 +178,21 @@ export const authenticatedFetch = async (endpoint: string, options: RequestInit 
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
-        headers
+        headers,
+        cache: 'no-store'
     });
 
     if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         const message = formatErrorMessage(data);
-        throw new ApiError(message, response.status, data.error, data.conflicts);
+        throw new ApiError(message, response.status, data.error, data.conflicts, data);
     }
+
     if (response.status === 204) {
         return {};
     }
+
     const text = await response.text();
-    return text ? JSON.parse(text) : {};
+    return text && text.trim() ? JSON.parse(text) : {};
 };
+

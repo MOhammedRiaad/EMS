@@ -6,13 +6,16 @@ export interface Session {
     roomId: string;
     coachId: string;
     clientId: string;
+    leadId?: string | null;
     startTime: string;
     endTime: string;
     status: string;
     programType?: string;
     notes?: string;
     intensityLevel?: number;
+    emsDeviceId?: string;
     client?: { id: string; firstName: string; lastName: string; avatarUrl?: string };
+    lead?: { id: string; firstName: string; lastName: string };
     coach?: {
         id: string;
         user?: { firstName: string | null; lastName: string | null };
@@ -40,6 +43,11 @@ export interface SessionParticipant {
         lastName: string;
         email?: string;
     };
+    lead?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+    };
 }
 
 export interface CreateSessionInput {
@@ -57,6 +65,7 @@ export interface CreateSessionInput {
     recurrenceDays?: number[];
     type: 'individual' | 'group';
     capacity: number;
+    allowTimeChangeOverride?: boolean;
 }
 
 export interface SessionQuery {
@@ -124,6 +133,12 @@ export const sessionsService = {
         return authenticatedFetch(`/sessions/${id}/status`, {
             method: 'PATCH',
             body: JSON.stringify({ status, cancelledReason, deductSession })
+        });
+    },
+
+    async markArrived(id: string): Promise<Session> {
+        return authenticatedFetch(`/sessions/${id}/arrive`, {
+            method: 'POST'
         });
     },
 

@@ -12,7 +12,20 @@ import { ClientsService } from '../clients/clients.service';
 import { PackagesService } from '../packages/packages.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { CoachTimeOffRequest } from '../coaches/entities/coach-time-off.entity';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { PermissionService } from '../auth/services/permission.service';
+import { RoleService } from '../auth/services/role.service';
+import { AuditService } from '../audit/audit.service';
+import { AutomationService } from '../marketing/automation.service';
+import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
+import { Lead } from '../leads/entities/lead.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('SessionsService', () => {
   let service: SessionsService;
@@ -26,6 +39,7 @@ describe('SessionsService', () => {
   let packagesService: jest.Mocked<PackagesService>;
   let gamificationService: jest.Mocked<GamificationService>;
   let timeOffRepository: jest.Mocked<Repository<CoachTimeOffRequest>>;
+  let featureFlagService: jest.Mocked<FeatureFlagService>;
 
   const mockSession = {
     id: 'session-123',
@@ -166,10 +180,49 @@ describe('SessionsService', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: FeatureFlagService,
+          useValue: {
+            isFeatureEnabled: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: PermissionService,
+          useValue: {
+            getPermissionsForRole: jest.fn().mockResolvedValue([]),
+            isPermissionAllowed: jest.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: RoleService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: AutomationService,
+          useValue: {
+            triggerEvent: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: getRepositoryToken(Lead),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            createNotification: jest.fn().mockResolvedValue(undefined),
+            sendNotification: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -186,6 +239,7 @@ describe('SessionsService', () => {
     packagesService = module.get(PackagesService);
     gamificationService = module.get(GamificationService);
     timeOffRepository = module.get(getRepositoryToken(CoachTimeOffRequest));
+    featureFlagService = module.get(FeatureFlagService);
 
     roomRepository.findOne.mockResolvedValue(mockRoom);
     studioRepository.findOne.mockResolvedValue(mockStudio);
@@ -236,6 +290,7 @@ describe('SessionsService', () => {
           'coach',
           'coach.user',
           'client',
+          'lead',
           'participants',
           'participants.client',
         ],
@@ -395,15 +450,37 @@ describe('SessionsService', () => {
     };
 
     it('should create a session successfully', async () => {
-      const result = await service.create(createDto, 'tenant-123');
+      const result = await service.create(createDto, 'tenant-123', {
+        role: 'admin',
+      });
       expect(sessionRepository.create).toHaveBeenCalled();
       expect(sessionRepository.save).toHaveBeenCalled();
       expect(result).toBe(mockSession);
     });
 
     it('should send confirmation email', async () => {
-      await service.create(createDto, 'tenant-123');
+      await service.create(createDto, 'tenant-123', { role: 'admin' });
       expect(mailerService.sendMail).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw ForbiddenException if client booking is disabled', async () => {
+      featureFlagService.isFeatureEnabled.mockResolvedValue(false);
+      await expect(
+        service.create(createDto, 'tenant-123', { role: 'client' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+    it('should set bookedStartTime and bookedEndTime on creation', async () => {
+      // Mock create to return the partial entity with passed props
+      sessionRepository.create.mockImplementation(
+        (dto) => ({ ...mockSession, ...dto }) as any,
+      );
+      sessionRepository.save.mockImplementation(async (s) => s as Session);
+
+      const result = await service.create(createDto, 'tenant-123', {
+        role: 'admin',
+      });
+      expect(result.bookedStartTime).toEqual(new Date(createDto.startTime));
+      expect(result.bookedEndTime).toEqual(new Date(createDto.endTime));
     });
   });
 
@@ -428,6 +505,8 @@ describe('SessionsService', () => {
         'session-123',
         'tenant-123',
         'completed',
+        undefined,
+        'user-123',
       );
 
       expect(result.status).toBe('completed');
@@ -442,18 +521,96 @@ describe('SessionsService', () => {
       };
       sessionRepository.findOne.mockResolvedValue(inProgressSession);
 
-      await service.updateStatus('session-123', 'tenant-123', 'completed');
+      await service.updateStatus(
+        'session-123',
+        'tenant-123',
+        'completed',
+        undefined,
+        'user-123',
+      );
 
       expect(
         gamificationService.checkAndUnlockAchievements,
       ).toHaveBeenCalledWith(mockSession.clientId, mockSession.tenantId);
     });
 
+    it('should trigger automation on completion with client context', async () => {
+      const inProgressSession = {
+        ...mockSession,
+        status: 'in_progress' as const,
+      };
+      sessionRepository.findOne.mockResolvedValue(inProgressSession);
+      const mockClient = {
+        id: 'client-123',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@example.com',
+        phone: '1234567890',
+        tenantId: 'tenant-123',
+        userId: 'user-123',
+        user: {
+          id: 'user-123',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          phone: '1234567890',
+        },
+      };
+      clientsService.findOne.mockResolvedValue(mockClient as any);
+
+      await service.updateStatus(
+        'session-123',
+        'tenant-123',
+        'completed',
+        undefined,
+        'user-123',
+      );
+
+      expect(clientsService.findOne).toHaveBeenCalledWith(
+        'client-123',
+        'tenant-123',
+        ['user'],
+      );
+      expect(
+        (service as any).automationService.triggerEvent,
+      ).toHaveBeenCalledWith(AutomationTriggerType.SESSION_COMPLETED, {
+        tenantId: 'tenant-123',
+        clientId: 'client-123',
+        client: {
+          id: mockClient.id,
+          firstName: mockClient.firstName,
+          lastName: mockClient.lastName,
+          email: mockClient.email,
+          phone: mockClient.phone,
+          tenantId: mockClient.tenantId,
+          userId: mockClient.userId,
+          user: {
+            id: mockClient.user.id,
+            email: mockClient.user.email,
+            firstName: mockClient.user.firstName,
+            lastName: mockClient.user.lastName,
+            phone: mockClient.user.phone,
+          },
+        },
+        session: {
+          id: 'session-123',
+          startTime: mockSession.startTime,
+          type: mockSession.type,
+        },
+      });
+    });
+
     it('should deduct session on no_show', async () => {
       const scheduledSession = { ...mockSession, status: 'scheduled' as const };
       sessionRepository.findOne.mockResolvedValue(scheduledSession);
 
-      await service.updateStatus('session-123', 'tenant-123', 'no_show');
+      await service.updateStatus(
+        'session-123',
+        'tenant-123',
+        'no_show',
+        undefined,
+        'user-123',
+      );
 
       expect(packagesService.useSession).not.toHaveBeenCalled();
     });
@@ -469,6 +626,8 @@ describe('SessionsService', () => {
         'session-123',
         'tenant-123',
         'cancelled',
+        undefined,
+        'user-123',
       );
 
       expect(result.cancelledAt).toBeInstanceOf(Date);
@@ -483,6 +642,8 @@ describe('SessionsService', () => {
         'session-123',
         'tenant-123',
         'cancelled',
+        undefined,
+        'user-123',
       );
 
       expect(result.status).toBe('cancelled');
@@ -501,6 +662,7 @@ describe('SessionsService', () => {
         'tenant-123',
         'cancelled',
         true,
+        'user-123',
       );
 
       // If session was already deducted on book, cancelling shouldn't deduct again unless we are "charging" for it?
@@ -527,6 +689,12 @@ describe('SessionsService', () => {
       sessionRepository.createQueryBuilder.mockReturnValue(
         createMockQueryBuilder([]) as any,
       );
+      clientsService.findOne.mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'Jane',
+        studioId: 'studio-123',
+        user: { gender: 'female' },
+      } as any);
     });
 
     it('should update session successfully', async () => {
@@ -534,10 +702,164 @@ describe('SessionsService', () => {
         'session-123',
         updateDto,
         'tenant-123',
+        { role: 'admin' },
       );
 
       expect(result.notes).toBe('Updated notes');
       expect(sessionRepository.save).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException (warning) if time changed without override', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z', // Different from mockSession.startTime
+        endTime: '2027-01-25T11:20:00Z',
+      };
+
+      // Mock session having bookedStartTime same as original startTime
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await expect(
+        service.update('session-123', timeChangeDto, 'tenant-123', {
+          role: 'admin',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should allow time change with override', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+      expect(sessionRepository.save).toHaveBeenCalled();
+    });
+
+    it('should send reschedule email when time changes with override', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+
+      expect(mailerService.sendMail).toHaveBeenCalledWith(
+        'test@example.com',
+        'Session Rescheduled - EMS Studio',
+        expect.any(String),
+        expect.stringContaining('rescheduled'),
+      );
+    });
+
+    it('should log audit entry on reschedule', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+
+      expect((service as any).auditService.log).toHaveBeenCalledWith(
+        'tenant-123',
+        'RESCHEDULE_SESSION',
+        'Session',
+        'session-123',
+        'API_USER',
+        expect.objectContaining({
+          oldTime: expect.any(Date),
+          newTime: expect.any(Date),
+        }),
+      );
+    });
+
+    it('should not send email if client has no email', async () => {
+      const timeChangeDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      clientsService.findOne.mockResolvedValue({
+        email: null,
+        firstName: 'Jane',
+        studioId: 'studio-123',
+      } as any);
+
+      await service.update('session-123', timeChangeDto, 'tenant-123', {
+        role: 'admin',
+      });
+
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('should detect scheduling conflicts on reschedule', async () => {
+      const conflictDto = {
+        startTime: '2027-01-25T11:00:00Z',
+        endTime: '2027-01-25T11:20:00Z',
+        roomId: 'room-123',
+        allowTimeChangeOverride: true,
+      };
+
+      sessionRepository.findOne.mockResolvedValue({
+        ...mockSession,
+        bookedStartTime: mockSession.startTime,
+        bookedEndTime: mockSession.endTime,
+      } as Session);
+
+      // Mock conflict detected
+      const conflictQb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'conflicting', roomId: 'room-123' })
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+      };
+      sessionRepository.createQueryBuilder.mockReturnValue(conflictQb as any);
+
+      await expect(
+        service.update('session-123', conflictDto, 'tenant-123', {
+          role: 'admin',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -591,7 +913,9 @@ describe('SessionsService', () => {
     });
 
     it('should create multiple sessions successfully', async () => {
-      const result = await service.createBulk(bulkDto, 'tenant-123');
+      const result = await service.createBulk(bulkDto, 'tenant-123', {
+        role: 'admin',
+      });
 
       expect(result.created).toBe(2);
       expect(result.errors).toHaveLength(0);
@@ -605,7 +929,9 @@ describe('SessionsService', () => {
         .mockResolvedValueOnce(mockSession)
         .mockRejectedValueOnce(new Error('Scheduling conflict'));
 
-      const result = await service.createBulk(bulkDto, 'tenant-123');
+      const result = await service.createBulk(bulkDto, 'tenant-123', {
+        role: 'admin',
+      });
 
       expect(result.created).toBe(1);
       expect(result.errors).toHaveLength(1);
@@ -655,12 +981,16 @@ describe('SessionsService', () => {
         parentSessionId: null,
       });
       await expect(
-        service.updateSeries('session-123', updateDto, 'tenant-123'),
+        service.updateSeries('session-123', updateDto, 'tenant-123', {
+          role: 'admin',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should update all future sessions in series', async () => {
-      await service.updateSeries('parent-123', updateDto, 'tenant-123');
+      await service.updateSeries('parent-123', updateDto, 'tenant-123', {
+        role: 'admin',
+      });
 
       // It should find sessions and save them as array
       expect(sessionRepository.save).toHaveBeenCalled();

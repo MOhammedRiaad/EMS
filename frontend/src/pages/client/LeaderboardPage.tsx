@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Shield, User, Crown, Flame, TrendingUp } from 'lucide-react';
+import { Trophy, Shield, User, Crown, Flame, TrendingUp, Lock } from 'lucide-react';
 import { clientPortalService } from '../../services/client-portal.service';
 import { useClientProfile } from '../../hooks/useClientProfile';
+import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl } from '../../utils/imageUtils';
 
 interface LeaderboardEntry {
@@ -15,12 +16,17 @@ interface LeaderboardEntry {
 }
 
 export const LeaderboardPage = () => {
+    const { isEnabled } = useAuth();
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const { client } = useClientProfile();
 
     useEffect(() => {
         const fetchLeaderboard = async () => {
+            if (!isEnabled('client.leaderboard')) {
+                setLoading(false);
+                return;
+            }
             try {
                 // Mock delay for animation effect
                 // await new Promise(r => setTimeout(r, 800)); 
@@ -33,7 +39,19 @@ export const LeaderboardPage = () => {
             }
         };
         fetchLeaderboard();
-    }, []);
+    }, [isEnabled]);
+
+    if (!isEnabled('client.leaderboard')) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
+                <div className="p-4 bg-gray-100 dark:bg-slate-800 rounded-full">
+                    <Lock size={48} className="text-gray-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Feature Not Available</h2>
+                <p className="text-gray-500 max-w-md">The leaderboard feature is currently disabled for this studio.</p>
+            </div>
+        );
+    }
 
     const isHidden = client?.privacyPreferences?.leaderboard_visible === false;
     const topThree = entries.slice(0, 3);

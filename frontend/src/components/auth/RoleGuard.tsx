@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface RoleGuardProps {
-    allowedRoles: ('tenant_owner' | 'admin' | 'coach' | 'client')[];
+    allowedRoles: ('owner' | 'tenant_owner' | 'admin' | 'coach' | 'client')[];
 }
 
 const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles }) => {
@@ -13,8 +13,12 @@ const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles }) => {
         return <Navigate to="/login" replace />;
     }
 
+    // @ts-ignore - Handle role type mismatch until AuthContext is updated
     if (user && !allowedRoles.includes(user.role)) {
         // Redirect to appropriate home based on role
+        if (user.role === 'owner') {
+            return <Navigate to="/owner" replace />;
+        }
         if (user.role === 'client') {
             return <Navigate to="/client/home" replace />;
         }

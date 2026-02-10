@@ -11,6 +11,7 @@ import { Tenant } from '../src/modules/tenants/entities/tenant.entity';
 import { Studio } from '../src/modules/studios/entities/studio.entity';
 import { Room } from '../src/modules/rooms/entities/room.entity';
 import { Coach } from '../src/modules/coaches/entities/coach.entity';
+import { CoachTimeOffRequest } from '../src/modules/coaches/entities/coach-time-off.entity';
 import { Client } from '../src/modules/clients/entities/client.entity';
 import { Session } from '../src/modules/sessions/entities/session.entity';
 import { EmsDevice } from '../src/modules/devices/entities/ems-device.entity';
@@ -32,6 +33,19 @@ import { AnnouncementRead } from '../src/modules/notifications/entities/announce
 import { SessionParticipant } from '../src/modules/sessions/entities/session-participant.entity';
 import { AutomationRule } from '../src/modules/marketing/entities/automation-rule.entity';
 import { AutomationExecution } from '../src/modules/marketing/entities/automation-execution.entity';
+import { FeatureFlag } from '../src/modules/owner/entities/feature-flag.entity';
+import { FeatureAssignment } from '../src/modules/owner/entities/feature-assignment.entity';
+import { Plan } from '../src/modules/owner/entities/plan.entity';
+import { UsageMetric } from '../src/modules/owner/entities/usage-metric.entity';
+import { OwnerAuditLog } from '../src/modules/owner/entities/owner-audit-log.entity';
+import { PlanUpgradeRequest } from '../src/modules/owner/entities/plan-upgrade-request.entity';
+import { BroadcastMessage } from '../src/modules/owner/entities/broadcast-message.entity';
+import { SystemSettings } from '../src/modules/owner/entities/system-settings.entity';
+import { Permission } from '../src/modules/auth/entities/permission.entity';
+import { Role } from '../src/modules/auth/entities/role.entity';
+import { UserRoleAssignment } from '../src/modules/auth/entities/user-role.entity';
+import { TermsAcceptance } from '../src/modules/terms/entities/terms-acceptance.entity';
+import { TermsOfService } from '../src/modules/terms/entities/terms.entity';
 
 // Feature Modules
 import { AuthModule } from '../src/modules/auth/auth.module';
@@ -54,9 +68,11 @@ import { RetailModule } from '../src/modules/retail/retail.module';
 import { WaiversModule } from '../src/modules/waivers/waivers.module';
 import { NotificationsModule } from '../src/modules/notifications/notifications.module';
 import { MarketingModule } from '../src/modules/marketing/marketing.module';
+import { OwnerModule } from '../src/modules/owner/owner.module';
 
 import { AuditLog } from '../src/modules/audit/entities/audit-log.entity';
 import { AuditModule } from '../src/modules/audit/audit.module';
+import { HealthService } from '../src/common/health.service';
 
 const ALL_ENTITIES = [
   User,
@@ -64,6 +80,7 @@ const ALL_ENTITIES = [
   Studio,
   Room,
   Coach,
+  CoachTimeOffRequest,
   Client,
   Session,
   EmsDevice,
@@ -86,6 +103,19 @@ const ALL_ENTITIES = [
   AutomationRule,
   AutomationExecution,
   AuditLog,
+  FeatureFlag,
+  FeatureAssignment,
+  Plan,
+  UsageMetric,
+  OwnerAuditLog,
+  PlanUpgradeRequest,
+  BroadcastMessage,
+  SystemSettings,
+  Permission,
+  Role,
+  UserRoleAssignment,
+  TermsAcceptance,
+  TermsOfService,
 ];
 
 @Module({
@@ -142,7 +172,9 @@ const ALL_ENTITIES = [
     NotificationsModule,
     MarketingModule,
     AuditModule,
+    OwnerModule,
   ],
   controllers: [HealthController],
+  providers: [HealthService],
 })
 export class TestAppModule {}

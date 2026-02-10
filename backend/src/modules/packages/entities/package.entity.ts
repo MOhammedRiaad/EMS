@@ -39,6 +39,9 @@ export class Package {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({ name: 'low_session_threshold', type: 'int', default: 2 })
+  lowSessionThreshold: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

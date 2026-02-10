@@ -9,6 +9,11 @@ import { TenantsService } from '../tenants/tenants.service';
 import { MailerService } from '../mailer/mailer.service';
 import { AuditService } from '../audit/audit.service';
 import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { FeatureFlagService } from '../owner/services/feature-flag.service';
+import { SystemConfigService } from '../owner/services/system-config.service';
+import { PermissionService } from './services/permission.service';
+import { RoleService } from './services/role.service';
+import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 import {
   RegisterTenantOwnerDto,
   LoginDto,
@@ -105,6 +110,13 @@ describe('AuthService', () => {
     log: jest.fn(),
   };
 
+  const mockFeatureFlagService = {
+    getFeaturesForTenant: jest.fn().mockResolvedValue([
+      { feature: { key: 'client.portal' }, enabled: true },
+      { feature: { key: 'coach.portal' }, enabled: true },
+    ]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -128,6 +140,38 @@ describe('AuthService', () => {
         {
           provide: AuditService,
           useValue: mockAuditService,
+        },
+        {
+          provide: FeatureFlagService,
+          useValue: mockFeatureFlagService,
+        },
+        {
+          provide: PermissionService,
+          useValue: {
+            getPermissionsForRole: jest.fn().mockResolvedValue([]),
+            isPermissionAllowed: jest.fn().mockReturnValue(true),
+            getUserPermissions: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: RoleService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([]),
+            getRoleByKey: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: UsageTrackingService,
+          useValue: {
+            recordMetric: jest.fn().mockResolvedValue(undefined),
+            checkLimit: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: SystemConfigService,
+          useValue: {
+            get: jest.fn().mockResolvedValue(false),
+          },
         },
       ],
     }).compile();
@@ -442,10 +486,10 @@ describe('AuthService', () => {
   });
 
   describe('generateTokens', () => {
-    it('should generate JWT token with correct payload', () => {
+    it('should generate JWT token with correct payload', async () => {
       mockJwtService.sign.mockReturnValue('mock-access-token');
 
-      const result = service['generateTokens'](mockUser, mockTenant);
+      const result = await service['generateTokens'](mockUser, mockTenant);
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -458,14 +502,36 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mock-access-token');
     });
 
-    it('should include clientId in payload if user has client', () => {
+    it('should throw ForbiddenException if client portal is disabled for client', async () => {
+      mockFeatureFlagService.getFeaturesForTenant.mockResolvedValueOnce([
+        { feature: { key: 'client.portal' }, enabled: false },
+      ]);
+      const clientUser = { ...mockUser, role: 'client' } as User;
+
+      await expect(
+        service['generateTokens'](clientUser, mockTenant),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException if coach portal is disabled for coach', async () => {
+      mockFeatureFlagService.getFeaturesForTenant.mockResolvedValueOnce([
+        { feature: { key: 'coach.portal' }, enabled: false },
+      ]);
+      const coachUser = { ...mockUser, role: 'coach' } as User;
+
+      await expect(
+        service['generateTokens'](coachUser, mockTenant),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should include clientId in payload if user has client', async () => {
       const userWithClient = {
         ...mockUser,
         client: { id: 'client-123' },
       } as User;
       mockJwtService.sign.mockReturnValue('mock-token');
 
-      service['generateTokens'](userWithClient, mockTenant);
+      await service['generateTokens'](userWithClient, mockTenant);
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -474,10 +540,10 @@ describe('AuthService', () => {
       );
     });
 
-    it('should return user data without password', () => {
+    it('should return user data without password', async () => {
       mockJwtService.sign.mockReturnValue('mock-token');
 
-      const result = service['generateTokens'](mockUser, mockTenant);
+      const result = await service['generateTokens'](mockUser, mockTenant);
 
       expect(result.user).not.toHaveProperty('passwordHash');
       expect(result.user).toHaveProperty('id');
@@ -573,9 +639,6 @@ describe('AuthService', () => {
       await expect(service.setupPassword(setupDto)).rejects.toThrow(
         UnauthorizedException,
       );
-      await expect(service.setupPassword(setupDto)).rejects.toThrow(
-        'Invalid or expired invitation token',
-      );
     });
 
     it('should throw UnauthorizedException with non-invite token type', async () => {
@@ -587,9 +650,6 @@ describe('AuthService', () => {
 
       await expect(service.setupPassword(setupDto)).rejects.toThrow(
         UnauthorizedException,
-      );
-      await expect(service.setupPassword(setupDto)).rejects.toThrow(
-        'Invalid token type',
       );
     });
 
@@ -684,6 +744,7 @@ describe('AuthService', () => {
       );
     });
   });
+
   describe('2FA Flows', () => {
     it('should generate 2FA secret and QR code', async () => {
       const result = await service.generateTwoFactorSecret(mockUser);

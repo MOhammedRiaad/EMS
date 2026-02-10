@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
 import { packagesService, type Package, type CreatePackageDto } from '../../services/packages.service';
-import { Package as PackageIcon, Edit, Archive, RotateCcw, DollarSign, Calendar, Users } from 'lucide-react';
+import { Package as PackageIcon, Edit, Archive, RotateCcw, DollarSign, Calendar, Users, Bell } from 'lucide-react';
 
 const AdminPackages: React.FC = () => {
     const [packages, setPackages] = useState<Package[]>([]);
@@ -15,7 +15,8 @@ const AdminPackages: React.FC = () => {
         description: '',
         totalSessions: 10,
         price: 0,
-        validityDays: 30
+        validityDays: 30,
+        lowSessionThreshold: 3
     });
 
     const fetchPackages = async () => {
@@ -58,7 +59,8 @@ const AdminPackages: React.FC = () => {
             description: pkg.description,
             totalSessions: pkg.totalSessions,
             price: pkg.price,
-            validityDays: pkg.validityDays
+            validityDays: pkg.validityDays,
+            lowSessionThreshold: pkg.lowSessionThreshold ?? 3
         });
         setIsModalOpen(true);
     };
@@ -80,7 +82,8 @@ const AdminPackages: React.FC = () => {
             description: '',
             totalSessions: 10,
             price: 0,
-            validityDays: 30
+            validityDays: 30,
+            lowSessionThreshold: 3
         });
     };
 
@@ -247,6 +250,24 @@ const AdminPackages: React.FC = () => {
                                 style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
                             />
                         </div>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                            <Bell size={14} />
+                            Low Session Alert Threshold
+                        </label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={formData.totalSessions}
+                            value={formData.lowSessionThreshold ?? 3}
+                            onChange={e => setFormData({ ...formData, lowSessionThreshold: parseInt(e.target.value) || 3 })}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}
+                        />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                            Notify clients when they have this many sessions or fewer remaining
+                        </p>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Building2, DoorOpen, Cpu, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Client } from '../../services/clients.service';
 import type { CoachDisplay } from '../../services/coaches.service';
 import type { Studio } from '../../services/studios.service';
@@ -39,6 +40,9 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     onSubmit,
     onCancel
 }) => {
+    const { isEnabled } = useAuth();
+    const canCreateGroupSessions = isEnabled('core.group_sessions');
+
     // Filter clients by selected studio (hide clients without a studio)
     const filteredClients = useMemo(() => {
         if (!formData.studioId) return [];
@@ -70,8 +74,8 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                 // Note: 'other' and 'pnts' genders can be trained by coaches with 'any' preference only
                 if (clientGender === 'male' && coach.preferredClientGender === 'male') return true;
                 if (clientGender === 'female' && coach.preferredClientGender === 'female') return true;
-                // For 'other' or 'pnts', only 'any' coaches are allowed (handled above)
-                if (clientGender === 'other' || clientGender === 'pnts') return false;
+                // For 'other' or 'prefer_not_to_say', only 'any' coaches are allowed (handled above)
+                if (clientGender === 'other' || clientGender === 'prefer_not_to_say') return false;
                 return false;
             }
 
@@ -100,8 +104,11 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                         disabled={isEdit}
                     >
                         <option value="individual">Individual</option>
-                        <option value="group">Group</option>
+                        {canCreateGroupSessions && <option value="group">Group</option>}
                     </select>
+                    {!canCreateGroupSessions && formData.type === 'group' && (
+                        <p className="text-xs text-red-500 mt-1">Group sessions are not available in your current plan.</p>
+                    )}
                 </div>
                 {formData.type === 'group' && (
                     <div>

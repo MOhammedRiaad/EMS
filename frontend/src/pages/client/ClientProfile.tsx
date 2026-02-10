@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Settings, Bell, ChevronRight, Lock, Shield } from 'lucide-react';
 import { getImageUrl } from '../../utils/imageUtils';
 import { useClientProfileState } from './useClientProfileState';
+import { useAuth } from '../../contexts/AuthContext';
 import {
     ProfilePhotoSection,
     ActivePlanSection,
@@ -17,6 +18,13 @@ import ClientProgressGallery from '../../components/client/ClientProgressGallery
 const ClientProfile = () => {
     const navigate = useNavigate();
     const state = useClientProfileState();
+    const { isEnabled } = useAuth();
+
+    // Feature flags
+    const showProgress = isEnabled('client.progress_tracking');
+    const showGoals = isEnabled('client.goals');
+    // Medical history is considered a standard compliance feature (parq) so usually enabled, 
+    // but could be gated by compliance.parq if needed. For now keeping it visible. 
 
     // Local state for UI
     const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
@@ -87,17 +95,19 @@ const ClientProfile = () => {
                             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                             }`}
                     >
-                        Health & Goals
+                        Health {showGoals && '& Goals'}
                     </button>
-                    <button
-                        onClick={() => setActiveTab('progress')}
-                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'progress'
-                            ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'
-                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                            }`}
-                    >
-                        Progress
-                    </button>
+                    {showProgress && (
+                        <button
+                            onClick={() => setActiveTab('progress')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === 'progress'
+                                ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                                }`}
+                        >
+                            Progress
+                        </button>
+                    )}
                 </div>
 
                 {/* Tab Content */}
@@ -159,10 +169,12 @@ const ClientProfile = () => {
 
                     {activeTab === 'health' && (
                         <>
-                            <ClientHealthGoals
-                                goals={state.profile?.healthGoals}
-                                onUpdate={state.refreshProfile}
-                            />
+                            {showGoals && (
+                                <ClientHealthGoals
+                                    goals={state.profile?.healthGoals}
+                                    onUpdate={state.refreshProfile}
+                                />
+                            )}
                             <ClientMedicalHistory
                                 history={state.profile?.medicalHistory}
                                 notes={state.profile?.healthNotes}
@@ -170,7 +182,7 @@ const ClientProfile = () => {
                         </>
                     )}
 
-                    {activeTab === 'progress' && (
+                    {activeTab === 'progress' && showProgress && (
                         <ClientProgressGallery />
                     )}
                 </div>

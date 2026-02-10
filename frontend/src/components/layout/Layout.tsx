@@ -1,32 +1,14 @@
 import React, { useMemo } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard,
-    Users,
-    Dumbbell,
-    Calendar,
-    Settings,
     LogOut,
-    Building2,
-    DoorOpen,
-    UserCog,
-    TrendingUp,
-    Activity,
-    ListPlus,
-    Package,
-    Wallet,
-    ShoppingBag,
-    Tags,
-    CreditCard,
-    FileText,
-    Palette,
-    Target,
-    Megaphone
+    ChevronLeft,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenuPreferences } from '../../contexts/MenuPreferencesContext';
+import { useNavigation } from '../../contexts/NavigationContext';
 import { ThemeToggle } from '../common/ThemeToggle';
-import MenuSection, { type MenuItem } from './MenuSection';
+import MenuSection from './MenuSection';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { AnnouncementModal } from '../notifications/AnnouncementModal';
 import { MenuSearch } from './MenuSearch';
@@ -37,6 +19,18 @@ const Layout: React.FC = () => {
     const navigate = useNavigate();
     const { user, tenant, logout, isAuthenticated } = useAuth();
     const { isPinned } = useMenuPreferences();
+    const { items: allItems, sections: navSections } = useNavigation();
+    const [isCollapsed, setIsCollapsed] = React.useState(() => {
+        return localStorage.getItem('sidebar_collapsed') === 'true';
+    });
+
+    const toggleSidebar = () => {
+        setIsCollapsed(prev => {
+            const newState = !prev;
+            localStorage.setItem('sidebar_collapsed', String(newState));
+            return newState;
+        });
+    };
 
     // Redirect to login if not authenticated
     React.useEffect(() => {
@@ -69,64 +63,6 @@ const Layout: React.FC = () => {
         return user?.email || 'User';
     };
 
-    // Check if user can see admin menu
-    const canSeeAdminMenu = user?.role === 'tenant_owner' || user?.role === 'admin';
-
-    // Define all menu items
-    const coreItems: MenuItem[] = [
-        { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/sessions', label: 'Sessions', icon: Calendar },
-        { path: '/clients', label: 'Clients', icon: Users },
-    ];
-
-    const managementItems: MenuItem[] = [
-        { path: '/coaches', label: 'Coaches', icon: Users },
-        { path: '/studios', label: 'Studios', icon: Building2 },
-        { path: '/rooms', label: 'Rooms', icon: DoorOpen },
-        { path: '/devices', label: 'Devices', icon: Dumbbell },
-        { path: '/inbody', label: 'InBody Scans', icon: Activity },
-        { path: '/admin/time-off', label: 'Time Off Requests', icon: Calendar },
-    ];
-
-    const clientBusinessItems: MenuItem[] = [
-        { path: '/admin/waiting-list', label: 'Waiting List', icon: ListPlus },
-        { path: '/admin/packages', label: 'Packages', icon: Package },
-    ];
-
-    const analyticsItems: MenuItem[] = [
-        { path: '/analytics', label: 'Analytics', icon: TrendingUp },
-        { path: '/admin/coach-performance', label: 'Coach Performance', icon: TrendingUp },
-        { path: '/admin/cash-flow', label: 'Cash Flow', icon: Wallet },
-    ];
-
-    const administrationItems: MenuItem[] = [
-        { path: '/admin/users', label: 'User Management', icon: UserCog },
-        { path: '/admin/settings', label: 'Settings', icon: Settings },
-        { path: '/admin/branding', label: 'Branding', icon: Palette },
-        { path: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-        { path: '/admin/audit-logs', label: 'Audit Logs', icon: FileText },
-    ];
-
-    const retailItems: MenuItem[] = [
-        { path: '/retail/pos', label: 'Point of Sale', icon: CreditCard },
-        { path: '/retail/products', label: 'Products', icon: Tags },
-        { path: '/retail/inventory', label: 'Inventory', icon: ShoppingBag },
-        { path: '/retail/reports', label: 'Reports', icon: FileText },
-    ];
-
-    const marketingItems: MenuItem[] = [
-        { path: '/admin/marketing', label: 'Marketing & Leads', icon: Target },
-    ];
-
-    // Combine all items for search
-    const allItems = useMemo(() => {
-        const items = [...coreItems, ...managementItems, ...clientBusinessItems, ...retailItems];
-        if (canSeeAdminMenu) {
-            items.push(...marketingItems, ...analyticsItems, ...administrationItems);
-        }
-        return items;
-    }, [canSeeAdminMenu]);
-
     // Get pinned items
     const pinnedItems = useMemo(() => {
         return allItems.filter(item => isPinned(item.path));
@@ -134,7 +70,7 @@ const Layout: React.FC = () => {
 
     return (
         <div className="container">
-            <aside className="sidebar">
+            <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="logo-area">
                     {tenant?.settings?.branding?.logoUrl ? (
                         <img
@@ -148,7 +84,7 @@ const Layout: React.FC = () => {
                 </div>
 
                 {/* Menu Search */}
-                <MenuSearch allItems={allItems} onNavigate={navigate} />
+                <MenuSearch allItems={allItems} onNavigate={navigate} isCollapsed={isCollapsed} />
 
                 <nav className="nav">
                     {/* Pinned Items */}
@@ -158,62 +94,78 @@ const Layout: React.FC = () => {
                             title="Pinned"
                             collapsible={false}
                             items={pinnedItems}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
                     {/* Core Operations */}
-                    <MenuSection
-                        id="core"
-                        title="Core"
-                        collapsible={false}
-                        items={coreItems}
-                    />
+                    {navSections.core?.length > 0 && (
+                        <MenuSection
+                            id="core"
+                            title="Core"
+                            collapsible={false}
+                            items={navSections.core}
+                            isCollapsed={isCollapsed}
+                        />
+                    )}
 
                     {/* Management */}
-                    <MenuSection
-                        id="management"
-                        title="Management"
-                        items={managementItems}
-                    />
+                    {navSections.management?.length > 0 && (
+                        <MenuSection
+                            id="management"
+                            title="Management"
+                            items={navSections.management}
+                            isCollapsed={isCollapsed}
+                        />
+                    )}
 
                     {/* Client & Business */}
-                    <MenuSection
-                        id="client-business"
-                        title="Client & Business"
-                        items={clientBusinessItems}
-                    />
+                    {navSections['client-business']?.length > 0 && (
+                        <MenuSection
+                            id="client-business"
+                            title="Client & Business"
+                            items={navSections['client-business']}
+                            isCollapsed={isCollapsed}
+                        />
+                    )}
 
                     {/* Retail */}
-                    <MenuSection
-                        id="retail"
-                        title="Retail"
-                        items={retailItems}
-                    />
+                    {navSections.retail?.length > 0 && (
+                        <MenuSection
+                            id="retail"
+                            title="Retail"
+                            items={navSections.retail}
+                            isCollapsed={isCollapsed}
+                        />
+                    )}
 
-                    {/* Marketing (Admin/Owner only) */}
-                    {canSeeAdminMenu && (
+                    {/* Marketing */}
+                    {navSections.marketing?.length > 0 && (
                         <MenuSection
                             id="marketing"
                             title="Marketing"
-                            items={marketingItems}
+                            items={navSections.marketing}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
-                    {/* Analytics (Admin/Owner only) */}
-                    {canSeeAdminMenu && (
+                    {/* Analytics */}
+                    {navSections.analytics?.length > 0 && (
                         <MenuSection
                             id="analytics"
                             title="Analytics"
-                            items={analyticsItems}
+                            items={navSections.analytics}
+                            isCollapsed={isCollapsed}
                         />
                     )}
 
-                    {/* Administration (Admin/Owner only) */}
-                    {canSeeAdminMenu && (
+                    {/* Administration */}
+                    {navSections.administration?.length > 0 && (
                         <MenuSection
                             id="administration"
                             title="Administration"
-                            items={administrationItems}
+                            items={navSections.administration}
+                            isCollapsed={isCollapsed}
                         />
                     )}
                 </nav>
@@ -223,11 +175,16 @@ const Layout: React.FC = () => {
                         className="nav-item"
                         style={{ color: 'var(--color-danger)', cursor: 'pointer' }}
                         onClick={handleLogout}
+                        title={isCollapsed ? 'Logout' : undefined}
                     >
                         <LogOut className="nav-icon" />
-                        <span>Logout</span>
+                        {!isCollapsed && <span>Logout</span>}
                     </div>
                 </div>
+
+                <button className="sidebar-toggle" onClick={toggleSidebar}>
+                    <ChevronLeft size={16} />
+                </button>
             </aside>
 
             <main className="main-content">

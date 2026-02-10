@@ -7,7 +7,13 @@ import { Transaction } from '../packages/entities/transaction.entity';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { User } from '../auth/entities/user.entity';
+import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
+import { AuditService } from '../audit/audit.service';
+import { PermissionService } from '../auth/services/permission.service';
+import { RoleService } from '../auth/services/role.service';
 import { NotFoundException } from '@nestjs/common';
+import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+import { Session } from '../sessions/entities/session.entity';
 
 describe('ClientsService', () => {
   let service: ClientsService;
@@ -75,6 +81,7 @@ describe('ClientsService', () => {
               addOrderBy: jest.fn().mockReturnThis(),
               leftJoinAndSelect: jest.fn().mockReturnThis(),
               getMany: jest.fn().mockResolvedValue([mockClient]),
+              getOne: jest.fn().mockResolvedValue(mockClient),
             })),
           },
         },
@@ -122,10 +129,67 @@ describe('ClientsService', () => {
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: getRepositoryToken(ClientProgressPhoto),
+          useValue: {
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
-            calculateDiff: jest.fn(),
+            calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: PermissionService,
+          useValue: {
+            getPermissionsForRole: jest.fn().mockResolvedValue([]),
+            isPermissionAllowed: jest.fn().mockReturnValue(true),
+            getUserPermissions: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: RoleService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue([]),
+            getRoleByKey: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: getRepositoryToken(FavoriteCoach),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Session),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            createQueryBuilder: jest.fn(() => ({
+              select: jest.fn().mockReturnThis(),
+              addSelect: jest.fn().mockReturnThis(),
+              leftJoin: jest.fn().mockReturnThis(),
+              where: jest.fn().mockReturnThis(),
+              andWhere: jest.fn().mockReturnThis(),
+              groupBy: jest.fn().mockReturnThis(),
+              addGroupBy: jest.fn().mockReturnThis(),
+              orderBy: jest.fn().mockReturnThis(),
+              limit: jest.fn().mockReturnThis(),
+              getRawOne: jest.fn(),
+              getMany: jest.fn(),
+            })),
           },
         },
       ],
@@ -137,9 +201,10 @@ describe('ClientsService', () => {
     authService = module.get(AuthService);
     mailerService = module.get(MailerService);
     // Mock auditService methods
-    module.get(require('../audit/audit.service').AuditService).log = jest.fn();
-    module.get(require('../audit/audit.service').AuditService).calculateDiff =
-      jest.fn().mockReturnValue({ changes: {} });
+    module.get(AuditService).log = jest.fn();
+    module.get(AuditService).calculateDiff = jest
+      .fn()
+      .mockReturnValue({ changes: {} });
 
     jest.clearAllMocks();
   });
@@ -166,30 +231,72 @@ describe('ClientsService', () => {
 
   describe('findOne', () => {
     it('should return client by id', async () => {
-      repository.findOne.mockResolvedValue(mockClient);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockClient),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       const result = await service.findOne('client-123', 'tenant-123');
 
       expect(result).toBe(mockClient);
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('client.id = :id', {
+        id: 'client-123',
+      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'client.tenantId = :tenantId',
+        { tenantId: 'tenant-123' },
+      );
     });
 
     it('should throw NotFoundException if client not found', async () => {
-      repository.findOne.mockResolvedValue(null);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       await expect(
         service.findOne('nonexistent', 'tenant-123'),
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should include relations when specified', async () => {
-      repository.findOne.mockResolvedValue(mockClient);
+    it('should include user relation when specified', async () => {
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockClient),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       await service.findOne('client-123', 'tenant-123', ['user']);
 
-      expect(repository.findOne).toHaveBeenCalledWith({
-        where: { id: 'client-123', tenantId: 'tenant-123' },
-        relations: ['user'],
-      });
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'client.user',
+        'user',
+      );
+    });
+
+    it('should include studio relation when specified', async () => {
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockClient),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      await service.findOne('client-123', 'tenant-123', ['studio']);
+
+      expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'client.studio',
+        'studio',
+      );
     });
   });
 
@@ -249,7 +356,13 @@ describe('ClientsService', () => {
     const updateDto = { phone: '555-555-5555' };
 
     it('should update client', async () => {
-      repository.findOne.mockResolvedValue(mockClient);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ ...mockClient, user: null }),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
       repository.save.mockResolvedValue({
         ...mockClient,
         ...updateDto,
@@ -266,7 +379,13 @@ describe('ClientsService', () => {
     });
 
     it('should throw NotFoundException if client not found', async () => {
-      repository.findOne.mockResolvedValue(null);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       await expect(
         service.update('nonexistent', updateDto, 'tenant-123'),
@@ -276,7 +395,13 @@ describe('ClientsService', () => {
 
   describe('remove', () => {
     it('should soft delete by setting status to inactive', async () => {
-      repository.findOne.mockResolvedValue(mockClient);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockClient),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
       repository.save.mockImplementation(async (c) => c as Client);
 
       await service.remove('client-123', 'tenant-123');
@@ -290,7 +415,13 @@ describe('ClientsService', () => {
   describe('invite', () => {
     it('should create user and send invitation email', async () => {
       const clientWithEmail = { ...mockClient, userId: null } as any;
-      repository.findOne.mockResolvedValue(clientWithEmail);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(clientWithEmail),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
       authService.findByEmail.mockResolvedValue(null);
       authService.createClientUser.mockResolvedValue({
         id: 'new-user',
@@ -313,10 +444,17 @@ describe('ClientsService', () => {
     });
 
     it('should throw error if client has no email', async () => {
-      repository.findOne.mockResolvedValue({
-        ...mockClient,
-        email: null,
-      } as any);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          ...mockClient,
+          email: null,
+          userId: null,
+        } as any),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       await expect(service.invite('client-123', 'tenant-123')).rejects.toThrow(
         'Client does not have an email address',
@@ -324,10 +462,16 @@ describe('ClientsService', () => {
     });
 
     it('should throw error if client already has user account', async () => {
-      repository.findOne.mockResolvedValue({
-        ...mockClient,
-        userId: 'existing-user',
-      } as any);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          ...mockClient,
+          userId: 'existing-user',
+        } as any),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
 
       await expect(service.invite('client-123', 'tenant-123')).rejects.toThrow(
         'Client already has a user account linked',
@@ -354,10 +498,16 @@ describe('ClientsService', () => {
   describe('adjustBalance', () => {
     it('should update balance and create transaction', async () => {
       const transactionRepo = module.get(getRepositoryToken(Transaction));
-      repository.findOne.mockResolvedValue({
-        ...mockClient,
-        creditBalance: 100,
-      } as any);
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          ...mockClient,
+          creditBalance: 100,
+        } as any),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
       repository.save.mockResolvedValue({
         ...mockClient,
         creditBalance: 150,
@@ -384,6 +534,269 @@ describe('ClientsService', () => {
           runningBalance: 150,
         }),
       );
+    });
+  });
+
+  describe('getFavoriteCoach', () => {
+    let favoriteCoachRepo: jest.Mocked<Repository<FavoriteCoach>>;
+    let sessionRepo: jest.Mocked<Repository<Session>>;
+
+    beforeEach(() => {
+      favoriteCoachRepo = module.get(getRepositoryToken(FavoriteCoach));
+      sessionRepo = module.get(getRepositoryToken(Session));
+      repository.findOne.mockResolvedValue(mockClient);
+    });
+
+    it('should return favorite coach if exists', async () => {
+      const mockFavorite = {
+        id: 'fav-123',
+        clientId: 'client-123',
+        coachId: 'coach-123',
+        tenantId: 'tenant-123',
+        favoritedAt: new Date('2024-01-01'),
+        coach: {
+          id: 'coach-123',
+          user: {
+            id: 'user-123',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            avatarUrl: 'avatar.jpg',
+          },
+        },
+      } as any;
+
+      favoriteCoachRepo.findOne.mockResolvedValue(mockFavorite);
+
+      const result = await service.getFavoriteCoach('client-123', 'tenant-123');
+
+      expect(result).toEqual({
+        id: 'coach-123',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        name: 'Jane Smith',
+        avatarUrl: 'avatar.jpg',
+        favoritedAt: mockFavorite.favoritedAt,
+        isFavorite: true,
+      });
+      expect(favoriteCoachRepo.findOne).toHaveBeenCalledWith({
+        where: { clientId: 'client-123', tenantId: 'tenant-123' },
+        relations: ['coach', 'coach.user'],
+        order: { favoritedAt: 'DESC' },
+      });
+    });
+
+    it('should return most assigned coach if no favorite coach exists', async () => {
+      favoriteCoachRepo.findOne.mockResolvedValue(null);
+
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          coachId: 'coach-456',
+          id: 'coach-456',
+          firstName: 'Bob',
+          lastName: 'Johnson',
+          avatarUrl: null,
+          sessionCount: '15',
+        }),
+      };
+
+      sessionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getFavoriteCoach('client-123', 'tenant-123');
+
+      expect(result).toEqual({
+        id: 'coach-456',
+        firstName: 'Bob',
+        lastName: 'Johnson',
+        name: 'Bob Johnson',
+        avatarUrl: null,
+        sessionCount: 15,
+        isFavorite: false,
+      });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'session.clientId = :clientId',
+        { clientId: 'client-123' },
+      );
+    });
+
+    it('should return null if no favorite coach and no sessions exist', async () => {
+      favoriteCoachRepo.findOne.mockResolvedValue(null);
+
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue(null),
+      };
+
+      sessionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getFavoriteCoach('client-123', 'tenant-123');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw NotFoundException if client does not exist', async () => {
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      await expect(
+        service.getFavoriteCoach('nonexistent', 'tenant-123'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getMostUsedRoom', () => {
+    let sessionRepo: jest.Mocked<Repository<Session>>;
+
+    beforeEach(() => {
+      sessionRepo = module.get(getRepositoryToken(Session));
+      repository.findOne.mockResolvedValue(mockClient);
+    });
+
+    it('should return most used room with usage count', async () => {
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          roomId: 'room-123',
+          roomName: 'Room A',
+          usageCount: '25',
+        }),
+      };
+
+      sessionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getMostUsedRoom('client-123', 'tenant-123');
+
+      expect(result).toEqual({
+        roomId: 'room-123',
+        roomName: 'Room A',
+        usageCount: 25,
+      });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'session.clientId = :clientId',
+        { clientId: 'client-123' },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'session.tenantId = :tenantId',
+        { tenantId: 'tenant-123' },
+      );
+    });
+
+    it('should return null if no sessions exist', async () => {
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue(null),
+      };
+
+      sessionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getMostUsedRoom('client-123', 'tenant-123');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if roomId is null in result', async () => {
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          roomId: null,
+          roomName: null,
+          usageCount: '0',
+        }),
+      };
+
+      sessionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getMostUsedRoom('client-123', 'tenant-123');
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle unknown room name', async () => {
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          roomId: 'room-456',
+          roomName: null,
+          usageCount: '10',
+        }),
+      };
+
+      sessionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      const result = await service.getMostUsedRoom('client-123', 'tenant-123');
+
+      expect(result).toEqual({
+        roomId: 'room-456',
+        roomName: 'Unknown Room',
+        usageCount: 10,
+      });
+    });
+
+    it('should throw NotFoundException if client does not exist', async () => {
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      await expect(
+        service.getMostUsedRoom('nonexistent', 'tenant-123'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

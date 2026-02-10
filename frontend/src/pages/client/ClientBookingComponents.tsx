@@ -57,80 +57,87 @@ export interface CoachListProps {
     onToggleFavorite?: (id: string, e: React.MouseEvent) => void;
 }
 
-export const CoachList: React.FC<CoachListProps> = ({ coaches, selectedCoachId, onSelect, onToggleFavorite }) => (
-    <div className="flex flex-col space-y-3 animate-slide-in-left">
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">Select Coach</h3>
+import { useAuth } from '../../contexts/AuthContext';
 
-        {/* Any Coach Option */}
-        <button
-            onClick={() => onSelect(null)}
-            className={`
+export const CoachList: React.FC<CoachListProps> = ({ coaches, selectedCoachId, onSelect, onToggleFavorite }) => {
+    const { isEnabled } = useAuth();
+    const showFavorites = isEnabled('client.favorite_coaches');
+
+    return (
+        <div className="flex flex-col space-y-3 animate-slide-in-left">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">Select Coach</h3>
+
+            {/* Any Coach Option */}
+            <button
+                onClick={() => onSelect(null)}
+                className={`
                 flex items-center p-3 rounded-xl border-2 transition-all w-full group
                 ${!selectedCoachId
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-transparent shadow-lg shadow-purple-500/30'
-                    : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700'}
+                        ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-transparent shadow-lg shadow-purple-500/30'
+                        : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700'}
             `}
-        >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 transition-transform group-hover:scale-110 ${!selectedCoachId ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-800'}`}>
-                <User size={18} />
-            </div>
-            <div className="text-left">
-                <span className="font-semibold text-sm block">Any Coach</span>
-                <span className={`text-xs ${!selectedCoachId ? 'text-purple-200' : 'text-gray-400'}`}>Auto-assign</span>
-            </div>
-        </button>
+            >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 transition-transform group-hover:scale-110 ${!selectedCoachId ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-800'}`}>
+                    <User size={18} />
+                </div>
+                <div className="text-left">
+                    <span className="font-semibold text-sm block">Any Coach</span>
+                    <span className={`text-xs ${!selectedCoachId ? 'text-purple-200' : 'text-gray-400'}`}>Auto-assign</span>
+                </div>
+            </button>
 
-        {/* Coach List */}
-        {coaches.map((coach, index) => (
-            <div key={coach.id} className="relative group">
-                <button
-                    onClick={() => onSelect(coach.id)}
-                    className={`
+            {/* Coach List */}
+            {coaches.map((coach, index) => (
+                <div key={coach.id} className="relative group">
+                    <button
+                        onClick={() => onSelect(coach.id)}
+                        className={`
                         flex items-center p-3 rounded-xl border-2 transition-all text-left w-full group stagger-${index + 1} pr-10
                         ${selectedCoachId === coach.id
-                            ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-500/30'
-                            : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'}
+                                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-transparent shadow-lg shadow-blue-500/30'
+                                : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'}
                     `}
-                >
-                    {coach.avatarUrl ? (
-                        <img src={coach.avatarUrl} alt={coach.name} className="w-10 h-10 rounded-xl object-cover mr-3 border-2 border-white/20 shrink-0 group-hover:scale-110 transition-transform" />
-                    ) : (
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 transition-transform group-hover:scale-110 ${selectedCoachId === coach.id ? 'bg-white/20' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800'}`}>
-                            <span className="text-sm font-bold">{coach.name.charAt(0)}</span>
-                        </div>
-                    )}
-                    <div className="flex flex-col overflow-hidden">
-                        <span className="font-semibold text-sm truncate">{coach.name}</span>
-                        {coach.isFavorite && (
-                            <span className={`text-[10px] ${selectedCoachId === coach.id ? 'text-blue-100' : 'text-blue-500'} flex items-center gap-0.5`}>
-                                <Heart size={10} fill="currentColor" /> Favorited
-                            </span>
+                    >
+                        {coach.avatarUrl ? (
+                            <img src={coach.avatarUrl} alt={coach.name} className="w-10 h-10 rounded-xl object-cover mr-3 border-2 border-white/20 shrink-0 group-hover:scale-110 transition-transform" />
+                        ) : (
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 transition-transform group-hover:scale-110 ${selectedCoachId === coach.id ? 'bg-white/20' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800'}`}>
+                                <span className="text-sm font-bold">{coach.name.charAt(0)}</span>
+                            </div>
                         )}
-                    </div>
-                </button>
-                {/* Favorite Button */}
-                {onToggleFavorite && (
-                    <button
-                        onClick={(e) => onToggleFavorite(coach.id, e)}
-                        className={`
+                        <div className="flex flex-col overflow-hidden">
+                            <span className="font-semibold text-sm truncate">{coach.name}</span>
+                            {showFavorites && coach.isFavorite && (
+                                <span className={`text-[10px] ${selectedCoachId === coach.id ? 'text-blue-100' : 'text-blue-500'} flex items-center gap-0.5`}>
+                                    <Heart size={10} fill="currentColor" /> Favorited
+                                </span>
+                            )}
+                        </div>
+                    </button>
+                    {/* Favorite Button */}
+                    {showFavorites && onToggleFavorite && (
+                        <button
+                            onClick={(e) => onToggleFavorite(coach.id, e)}
+                            className={`
                             absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all z-10
                             ${selectedCoachId === coach.id
-                                ? 'text-white/70 hover:text-white hover:bg-white/20'
-                                : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}
+                                    ? 'text-white/70 hover:text-white hover:bg-white/20'
+                                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}
                         `}
-                        title={coach.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                    >
-                        <Heart
-                            size={18}
-                            fill={coach.isFavorite ? "currentColor" : "none"}
-                            className={coach.isFavorite && selectedCoachId !== coach.id ? "text-red-500" : ""}
-                        />
-                    </button>
-                )}
-            </div>
-        ))}
-    </div>
-);
+                            title={coach.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                        >
+                            <Heart
+                                size={18}
+                                fill={coach.isFavorite ? "currentColor" : "none"}
+                                className={coach.isFavorite && selectedCoachId !== coach.id ? "text-red-500" : ""}
+                            />
+                        </button>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+};
 
 // ============================================================================
 // SlotsGrid - Premium Time Slot Cards

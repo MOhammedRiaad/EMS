@@ -6,7 +6,7 @@ export interface ProfileEditForm {
     firstName: string;
     lastName: string;
     phone: string;
-    gender: 'male' | 'female' | 'other' | 'pnts';
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 }
 
 export function useClientProfileState() {
@@ -18,7 +18,7 @@ export function useClientProfileState() {
         firstName: '',
         lastName: '',
         phone: '',
-        gender: 'pnts'
+        gender: 'prefer_not_to_say'
     });
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +75,7 @@ export function useClientProfileState() {
                 firstName: profile.firstName || '',
                 lastName: profile.lastName || '',
                 phone: profile.phone || '',
-                gender: profile.gender || 'pnts'
+                gender: (profile.gender as any) || 'prefer_not_to_say'
             });
             setIsEditModalOpen(true);
         }

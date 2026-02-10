@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar, User, LogOut, Trophy } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '../../contexts/NavigationContext';
 import { ThemeToggle } from '../common/ThemeToggle';
 import ComplianceManager from '../compliance/ComplianceManager';
 import { NotificationCenter } from '../notifications/NotificationCenter';
@@ -11,6 +12,8 @@ const ClientLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { logout, tenant } = useAuth();
+    const { getSectionItems } = useNavigation();
+    const navItems = getSectionItems('client-portal');
 
     // Compliance handled by ComplianceManager
 
@@ -57,25 +60,19 @@ const ClientLayout: React.FC = () => {
 
             {!isBookingPage && (
                 <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 px-6 py-3 flex justify-around items-center z-50 pb-safe transition-colors duration-200">
-                    <NavLink to="/client/home" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>
-                        <Home size={24} />
-                        <span className="text-[10px] font-medium">Home</span>
-                    </NavLink>
-
-                    <NavLink to="/client/schedule" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>
-                        <Calendar size={24} />
-                        <span className="text-[10px] font-medium">Schedule</span>
-                    </NavLink>
-
-                    <NavLink to="/client/leaderboard" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>
-                        <Trophy size={24} />
-                        <span className="text-[10px] font-medium">Leaderboard</span>
-                    </NavLink>
-
-                    <NavLink to="/client/profile" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}>
-                        <User size={24} />
-                        <span className="text-[10px] font-medium">Profile</span>
-                    </NavLink>
+                    {navItems.map(item => {
+                        const Icon = item.icon;
+                        return (
+                            <NavLink
+                                key={item.id}
+                                to={item.path}
+                                className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                            >
+                                <Icon size={24} />
+                                <span className="text-[10px] font-medium">{item.label}</span>
+                            </NavLink>
+                        );
+                    })}
                 </nav>
             )}
         </div>

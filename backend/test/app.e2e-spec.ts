@@ -25,7 +25,7 @@ describe('App E2E Tests', () => {
         .get('/health')
         .expect(200);
 
-      expect(response.body).toHaveProperty('status', 'ok');
+      expect(response.body).toHaveProperty('status', 'healthy');
     });
   });
 });

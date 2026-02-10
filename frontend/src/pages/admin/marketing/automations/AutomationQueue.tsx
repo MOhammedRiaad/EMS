@@ -10,10 +10,12 @@ const AutomationQueue: React.FC = () => {
     const fetchExecutions = async () => {
         setLoading(true);
         try {
-            const data = await automationService.getExecutions();
-            setExecutions(data);
+            const response = await automationService.getExecutions();
+            // The service now returns { data: [], total: 0 }
+            setExecutions(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error('Failed to fetch executions', error);
+            setExecutions([]);
         } finally {
             setLoading(false);
         }
@@ -83,7 +85,7 @@ const AutomationQueue: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                        {executions.length === 0 ? (
+                        {(!executions || executions.length === 0) ? (
                             <tr>
                                 <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                     No executions found.

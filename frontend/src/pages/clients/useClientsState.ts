@@ -8,7 +8,7 @@ export interface ClientFormData {
     lastName: string;
     email: string;
     password: string;
-    gender: 'male' | 'female' | 'other' | 'pnts';
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     phone: string;
     avatarUrl: string;
     studioId: string;

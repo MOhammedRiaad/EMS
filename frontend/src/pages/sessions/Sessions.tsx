@@ -67,10 +67,20 @@ const Sessions: React.FC = () => {
                         </div>
                     );
                 }
+                const isLead = !!session.lead;
                 return (
-                    <div className="flex items-center gap-2">
-                        <User size={14} className="text-gray-500 dark:text-gray-400" />
-                        <span className="text-gray-900 dark:text-gray-100">{session.client ? `${session.client.firstName} ${session.client.lastName}` : 'Unknown Client'}</span>
+                    <div
+                        className={`flex items-center gap-2 cursor-pointer ${isLead ? 'text-purple-600 dark:text-purple-400' : 'text-gray-900 dark:text-gray-100'} hover:underline`}
+                        onClick={() => setSelectedSessionDetails(session)}
+                    >
+                        <User size={14} className={isLead ? "text-purple-500" : "text-gray-500 dark:text-gray-400"} />
+                        <span>
+                            {session.client
+                                ? `${session.client.firstName} ${session.client.lastName}`
+                                : session.lead
+                                    ? `${session.lead.firstName} ${session.lead.lastName} (Lead)`
+                                    : 'Unknown Client'}
+                        </span>
                     </div>
                 );
             }
@@ -99,7 +109,9 @@ const Sessions: React.FC = () => {
             header: 'Status',
             render: (session) => {
                 let bgClass = 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400';
-                if (session.status === 'scheduled') bgClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
+                if (session.lead) {
+                    bgClass = 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400';
+                } else if (session.status === 'scheduled') bgClass = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
                 else if (session.status === 'completed') bgClass = 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400';
                 else if (session.status === 'cancelled' || session.status === 'no_show') bgClass = 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
 
@@ -115,8 +127,14 @@ const Sessions: React.FC = () => {
             header: 'Actions',
             render: (session: Session) => (
                 <div className="flex gap-2 flex-wrap items-center">
-                    {session.status === 'scheduled' && canEdit && session.type !== 'group' && (
+                    {(session.status === 'scheduled' || session.status === 'in_progress') && canEdit && session.type !== 'group' && (
                         <>
+                            <button
+                                onClick={() => setSelectedSessionDetails(session)}
+                                className="px-2 py-1 text-xs rounded border border-gray-300 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                View
+                            </button>
                             <button
                                 onClick={() => state.handleStatusClick(session, 'completed')}
                                 className="px-2 py-1 text-xs rounded border border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500/20 transition-colors"

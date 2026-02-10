@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreVertical, MoreHorizontal, Edit, Trash2, UserPlus } from 'lucide-react';
+import { MoreVertical, MoreHorizontal, Edit, Trash2, UserPlus, Calendar } from 'lucide-react';
 import { type Lead } from '../../../../services/lead.service';
 
 interface LeadActionMenuProps {
@@ -7,10 +7,11 @@ interface LeadActionMenuProps {
     onEdit: (lead: Lead) => void;
     onDelete: (lead: Lead) => void;
     onConvert: (lead: Lead) => void;
+    onBookTrial: (lead: Lead) => void;
     vertical?: boolean;
 }
 
-const LeadActionMenu: React.FC<LeadActionMenuProps> = ({ lead, onEdit, onDelete, onConvert, vertical = false }) => {
+const LeadActionMenu: React.FC<LeadActionMenuProps> = ({ lead, onEdit, onDelete, onConvert, onBookTrial, vertical = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -56,16 +57,29 @@ const LeadActionMenu: React.FC<LeadActionMenuProps> = ({ lead, onEdit, onDelete,
                     </button>
 
                     {lead.status !== 'converted' && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onConvert(lead);
-                                setIsOpen(false);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
-                        >
-                            <UserPlus size={14} /> Convert to Client
-                        </button>
+                        <>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBookTrial(lead);
+                                    setIsOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                            >
+                                <Calendar size={14} /> Book Trial
+                            </button>
+
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onConvert(lead);
+                                    setIsOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                            >
+                                <UserPlus size={14} /> Convert to Client
+                            </button>
+                        </>
                     )}
 
                     <div className="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>

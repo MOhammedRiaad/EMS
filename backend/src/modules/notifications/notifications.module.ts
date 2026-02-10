@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
@@ -21,10 +21,10 @@ import { CoachesModule } from '../coaches/coaches.module';
       Announcement,
       AnnouncementRead,
     ]),
-    CoachesModule,
+    forwardRef(() => CoachesModule),
   ],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],
 })
-export class NotificationsModule { }
+export class NotificationsModule {}

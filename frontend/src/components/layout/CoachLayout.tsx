@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar, Users, LogOut, Settings } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '../../contexts/NavigationContext';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { AnnouncementModal } from '../notifications/AnnouncementModal';
@@ -10,6 +11,8 @@ const CoachLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { logout, isAuthenticated, tenant } = useAuth();
+    const { getSectionItems } = useNavigation();
+    const navItems = getSectionItems('coach-portal');
 
     React.useEffect(() => {
         if (!isAuthenticated) navigate('/login');
@@ -59,27 +62,19 @@ const CoachLayout: React.FC = () => {
 
             {!isSubPage && (
                 <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 px-6 py-3 flex justify-around items-center z-50 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transition-colors duration-200">
-                    <NavLink to="/coach/home" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                        <Home size={24} />
-                        <span className="text-[10px] font-medium">Home</span>
-                    </NavLink>
-
-                    {tenant?.settings?.allowCoachSelfEditAvailability && (
-                        <NavLink to="/coach/availability" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                            <Calendar size={24} />
-                            <span className="text-[10px] font-medium">Availability</span>
-                        </NavLink>
-                    )}
-
-                    <NavLink to="/coach/clients" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                        <Users size={24} />
-                        <span className="text-[10px] font-medium">Clients</span>
-                    </NavLink>
-
-                    <NavLink to="/coach/settings" className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                        <Settings size={24} />
-                        <span className="text-[10px] font-medium">Settings</span>
-                    </NavLink>
+                    {navItems.map(item => {
+                        const Icon = item.icon;
+                        return (
+                            <NavLink
+                                key={item.id}
+                                to={item.path}
+                                className={({ isActive }) => `flex flex-col items-center space-y-1 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <Icon size={24} />
+                                <span className="text-[10px] font-medium">{item.label}</span>
+                            </NavLink>
+                        );
+                    })}
                 </nav>
             )}
         </div>

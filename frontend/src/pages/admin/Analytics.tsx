@@ -6,11 +6,14 @@ import {
     RevenueChart,
     CoachPerformanceChart,
     UtilizationGauge,
+    RevenueByPackageChart, // New
+    UtilizationHeatmap, // New
 } from '../../components/analytics';
 import {
     analyticsService,
     type RevenueSummary,
     type RevenueByPeriod,
+    type RevenueByPackage, // New
     type ClientSummary,
     type ClientRetention,
     type CoachPerformance,
@@ -19,6 +22,7 @@ import {
     type OutstandingPayment,
     type WaitingListStats,
     type Utilization,
+    type UtilizationHeatmapItem, // New
     type LeadAnalytics,
     type RevenueForecast,
 } from '../../services/analytics.service';
@@ -33,11 +37,13 @@ const Analytics: React.FC = () => {
     // Data state
     const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null);
     const [revenueByPeriod, setRevenueByPeriod] = useState<RevenueByPeriod[]>([]);
+    const [revenueByPackage, setRevenueByPackage] = useState<RevenueByPackage[]>([]); // New
     const [clientSummary, setClientSummary] = useState<ClientSummary | null>(null);
     const [clientRetention, setClientRetention] = useState<ClientRetention | null>(null);
     const [coachPerformance, setCoachPerformance] = useState<CoachPerformance[]>([]);
     const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
     const [roomUtilization, setRoomUtilization] = useState<Utilization[]>([]);
+    const [utilizationHeatmap, setUtilizationHeatmap] = useState<UtilizationHeatmapItem[]>([]); // New
     const [waitingListStats, setWaitingListStats] = useState<WaitingListStats | null>(null);
     const [cashFlow, setCashFlow] = useState<CashFlow[]>([]);
     const [outstandingPayments, setOutstandingPayments] = useState<OutstandingPayment[]>([]);
@@ -65,11 +71,13 @@ const Analytics: React.FC = () => {
             const results = await Promise.allSettled([
                 analyticsService.getRevenueSummary(),
                 analyticsService.getRevenueByPeriod(params),
+                analyticsService.getRevenueByPackage(params), // New
                 analyticsService.getClientSummary(),
                 analyticsService.getClientRetention(),
                 analyticsService.getCoachPerformance(params),
                 analyticsService.getSessionStats(params),
                 analyticsService.getRoomUtilization(params),
+                analyticsService.getUtilizationHeatmap(params), // New
                 analyticsService.getWaitingListStats(params),
                 analyticsService.getCashFlow(params),
                 analyticsService.getOutstandingPayments(),
@@ -80,11 +88,13 @@ const Analytics: React.FC = () => {
             const [
                 revenueResult,
                 revenueDataResult,
+                revenuePackageResult, // New
                 clientsResult,
                 retentionResult,
                 coachesResult,
                 sessionsResult,
                 roomsResult,
+                heatmapResult, // New
                 waitingListResult,
                 cashFlowResult,
                 outstandingResult,
@@ -94,6 +104,7 @@ const Analytics: React.FC = () => {
 
             if (revenueResult.status === 'fulfilled') setRevenueSummary(revenueResult.value);
             if (revenueDataResult.status === 'fulfilled') setRevenueByPeriod(revenueDataResult.value);
+            if (revenuePackageResult.status === 'fulfilled') setRevenueByPackage(revenuePackageResult.value); // New
             if (clientsResult.status === 'fulfilled') setClientSummary(clientsResult.value);
             if (retentionResult.status === 'fulfilled') setClientRetention(retentionResult.value);
 
@@ -112,6 +123,8 @@ const Analytics: React.FC = () => {
                 setRoomUtilization([]);
             }
 
+            if (heatmapResult.status === 'fulfilled') setUtilizationHeatmap(heatmapResult.value); // New
+
             if (waitingListResult.status === 'fulfilled') setWaitingListStats(waitingListResult.value);
             if (cashFlowResult.status === 'fulfilled') setCashFlow(cashFlowResult.value);
             if (outstandingResult.status === 'fulfilled') setOutstandingPayments(outstandingResult.value);
@@ -126,6 +139,7 @@ const Analytics: React.FC = () => {
             setLoading(false);
         }
     };
+
 
     const downloadCSV = (data: any[], filename: string) => {
         if (!data || data.length === 0) return;
@@ -352,6 +366,10 @@ const Analytics: React.FC = () => {
                     </div>
                     <RevenueChart data={revenueByPeriod} height={400} />
 
+                    <div style={{ marginTop: '1.5rem' }}>
+                        <RevenueByPackageChart data={revenueByPackage} />
+                    </div>
+
                     {revenueForecast && (
                         <div style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--color-bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -366,7 +384,7 @@ const Analytics: React.FC = () => {
                                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
                                         €{revenueForecast.forecast.toLocaleString()}
                                         <span style={{ fontSize: '0.875rem', color: revenueForecast.trend === 'up' ? '#10b981' : revenueForecast.trend === 'down' ? '#ef4444' : 'var(--color-text-secondary)', fontWeight: 500 }}>
-                                            {revenueForecast.trend === 'up' ? '↗' : revenueForecast.trend === 'down' ? '↘' : '→'} {Math.abs(revenueForecast.growthRate).toFixed(1)}% growth
+                                            {revenueForecast.trend === 'up' ? '↗' : revenueForecast.trend === 'down' ? '↘' : '→'} {Math.abs(revenueForecast.growthRate ?? 0).toFixed(1)}% growth
                                         </span>
                                     </div>
                                 </div>
@@ -487,6 +505,10 @@ const Analytics: React.FC = () => {
                                 />
                             ))}
                         </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <UtilizationHeatmap data={utilizationHeatmap} />
                     </div>
 
                     <CoachPerformanceChart data={coachPerformance} height={350} />

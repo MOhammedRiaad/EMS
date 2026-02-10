@@ -2,18 +2,21 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository, Brackets, In, LessThan, MoreThan } from 'typeorm';
 import { Coach } from './entities/coach.entity';
 import {
   CoachTimeOffRequest,
   TimeOffStatus,
 } from './entities/coach-time-off.entity';
+import { Tenant } from '../tenants/entities/tenant.entity';
 import { CreateCoachDto, UpdateCoachDto } from './dto';
 import { AuthService } from '../auth/auth.service';
 import { MailerService } from '../mailer/mailer.service';
 import { AuditService } from '../audit/audit.service';
+import { Session } from '../sessions/entities/session.entity';
 
 @Injectable()
 export class CoachesService {
@@ -22,10 +25,14 @@ export class CoachesService {
     private readonly coachRepository: Repository<Coach>,
     @InjectRepository(CoachTimeOffRequest)
     private readonly timeOffRepository: Repository<CoachTimeOffRequest>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly mailerService: MailerService,
-  ) {}
+  ) { }
 
   async findAll(tenantId: string, search?: string): Promise<Coach[]> {
     const query = this.coachRepository
@@ -81,7 +88,8 @@ export class CoachesService {
       return coaches.filter(
         (coach) =>
           coach.preferredClientGender === 'any' ||
-          coach.preferredClientGender === clientGender,
+          (clientGender !== 'prefer_not_to_say' &&
+            coach.preferredClientGender === clientGender),
       );
     }
 
@@ -216,8 +224,33 @@ export class CoachesService {
     id: string,
     rules: any[],
     tenantId: string,
+    user?: any,
   ): Promise<any[]> {
     const coach = await this.findOne(id, tenantId);
+
+    // Permission Check: If user is a coach, enforce restrictions
+    if (user && user.role === 'coach') {
+      // 1. Ensure they are editing their own profile
+      if (coach.userId !== user.id) {
+        throw new ForbiddenException(
+          'You can only update your own availability',
+        );
+      }
+
+      // 2. Check tenant setting for availability editing
+      const tenant = await this.tenantRepository.findOne({
+        where: { id: tenantId },
+      });
+      const allowSelfEdit =
+        tenant?.settings?.allowCoachSelfEditAvailability ?? false;
+
+      if (!allowSelfEdit) {
+        throw new ForbiddenException(
+          'Availability editing is disabled by your studio administrator',
+        );
+      }
+    }
+
     coach.availabilityRules = rules;
     await this.coachRepository.save(coach);
 
@@ -299,6 +332,32 @@ export class CoachesService {
       throw new ForbiddenException(
         `Request has already been ${request.status}`,
       );
+    }
+
+    // Conflict check: prevent approval if coach has sessions during this period
+    if (status === 'approved') {
+      const conflictingSessions = await this.sessionRepository.find({
+        where: {
+          coachId: request.coachId,
+          tenantId,
+          status: In(['scheduled', 'in_progress']),
+        },
+      });
+
+      // Filter sessions that overlap with the time-off period
+      const overlapping = conflictingSessions.filter((session) => {
+        const sessionStart = new Date(session.startTime);
+        const sessionEnd = new Date(session.endTime);
+        const timeOffStart = new Date(request.startDate);
+        const timeOffEnd = new Date(request.endDate);
+        return sessionStart < timeOffEnd && sessionEnd > timeOffStart;
+      });
+
+      if (overlapping.length > 0) {
+        throw new ConflictException(
+          `Coach has ${overlapping.length} session(s) booked during this period. Please reassign or cancel them first.`,
+        );
+      }
     }
 
     request.status = status;

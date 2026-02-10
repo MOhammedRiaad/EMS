@@ -32,7 +32,7 @@ export class CoachPortalService {
     private coachesRepository: Repository<Coach>,
     @InjectRepository(CoachTimeOffRequest)
     private timeOffRepository: Repository<CoachTimeOffRequest>,
-  ) {}
+  ) { }
 
   private async getCoachId(userId: string): Promise<string> {
     const coach = await this.coachesRepository.findOne({ where: { userId } });
@@ -54,7 +54,7 @@ export class CoachPortalService {
         startTime: Between(start, end),
         status: 'scheduled' as SessionStatus,
       },
-      relations: ['client'],
+      relations: ['client', 'lead'],
     });
 
     return {
@@ -100,6 +100,7 @@ export class CoachPortalService {
       where: whereCondition,
       relations: [
         'client',
+        'lead',
         'room',
         'studio',
         'participants',

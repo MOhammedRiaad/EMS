@@ -196,7 +196,7 @@ export interface EditProfileModalProps {
         firstName: string;
         lastName: string;
         phone: string;
-        gender: 'male' | 'female' | 'other' | 'pnts';
+        gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     };
     setEditForm: React.Dispatch<React.SetStateAction<any>>;
     onSubmit: (e: React.FormEvent) => void;
@@ -249,7 +249,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ editForm, se
                         onChange={e => setEditForm((prev: any) => ({ ...prev, gender: e.target.value }))}
                         className="w-full p-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:border-purple-500 focus:ring-0 transition-colors"
                     >
-                        <option value="pnts">Prefer not to say</option>
+                        <option value="prefer_not_to_say">Prefer not to say</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>

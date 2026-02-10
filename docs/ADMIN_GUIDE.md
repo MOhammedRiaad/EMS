@@ -226,6 +226,30 @@ Access your business metrics:
 
 ---
 
+---
+
+## Studio Settings
+
+Configure your studio's global policies and appearance by clicking on **Settings** in the sidebar.
+
+### Branding & Appearance
+Customize the look of your portal to match your business identity:
+- **Primary Color**: Sets the accent color for buttons, links, and active elements.
+- **Logo URL**: Enter a URL for your studio's logo (displayed in headers and emails).
+
+### Coach Permissions
+Manage what your coaches are allowed to do:
+- **Allow Availability Editing**: 
+  - **Enabled**: Coaches can log in and manage their own working hours and time-off requests.
+  - **Disabled**: Only Admins can set coach schedules.
+
+### Cancellation Policy
+- **Cancellation Window**: Set the minimum hours required for cancellation.
+   - If a client cancels within this window, the session credit is forfeited.
+   - If cancelled before, the credit is returned.
+
+---
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

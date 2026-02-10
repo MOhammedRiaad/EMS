@@ -75,9 +75,9 @@ export class CreateCoachWithUserDto {
   @IsString()
   lastName: string;
 
-  @ApiProperty({ enum: ['male', 'female', 'other', 'pnts'] })
+  @ApiProperty({ enum: ['male', 'female', 'other', 'prefer_not_to_say'] })
   @IsString()
-  gender: 'male' | 'female' | 'other' | 'pnts';
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @ApiProperty()
   @IsUUID()

@@ -6,12 +6,18 @@ import {
   OneToMany,
   OneToOne,
 } from 'typeorm';
-import { Exclude } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import { TenantScopedEntityWithUpdate } from '../../../common/entities';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Client } from '../../clients/entities/client.entity';
 
-export type UserRole = 'tenant_owner' | 'admin' | 'coach' | 'client';
+export type UserRole =
+  | 'platform_owner'
+  | 'owner'
+  | 'tenant_owner'
+  | 'admin'
+  | 'coach'
+  | 'client';
 
 @Entity('users')
 export class User extends TenantScopedEntityWithUpdate {
@@ -24,17 +30,25 @@ export class User extends TenantScopedEntityWithUpdate {
 
   @Column({
     type: 'enum',
-    enum: ['tenant_owner', 'admin', 'coach', 'client'],
+    enum: [
+      'platform_owner',
+      'owner',
+      'tenant_owner',
+      'admin',
+      'coach',
+      'client',
+    ],
     default: 'client',
   })
   role: UserRole;
 
   @Column({
     type: 'enum',
-    enum: ['male', 'female', 'other', 'pnts'],
-    default: 'pnts',
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    default: 'prefer_not_to_say',
   })
-  gender: 'male' | 'female' | 'other' | 'pnts';
+  @Expose()
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @Column({ name: 'first_name', type: 'varchar', length: 100, nullable: true })
   firstName: string | null;
@@ -53,6 +67,9 @@ export class User extends TenantScopedEntityWithUpdate {
 
   @Column({ default: true })
   active: boolean;
+
+  @Column({ name: 'must_change_password', default: false })
+  mustChangePassword: boolean;
 
   @Column({ name: 'failed_login_attempts', default: 0 })
   failedLoginAttempts: number;

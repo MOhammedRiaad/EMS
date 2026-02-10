@@ -12,6 +12,10 @@ import {
   AutomationExecutionStatus,
 } from './entities/automation-execution.entity';
 import { MailerService } from '../mailer/mailer.service';
+import { UsageTrackingService } from '../owner/services/usage-tracking.service';
+import { AuditService } from '../audit/audit.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('AutomationService', () => {
   let service: AutomationService;
@@ -81,14 +85,35 @@ describe('AutomationService', () => {
         {
           provide: MailerService,
           useValue: {
-            sendMail: jest.fn(),
+            sendMail: jest.fn().mockResolvedValue({ messageId: '123' }),
+            sendTemplatedMail: jest.fn().mockResolvedValue({ messageId: '123' }),
           },
         },
         {
-          provide: require('../audit/audit.service').AuditService,
+          provide: AuditService,
           useValue: {
             log: jest.fn(),
             calculateDiff: jest.fn().mockReturnValue({ changes: {} }),
+          },
+        },
+        {
+          provide: UsageTrackingService,
+          useValue: {
+            checkLimit: jest.fn().mockResolvedValue(null),
+            recordMetric: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: WhatsAppService,
+          useValue: {
+            sendTemplateMessage: jest.fn(),
+            sendFreeFormMessage: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            sendNotification: jest.fn(),
           },
         },
       ],
@@ -131,6 +156,44 @@ describe('AutomationService', () => {
         }),
       );
       expect(executionRepository.save).toHaveBeenCalled();
+    });
+
+    it('should handle SESSION_COMPLETED trigger with client context', async () => {
+      const tenantId = 'tenant-123';
+      const sessionRule = {
+        ...mockRule,
+        id: 'rule-session',
+        triggerType: AutomationTriggerType.SESSION_COMPLETED,
+      };
+      ruleRepository.find.mockResolvedValue([sessionRule]);
+      executionRepository.create.mockReturnValue(mockExecution);
+      executionRepository.save.mockResolvedValue(mockExecution);
+
+      await service.triggerEvent(AutomationTriggerType.SESSION_COMPLETED, {
+        tenantId,
+        clientId: 'client-123',
+        client: {
+          id: 'client-123',
+          tenantId,
+          user: { email: 'test@example.com' },
+        },
+        session: { id: 'session-123' },
+      });
+
+      expect(ruleRepository.find).toHaveBeenCalledWith({
+        where: {
+          triggerType: AutomationTriggerType.SESSION_COMPLETED,
+          isActive: true,
+          tenantId,
+        },
+      });
+      expect(executionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ruleId: sessionRule.id,
+          entityId: 'client-123',
+          tenantId,
+        }),
+      );
     });
   });
 
@@ -205,7 +268,7 @@ describe('AutomationService', () => {
       // Should send email for step 0
       expect(mailerService.sendMail).toHaveBeenCalledWith(
         'test@example.com',
-        'Hi',
+        'Hi', // From mockRule step 0 payload.subject
         'No content',
         expect.any(String),
       );

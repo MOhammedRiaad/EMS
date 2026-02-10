@@ -8,26 +8,37 @@ import {
   Body,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ClientsService } from './clients.service';
 import { CreateClientDto, UpdateClientDto } from './dto';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
+import { DocumentCategory } from './entities/client-document.entity';
 import { TenantId, CurrentUser } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
+import { Roles, RolesGuard } from '../../common/guards/roles.guard';
+import {
+  CheckPlanLimit,
+  PlanLimitGuard,
+} from '../owner/guards/plan-limit.guard';
 
 import { WaiversService } from '../waivers/waivers.service';
 
 @ApiTags('clients')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), TenantGuard)
+@UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard, PlanLimitGuard)
 @Controller('clients')
 export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly waiversService: WaiversService,
-  ) {}
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'List all clients for tenant' })
@@ -38,7 +49,7 @@ export class ClientsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get client by ID' })
   findOne(@Param('id') id: string, @TenantId() tenantId: string) {
-    return this.clientsService.findOne(id, tenantId);
+    return this.clientsService.findOne(id, tenantId, ['studio', 'user']);
   }
 
   @Get(':id/waivers')
@@ -48,12 +59,16 @@ export class ClientsController {
   }
 
   @Post()
+  @Roles('admin', 'tenant_owner', 'platform_owner')
+  @CheckPlanLimit('clients')
   @ApiOperation({ summary: 'Create a new client' })
   create(@Body() dto: CreateClientDto, @TenantId() tenantId: string) {
     return this.clientsService.create(dto, tenantId);
   }
 
   @Post('create-with-user')
+  @Roles('admin', 'tenant_owner')
+  @CheckPlanLimit('clients')
   @ApiOperation({ summary: 'Create client with user account' })
   createWithUser(@Body() dto: any, @TenantId() tenantId: string) {
     return this.clientsService.createWithUser(dto, tenantId);
@@ -70,12 +85,14 @@ export class ClientsController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Delete a client (soft delete)' })
   remove(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.clientsService.remove(id, tenantId);
   }
 
   @Post(':id/invite')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Invite client to portal (create user + email)' })
   invite(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.clientsService.invite(id, tenantId);
@@ -88,6 +105,7 @@ export class ClientsController {
   }
 
   @Post(':id/balance')
+  @Roles('admin', 'tenant_owner')
   @ApiOperation({ summary: 'Adjust client balance (Add/Remove funds)' })
   adjustBalance(
     @Param('id') id: string,
@@ -105,6 +123,7 @@ export class ClientsController {
   }
 
   @Post(':id/photos')
+  @CheckPlanLimit('storage')
   @ApiOperation({ summary: 'Add progress photo' })
   addPhoto(
     @Param('id') id: string,
@@ -128,5 +147,80 @@ export class ClientsController {
     @TenantId() tenantId: string,
   ) {
     return this.clientsService.deleteProgressPhoto(id, photoId, tenantId);
+  }
+
+  @Get(':id/favorite-coach')
+  @ApiOperation({ summary: 'Get client favorite coach' })
+  getFavoriteCoach(@Param('id') id: string, @TenantId() tenantId: string) {
+    return this.clientsService.getFavoriteCoach(id, tenantId);
+  }
+
+  @Get(':id/most-used-room')
+  @ApiOperation({ summary: 'Get client most used room' })
+  getMostUsedRoom(@Param('id') id: string, @TenantId() tenantId: string) {
+    return this.clientsService.getMostUsedRoom(id, tenantId);
+  }
+
+  // ==================== Document Management ====================
+
+  @Post(':id/documents')
+  @UseInterceptors(FileInterceptor('file'))
+  @CheckPlanLimit('storage')
+  @ApiOperation({ summary: 'Upload client document' })
+  async uploadDocument(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('category') category: DocumentCategory,
+    @TenantId() tenantId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.uploadDocument(
+      id,
+      tenantId,
+      file,
+      user.id,
+      category || DocumentCategory.OTHER,
+    );
+  }
+
+  @Get(':id/documents')
+  @ApiOperation({ summary: 'Get client documents' })
+  getDocuments(
+    @Param('id') id: string,
+    @TenantId() tenantId: string,
+    @Query('category') category?: DocumentCategory,
+  ) {
+    return this.clientsService.getClientDocuments(id, tenantId, category);
+  }
+
+  @Delete(':id/documents/:documentId')
+  @Roles('admin', 'tenant_owner')
+  @ApiOperation({ summary: 'Delete client document' })
+  deleteDocument(
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @TenantId() tenantId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.deleteDocument(documentId, tenantId, user.id);
+  }
+
+  @Get(':id/documents/:documentId/download')
+  @ApiOperation({ summary: 'Download client document' })
+  async downloadDocument(
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @TenantId() tenantId: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const { stream, fileName, contentType } =
+      await this.clientsService.streamDocument(documentId, tenantId);
+
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+    });
+
+    return new StreamableFile(stream);
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { EMAIL_TEMPLATES } from './mail-templates';
 
 @Injectable()
 export class MailerService {
@@ -15,8 +16,8 @@ export class MailerService {
         'maildev',
       port: parseInt(
         this.configService.get('SMTP_PORT') ||
-          this.configService.get('MAIL_PORT') ||
-          '1025',
+        this.configService.get('MAIL_PORT') ||
+        '1025',
       ),
       ignoreTLS: true,
     });
@@ -37,6 +38,44 @@ export class MailerService {
       this.logger.error(`Failed to send email to ${to}`, error);
       return null;
     }
+  }
+
+  async sendTemplatedMail(to: string, templateId: string, context: any) {
+    const template = EMAIL_TEMPLATES[templateId];
+    if (!template) {
+      this.logger.warn(`Template ${templateId} not found`);
+      return null;
+    }
+
+    let { subject, html } = template;
+
+    // Helper to replace variables
+    const replaceVars = (str: string) => {
+      let result = str;
+      Object.keys(context).forEach((key) => {
+        const value = context[key] || '';
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        result = result.replace(regex, typeof value === 'object' ? JSON.stringify(value) : value.toString());
+      });
+      // Handle nested client/user if needed but standard flattening is usually better
+      // For now handle common nested ones
+      if (context.client) {
+        result = result.replace(/{{userName}}/g, context.client.firstName || 'Customer');
+      } else if (context.user) {
+        result = result.replace(/{{userName}}/g, context.user.firstName || 'Customer');
+      }
+
+      // Default fallbacks
+      result = result.replace(/{{studioName}}/g, 'EMS Studio');
+      result = result.replace(/{{portalUrl}}/g, 'http://localhost:5173');
+
+      return result;
+    };
+
+    subject = replaceVars(subject);
+    html = replaceVars(html);
+
+    return this.sendMail(to, subject, html, html);
   }
 
   async sendClientInvitation(email: string, inviteLink: string) {

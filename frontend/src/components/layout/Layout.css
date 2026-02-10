@@ -15,6 +15,11 @@
     flex-direction: column;
     flex-shrink: 0;
     transition: width 0.3s ease;
+    position: relative;
+}
+
+.sidebar.collapsed {
+    width: 64px;
 }
 
 .logo-area {
@@ -23,6 +28,13 @@
     align-items: center;
     padding: 0 var(--spacing-lg);
     border-bottom: 1px solid var(--border-color);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.sidebar.collapsed .logo-area {
+    padding: 0;
+    justify-content: center;
 }
 
 .logo-text {
@@ -34,13 +46,23 @@
     letter-spacing: -0.5px;
 }
 
+.sidebar.collapsed .logo-text {
+    display: none;
+}
+
 .nav {
     flex: 1;
     padding: var(--spacing-md);
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
+}
+
+.sidebar.collapsed .nav {
+    padding: var(--spacing-md) 0;
+    align-items: center;
 }
 
 .nav-item {
@@ -53,6 +75,14 @@
     font-weight: 500;
     transition: all 0.2s ease;
     cursor: pointer;
+    white-space: nowrap;
+}
+
+.sidebar.collapsed .nav-item {
+    padding: 10px;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
 }
 
 .nav-item:hover {
@@ -61,15 +91,26 @@
     transform: translateX(4px);
 }
 
+.sidebar.collapsed .nav-item:hover {
+    transform: none;
+    background-color: var(--color-primary);
+    color: white;
+}
+
 .nav-item.active {
     background-color: var(--color-primary);
     color: #fff;
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
+.sidebar.collapsed .nav-item.active {
+    box-shadow: none;
+}
+
 .nav-icon {
     width: 20px;
     height: 20px;
+    flex-shrink: 0;
 }
 
 .main-content {
@@ -127,6 +168,36 @@
     font-weight: 600;
     color: white;
     font-size: var(--font-size-sm);
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 100px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    color: var(--color-text-muted);
+    transition: all 0.2s;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    right: -12px;
+    transform: rotate(180deg);
+}
+
+.sidebar-toggle:hover {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
 }
 
 /* Scrollbar styling */

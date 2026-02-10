@@ -44,6 +44,13 @@ export class CreateSessionDto {
   @IsUUID()
   clientId?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  leadId?: string;
+
+
+
   @ApiPropertyOptional({ enum: ['individual', 'group'] })
   @IsOptional()
   @IsIn(['individual', 'group'])
@@ -171,7 +178,14 @@ export class UpdateSessionStatusDto {
   deductSession?: boolean;
 }
 
-export class UpdateSessionDto extends PartialType(CreateSessionDto) {}
+import { IsBoolean } from 'class-validator';
+
+export class UpdateSessionDto extends PartialType(CreateSessionDto) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  allowTimeChangeOverride?: boolean;
+}
 
 export class BulkCreateSessionDto {
   @ApiProperty({ type: [CreateSessionDto] })

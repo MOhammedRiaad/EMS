@@ -17,7 +17,7 @@ export interface CreateUserFormData {
     email: string;
     password: string;
     role: 'admin' | 'coach' | 'client';
-    gender: 'male' | 'female' | 'other' | 'pnts';
+    gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 }
 
 const initialFormData: CreateUserFormData = {
@@ -26,7 +26,7 @@ const initialFormData: CreateUserFormData = {
     email: '',
     password: '',
     role: 'client',
-    gender: 'pnts'
+    gender: 'prefer_not_to_say'
 };
 
 export function useUserManagementState() {

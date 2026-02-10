@@ -104,10 +104,12 @@ export class UpdateClientDto {
   @IsUUID()
   studioId?: string;
 
-  @ApiPropertyOptional({ enum: ['male', 'female', 'other', 'pnts'] })
+  @ApiPropertyOptional({
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+  })
   @IsOptional()
-  @IsEnum(['male', 'female', 'other', 'pnts'])
-  gender?: 'male' | 'female' | 'other' | 'pnts';
+  @IsEnum(['male', 'female', 'other', 'prefer_not_to_say'])
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -155,9 +157,9 @@ export class CreateClientWithUserDto {
   @IsString()
   lastName: string;
 
-  @ApiProperty({ enum: ['male', 'female', 'other', 'pnts'] })
-  @IsEnum(['male', 'female', 'other', 'pnts'])
-  gender: 'male' | 'female' | 'other' | 'pnts';
+  @ApiProperty({ enum: ['male', 'female', 'other', 'prefer_not_to_say'] })
+  @IsEnum(['male', 'female', 'other', 'prefer_not_to_say'])
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @ApiPropertyOptional()
   @IsOptional()

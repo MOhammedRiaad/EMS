@@ -17,7 +17,7 @@ import { DateRangeQueryDto, RevenueQueryDto, PeriodType } from './dto';
 @Roles('tenant_owner', 'admin')
 @Controller('analytics')
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(private readonly analyticsService: AnalyticsService) { }
 
   // ============= Revenue Endpoints =============
 
@@ -115,6 +115,15 @@ export class AnalyticsController {
     @Query() query: DateRangeQueryDto,
   ) {
     return this.analyticsService.getPeakHours(tenantId, query);
+  }
+
+  @Get('operations/heatmap')
+  @ApiOperation({ summary: 'Get session utilization heatmap (day/hour)' })
+  getUtilizationHeatmap(
+    @TenantId() tenantId: string,
+    @Query() query: DateRangeQueryDto,
+  ) {
+    return this.analyticsService.getUtilizationHeatmap(tenantId, query);
   }
 
   // ============= Session Endpoints =============

@@ -13,7 +13,7 @@ export interface ClientProfile {
     phone: string | null;
     avatarUrl: string | null;
     memberSince: string;
-    gender?: 'male' | 'female' | 'other' | 'pnts';
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     healthGoals?: Array<{ id: string; goal: string; completed: boolean; targetDate?: string }>;
     medicalHistory?: { allergies: string[]; injuries: string[]; conditions: string[]; custom?: any };
     healthNotes?: string;
@@ -88,7 +88,7 @@ export const clientPortalService = {
         lastName?: string;
         phone?: string;
         avatarUrl?: string;
-        gender?: 'male' | 'female' | 'other' | 'pnts';
+        gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
         healthGoals?: Array<{ id: string; goal: string; completed: boolean; targetDate?: string }>;
         medicalHistory?: { allergies: string[]; injuries: string[]; conditions: string[]; custom?: any };
         healthNotes?: string;

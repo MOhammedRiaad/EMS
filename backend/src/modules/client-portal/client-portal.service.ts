@@ -26,7 +26,7 @@ export class ClientPortalService {
     private readonly favoriteCoachRepo: Repository<FavoriteCoach>,
     @InjectRepository(ClientProgressPhoto)
     private readonly progressPhotoRepo: Repository<ClientProgressPhoto>,
-  ) {}
+  ) { }
 
   // ... existing code ...
 
@@ -58,6 +58,7 @@ export class ClientPortalService {
     // We prioritize the package that will be used for the next booking (oldest active)
     const activePackage = await this.packagesService.findBestPackageForSession(
       clientId,
+      null,
       tenantId,
     );
 
@@ -81,12 +82,12 @@ export class ClientPortalService {
       nextSession,
       activePackage: displayPackage
         ? {
-            ...displayPackage,
-            // Now simple: sessionsRemaining IS the available count.
-            // We don't deduct scheduled sessions again because they are already deducted on book!
-            availableSessions: displayPackage.sessionsRemaining,
-            scheduledSessions: displayPackage.sessionsUsed, // usage history
-          }
+          ...displayPackage,
+          // Now simple: sessionsRemaining IS the available count.
+          // We don't deduct scheduled sessions again because they are already deducted on book!
+          availableSessions: displayPackage.sessionsRemaining,
+          scheduledSessions: displayPackage.sessionsUsed, // usage history
+        }
         : null,
     };
   }

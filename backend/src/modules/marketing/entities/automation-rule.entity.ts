@@ -6,12 +6,15 @@ export enum AutomationTriggerType {
   INACTIVE_CLIENT = 'inactive_client', // e.g., no session in X days
   BIRTHDAY = 'birthday',
   SESSION_COMPLETED = 'session_completed',
+  SESSION_REMINDER = 'session_reminder',
   LEAD_STATUS_CHANGED = 'lead_status_changed',
 }
 
 export enum AutomationActionType {
   SEND_EMAIL = 'send_email',
   SEND_SMS = 'send_sms',
+  SEND_WHATSAPP = 'send_whatsapp',
+  SEND_NOTIFICATION = 'send_notification',
   CREATE_TASK = 'create_task',
   UPDATE_STATUS = 'update_status',
 }

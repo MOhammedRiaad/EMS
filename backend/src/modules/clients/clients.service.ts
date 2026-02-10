@@ -15,9 +15,13 @@ import {
   TransactionCategory,
 } from '../packages/entities/transaction.entity';
 import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
+import { ClientDocument, DocumentCategory } from './entities/client-document.entity';
 import { CreateProgressPhotoDto } from './dto/create-progress-photo.dto';
 import { AuditService } from '../audit/audit.service';
 import { User } from '../auth/entities/user.entity';
+import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
+import { Session } from '../sessions/entities/session.entity';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class ClientsService {
@@ -30,10 +34,17 @@ export class ClientsService {
     private readonly photoRepository: Repository<ClientProgressPhoto>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(FavoriteCoach)
+    private readonly favoriteCoachRepository: Repository<FavoriteCoach>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
+    @InjectRepository(ClientDocument)
+    private readonly documentRepository: Repository<ClientDocument>,
     private readonly authService: AuthService,
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
-  ) {}
+    private readonly storageService: StorageService,
+  ) { }
 
   async findAll(tenantId: string, search?: string): Promise<Client[]> {
     const query = this.clientRepository
@@ -66,10 +77,21 @@ export class ClientsService {
     tenantId: string,
     relations: string[] = [],
   ): Promise<Client> {
-    const client = await this.clientRepository.findOne({
-      where: { id, tenantId },
-      relations,
-    });
+    // Use query builder to ensure relations are properly loaded
+    const queryBuilder = this.clientRepository
+      .createQueryBuilder('client')
+      .where('client.id = :id', { id })
+      .andWhere('client.tenantId = :tenantId', { tenantId });
+
+    // Add relations
+    if (relations.includes('user')) {
+      queryBuilder.leftJoinAndSelect('client.user', 'user');
+    }
+    if (relations.includes('studio')) {
+      queryBuilder.leftJoinAndSelect('client.studio', 'studio');
+    }
+
+    const client = await queryBuilder.getOne();
     if (!client) {
       throw new NotFoundException(`Client ${id} not found`);
     }
@@ -203,6 +225,10 @@ export class ClientsService {
     // Update user gender if provided and client has a linked user
     if (gender && client.userId) {
       await this.userRepository.update(client.userId, { gender });
+      // Update in-memory user object so the response reflects the change
+      if (client.user) {
+        client.user.gender = gender;
+      }
     }
 
     if (Object.keys(changes).length > 0 || gender) {
@@ -346,5 +372,251 @@ export class ClientsService {
     }
 
     await this.photoRepository.remove(photo);
+  }
+
+  async getFavoriteCoach(
+    clientId: string,
+    tenantId: string,
+  ): Promise<any | null> {
+    // Ensure client exists
+    await this.findOne(clientId, tenantId);
+
+    // Get the most recently favorited coach
+    const favorite = await this.favoriteCoachRepository.findOne({
+      where: { clientId, tenantId },
+      relations: ['coach', 'coach.user'],
+      order: { favoritedAt: 'DESC' },
+    });
+
+    if (favorite && favorite.coach) {
+      return {
+        id: favorite.coach.id,
+        firstName: favorite.coach.user?.firstName || '',
+        lastName: favorite.coach.user?.lastName || '',
+        name: favorite.coach.user
+          ? `${favorite.coach.user.firstName} ${favorite.coach.user.lastName}`
+          : 'Unknown Coach',
+        avatarUrl: favorite.coach.user?.avatarUrl || null,
+        favoritedAt: favorite.favoritedAt,
+        isFavorite: true,
+      };
+    }
+
+    // If no favorite coach, get the most frequently assigned coach from sessions
+    const mostAssignedCoach = await this.sessionRepository
+      .createQueryBuilder('session')
+      .select('session.coachId', 'coachId')
+      .addSelect('coach.id', 'id')
+      .addSelect('user.firstName', 'firstName')
+      .addSelect('user.lastName', 'lastName')
+      .addSelect('user.avatarUrl', 'avatarUrl')
+      .addSelect('COUNT(*)', 'sessionCount')
+      .leftJoin('session.coach', 'coach')
+      .leftJoin('coach.user', 'user')
+      .where('session.clientId = :clientId', { clientId })
+      .andWhere('session.tenantId = :tenantId', { tenantId })
+      .andWhere('session.coachId IS NOT NULL')
+      .groupBy('session.coachId')
+      .addGroupBy('coach.id')
+      .addGroupBy('user.firstName')
+      .addGroupBy('user.lastName')
+      .addGroupBy('user.avatarUrl')
+      .orderBy('COUNT(*)', 'DESC')
+      .limit(1)
+      .getRawOne();
+
+    if (!mostAssignedCoach || !mostAssignedCoach.coachId) {
+      return null;
+    }
+
+    const firstName = mostAssignedCoach.firstName || '';
+    const lastName = mostAssignedCoach.lastName || '';
+    const name =
+      firstName && lastName ? `${firstName} ${lastName}` : 'Unknown Coach';
+
+    return {
+      id: mostAssignedCoach.coachId,
+      firstName,
+      lastName,
+      name,
+      avatarUrl: mostAssignedCoach.avatarUrl || null,
+      sessionCount: parseInt(mostAssignedCoach.sessionCount, 10),
+      isFavorite: false,
+    };
+  }
+
+  async getMostUsedRoom(
+    clientId: string,
+    tenantId: string,
+  ): Promise<{ roomId: string; roomName: string; usageCount: number } | null> {
+    // Ensure client exists
+    await this.findOne(clientId, tenantId);
+
+    // Query sessions for this client and count room usage
+    const roomUsage = await this.sessionRepository
+      .createQueryBuilder('session')
+      .select('session.roomId', 'roomId')
+      .addSelect('room.name', 'roomName')
+      .addSelect('COUNT(*)', 'usageCount')
+      .leftJoin('session.room', 'room')
+      .where('session.clientId = :clientId', { clientId })
+      .andWhere('session.tenantId = :tenantId', { tenantId })
+      .andWhere('session.roomId IS NOT NULL')
+      .groupBy('session.roomId')
+      .addGroupBy('room.name')
+      .orderBy('COUNT(*)', 'DESC')
+      .limit(1)
+      .getRawOne();
+
+    if (!roomUsage || !roomUsage.roomId) {
+      return null;
+    }
+
+    return {
+      roomId: roomUsage.roomId,
+      roomName: roomUsage.roomName || 'Unknown Room',
+      usageCount: parseInt(roomUsage.usageCount, 10),
+    };
+  }
+
+  // ==================== Document Management ====================
+
+  async uploadDocument(
+    clientId: string,
+    tenantId: string,
+    file: Express.Multer.File,
+    uploadedBy: string,
+    category: DocumentCategory = DocumentCategory.OTHER,
+  ): Promise<ClientDocument> {
+    // Verify client exists
+    await this.findOne(clientId, tenantId);
+
+    // Upload to MinIO
+    const storagePath = `${tenantId}/clients/${clientId}`;
+    const fileUrl = await this.storageService.uploadFile(file, storagePath);
+
+    // Create document record
+    const document = this.documentRepository.create({
+      clientId,
+      tenantId,
+      fileName: file.originalname,
+      fileType: file.mimetype,
+      fileSize: file.size,
+      fileUrl,
+      uploadedBy,
+      category,
+    });
+
+    const savedDocument = await this.documentRepository.save(document);
+
+    // Audit log
+    await this.auditService.log(
+      tenantId,
+      'client_document_uploaded',
+      'client_document',
+      savedDocument.id,
+      uploadedBy,
+      {
+        clientId,
+        fileName: file.originalname,
+        fileSize: file.size,
+        category,
+      },
+    );
+
+    return savedDocument;
+  }
+
+  async getClientDocuments(
+    clientId: string,
+    tenantId: string,
+    category?: DocumentCategory,
+  ): Promise<ClientDocument[]> {
+    const query = this.documentRepository
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.uploader', 'uploader')
+      .where('document.clientId = :clientId', { clientId })
+      .andWhere('document.tenantId = :tenantId', { tenantId });
+
+    if (category) {
+      query.andWhere('document.category = :category', { category });
+    }
+
+    query.orderBy('document.createdAt', 'DESC');
+
+    return query.getMany();
+  }
+
+  async deleteDocument(
+    documentId: string,
+    tenantId: string,
+    userId: string,
+  ): Promise<void> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, tenantId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    // Delete from MinIO (optional - you might want to keep for audit)
+    // await this.storageService.deleteFile(document.fileUrl);
+
+    // Delete from database
+    await this.documentRepository.remove(document);
+
+    // Audit log
+    await this.auditService.log(
+      tenantId,
+      'client_document_deleted',
+      'client_document',
+      documentId,
+      userId,
+      {
+        clientId: document.clientId,
+        fileName: document.fileName,
+      },
+    );
+  }
+
+  async getDocumentDownloadUrl(
+    documentId: string,
+    tenantId: string,
+  ): Promise<{ url: string; fileName: string }> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, tenantId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    // For now, return the storage key - in production, generate a signed URL
+    return {
+      url: `/api/clients/${document.clientId}/documents/${documentId}/download`,
+      fileName: document.fileName,
+    };
+  }
+
+  async streamDocument(
+    documentId: string,
+    tenantId: string,
+  ): Promise<{ stream: any; fileName: string; contentType: string }> {
+    const document = await this.documentRepository.findOne({
+      where: { id: documentId, tenantId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} not found`);
+    }
+
+    const stream = await this.storageService.getFile(document.fileUrl);
+
+    return {
+      stream,
+      fileName: document.fileName,
+      contentType: document.fileType,
+    };
   }
 }

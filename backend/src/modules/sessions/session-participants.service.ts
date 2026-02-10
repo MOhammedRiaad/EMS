@@ -20,7 +20,7 @@ export class SessionParticipantsService {
     @InjectRepository(Session)
     private sessionRepo: Repository<Session>,
     private packagesService: PackagesService,
-  ) {}
+  ) { }
 
   async addParticipant(sessionId: string, clientId: string, tenantId: string) {
     const session = await this.sessionRepo.findOne({
@@ -48,6 +48,7 @@ export class SessionParticipantsService {
     // Consume-on-book logic for group participant
     const bestPackage = await this.packagesService.findBestPackageForSession(
       clientId,
+      null,
       tenantId,
     );
     if (!bestPackage)

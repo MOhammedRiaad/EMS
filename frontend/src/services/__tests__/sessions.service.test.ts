@@ -18,7 +18,9 @@ describe('SessionsService', () => {
             ];
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(mockSessions),
+                text: () => Promise.resolve(JSON.stringify(mockSessions)),
             });
 
             const result = await sessionsService.getAll();
@@ -27,7 +29,9 @@ describe('SessionsService', () => {
             expect(mockFetch).toHaveBeenCalledWith(
                 expect.stringContaining('/sessions'),
                 expect.objectContaining({
-                    headers: { Authorization: 'Bearer test-token' },
+                    headers: expect.objectContaining({
+                        Authorization: 'Bearer test-token',
+                    }),
                 })
             );
         });
@@ -35,7 +39,9 @@ describe('SessionsService', () => {
         it('should include query parameters', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve([]),
+                text: () => Promise.resolve('[]'),
             });
 
             await sessionsService.getAll({
@@ -53,10 +59,13 @@ describe('SessionsService', () => {
         it('should throw error on failed request', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                status: 500,
+                json: () => Promise.resolve({}),
+                text: () => Promise.resolve(''),
             });
 
             await expect(sessionsService.getAll()).rejects.toThrow(
-                'Failed to fetch sessions'
+                'API request failed'
             );
         });
     });
@@ -71,7 +80,9 @@ describe('SessionsService', () => {
             };
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 201,
                 json: () => Promise.resolve(newSession),
+                text: () => Promise.resolve(JSON.stringify(newSession)),
             });
 
             const result = await sessionsService.create({
@@ -99,13 +110,15 @@ describe('SessionsService', () => {
         });
 
         it('should throw error with conflicts on conflict', async () => {
+            const mockConflict = {
+                message: 'Scheduling conflict',
+                conflicts: [{ resource: 'room', id: 'room-1' }],
+            };
             mockFetch.mockResolvedValueOnce({
                 ok: false,
-                json: () =>
-                    Promise.resolve({
-                        message: 'Scheduling conflict',
-                        conflicts: [{ resource: 'room', id: 'room-1' }],
-                    }),
+                status: 409,
+                json: () => Promise.resolve(mockConflict),
+                text: () => Promise.resolve(JSON.stringify(mockConflict)),
             });
 
             try {
@@ -136,7 +149,9 @@ describe('SessionsService', () => {
             };
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(updatedSession),
+                text: () => Promise.resolve(JSON.stringify(updatedSession)),
             });
 
             const result = await sessionsService.update('session-1', {
@@ -157,6 +172,9 @@ describe('SessionsService', () => {
         it('should delete session', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 204,
+                json: () => Promise.resolve({}),
+                text: () => Promise.resolve(''),
             });
 
             await sessionsService.delete('session-1');
@@ -172,10 +190,13 @@ describe('SessionsService', () => {
         it('should throw error on failed delete', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
+                status: 500,
+                json: () => Promise.resolve({}),
+                text: () => Promise.resolve(''),
             });
 
             await expect(sessionsService.delete('session-1')).rejects.toThrow(
-                'Failed to delete session'
+                'API request failed'
             );
         });
     });
@@ -185,7 +206,9 @@ describe('SessionsService', () => {
             const updatedSession = { id: 'session-1', status: 'completed' };
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(updatedSession),
+                text: () => Promise.resolve(JSON.stringify(updatedSession)),
             });
 
             const result = await sessionsService.updateStatus('session-1', 'completed');
@@ -203,7 +226,9 @@ describe('SessionsService', () => {
         it('should include cancel reason when provided', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve({ status: 'cancelled' }),
+                text: () => Promise.resolve(JSON.stringify({ status: 'cancelled' })),
             });
 
             await sessionsService.updateStatus('session-1', 'cancelled', 'Client request', true);

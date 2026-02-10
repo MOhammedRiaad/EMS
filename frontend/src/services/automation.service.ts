@@ -5,6 +5,7 @@ export const AutomationTriggerType = {
     INACTIVE_CLIENT: 'inactive_client',
     BIRTHDAY: 'birthday',
     SESSION_COMPLETED: 'session_completed',
+    SESSION_REMINDER: 'session_reminder',
     LEAD_STATUS_CHANGED: 'lead_status_changed'
 } as const;
 
@@ -13,6 +14,8 @@ export type AutomationTriggerType = typeof AutomationTriggerType[keyof typeof Au
 export const AutomationActionType = {
     SEND_EMAIL: 'send_email',
     SEND_SMS: 'send_sms',
+    SEND_WHATSAPP: 'send_whatsapp',
+    SEND_NOTIFICATION: 'send_notification',
     CREATE_TASK: 'create_task',
     UPDATE_STATUS: 'update_status'
 } as const;
@@ -64,7 +67,7 @@ export const automationService = {
     },
 
     async getExecutions() {
-        const res = await api.get<AutomationExecution[]>('/marketing/automations/executions');
+        const res = await api.get<{ data: AutomationExecution[]; total: number }>('/marketing/automations/executions');
         return res.data;
     },
 

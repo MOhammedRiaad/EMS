@@ -1,9 +1,29 @@
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Lock } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useClientBookingState } from './useClientBookingState';
 import { DateSelector, SlotsGrid, BookingSummary, CoachList, RecurrenceSelector, ConflictReviewModal } from './ClientBookingComponents';
 
 const ClientBooking = () => {
+    const { isEnabled } = useAuth();
     const state = useClientBookingState();
+
+    if (!isEnabled('client.booking')) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-6">
+                <div className="p-4 bg-gray-100 dark:bg-slate-800 rounded-full">
+                    <Lock size={48} className="text-gray-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Feature Not Available</h2>
+                <p className="text-gray-500 max-w-md">Self-service booking is currently disabled for this studio.</p>
+                <button
+                    onClick={() => state.navigate(-1)}
+                    className="mt-4 px-6 py-2 bg-gray-200 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-slate-700 transition-colors"
+                >
+                    Go Back
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 pb-24 max-w-5xl mx-auto bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors">

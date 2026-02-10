@@ -8,9 +8,15 @@ import {
 } from 'class-validator';
 
 export class AssignPackageDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsUUID()
-  clientId: string;
+  @IsOptional()
+  clientId?: string;
+
+  @ApiPropertyOptional()
+  @IsUUID()
+  @IsOptional()
+  leadId?: string;
 
   @ApiProperty()
   @IsUUID()

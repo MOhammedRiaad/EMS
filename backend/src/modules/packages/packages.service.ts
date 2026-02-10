@@ -35,7 +35,7 @@ export class PackagesService {
     @InjectRepository(Transaction)
     private transactionRepo: Repository<Transaction>,
     private readonly auditService: AuditService,
-  ) {}
+  ) { }
 
   // ===== PACKAGES =====
   async findAllPackages(tenantId: string, includeInactive = false) {
@@ -95,6 +95,10 @@ export class PackagesService {
 
   // ===== CLIENT PACKAGES =====
   async assignPackage(dto: AssignPackageDto, tenantId: string, userId: string) {
+    if (!dto.clientId && !dto.leadId) {
+      throw new BadRequestException('Either clientId or leadId is required');
+    }
+
     const pkg = await this.packageRepo.findOne({
       where: { id: dto.packageId, tenantId, isActive: true },
     });
@@ -109,6 +113,7 @@ export class PackagesService {
     const clientPackage = this.clientPackageRepo.create({
       tenantId,
       clientId: dto.clientId,
+      leadId: dto.leadId,
       packageId: dto.packageId,
       purchaseDate,
       expiryDate,
@@ -122,19 +127,28 @@ export class PackagesService {
 
     const saved = await this.clientPackageRepo.save(clientPackage);
 
-    await this.createTransaction(
-      {
-        studioId: undefined,
-        type: TransactionType.INCOME,
-        category: TransactionCategory.PACKAGE_SALE,
-        amount: Number(pkg.price),
-        description: `Package "${pkg.name}" sold to client`,
-        referenceType: 'client_package',
-        referenceId: saved.id,
-      },
-      tenantId,
-      userId,
-    );
+    // Only create transaction if clientId is present (Lead packages might not be paid yet or need different logic)
+    // Or we assume leads pay too?
+    // If Lead pays, we might need a dummy transaction or just log it. 
+    // For now, let's create transaction only if clientId is present as Transaction entity likely requires clientId.
+    // Let's check Transaction entity.
+
+    if (dto.clientId) {
+      await this.createTransaction(
+        {
+          studioId: undefined,
+          type: TransactionType.INCOME,
+          category: TransactionCategory.PACKAGE_SALE,
+          amount: Number(pkg.price),
+          description: `Package "${pkg.name}" sold to client`,
+          referenceType: 'client_package',
+          referenceId: saved.id,
+          clientId: dto.clientId,
+        },
+        tenantId,
+        userId,
+      );
+    }
 
     await this.auditService.log(
       tenantId,
@@ -142,7 +156,7 @@ export class PackagesService {
       'ClientPackage',
       saved.id,
       userId,
-      { clientId: dto.clientId, packageId: dto.packageId, price: pkg.price },
+      { clientId: dto.clientId, leadId: dto.leadId, packageId: dto.packageId, price: pkg.price },
     );
 
     return saved;
@@ -151,6 +165,14 @@ export class PackagesService {
   async getClientPackages(clientId: string, tenantId: string) {
     return this.clientPackageRepo.find({
       where: { clientId, tenantId },
+      relations: ['package'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getLeadPackages(leadId: string, tenantId: string) {
+    return this.clientPackageRepo.find({
+      where: { leadId, tenantId },
       relations: ['package'],
       order: { createdAt: 'DESC' },
     });
@@ -170,19 +192,28 @@ export class PackagesService {
   }
 
   async findBestPackageForSession(
-    clientId: string,
+    clientId: string | null,
+    leadId: string | null,
     tenantId: string,
   ): Promise<ClientPackage | null> {
+    if (!clientId && !leadId) return null;
+
     // Find all active packages with remaining sessions
-    const packages = await this.clientPackageRepo
+    const query = this.clientPackageRepo
       .createQueryBuilder('cp')
-      .where('cp.clientId = :clientId', { clientId })
-      .andWhere('cp.tenantId = :tenantId', { tenantId })
+      .where('cp.tenantId = :tenantId', { tenantId })
       .andWhere('cp.status = :status', { status: ClientPackageStatus.ACTIVE })
       .andWhere('cp.sessionsRemaining > 0')
       .andWhere('cp.expiryDate > :now', { now: new Date() })
-      .orderBy('cp.expiryDate', 'ASC')
-      .getMany();
+      .orderBy('cp.expiryDate', 'ASC');
+
+    if (clientId) {
+      query.andWhere('cp.clientId = :clientId', { clientId });
+    } else if (leadId) {
+      query.andWhere('cp.leadId = :leadId', { leadId });
+    }
+
+    const packages = await query.getMany();
 
     return packages.length > 0 ? packages[0] : null;
   }
@@ -333,7 +364,7 @@ export class PackagesService {
     const currentBalance = lastTx ? Number(lastTx.runningBalance) : 0;
     const newBalance =
       dto.type === TransactionType.EXPENSE ||
-      dto.type === TransactionType.REFUND
+        dto.type === TransactionType.REFUND
         ? currentBalance - Math.abs(dto.amount)
         : currentBalance + Math.abs(dto.amount);
 

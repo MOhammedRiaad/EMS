@@ -6,9 +6,10 @@ import './MenuSearch.css';
 interface MenuSearchProps {
     allItems: MenuItem[];
     onNavigate: (path: string) => void;
+    isCollapsed?: boolean;
 }
 
-export const MenuSearch: React.FC<MenuSearchProps> = ({ allItems, onNavigate }) => {
+export const MenuSearch: React.FC<MenuSearchProps> = ({ allItems, onNavigate, isCollapsed }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
@@ -67,6 +68,20 @@ export const MenuSearch: React.FC<MenuSearchProps> = ({ allItems, onNavigate }) 
     };
 
     if (!isOpen) {
+        if (isCollapsed) {
+            return (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                    <button
+                        className="menu-search-trigger collapsed"
+                        onClick={() => setIsOpen(true)}
+                        title="Search (Ctrl+K)"
+                    >
+                        <Search size={20} />
+                    </button>
+                </div>
+            );
+        }
+
         return (
             <button className="menu-search-trigger" onClick={() => setIsOpen(true)}>
                 <Search size={16} />

@@ -38,6 +38,35 @@ export class Tenant extends BaseEntityWithUpdate {
   @Column({ type: 'jsonb', default: {} })
   settings: Record<string, any>;
 
+  // Owner Dashboard Fields
+  @Column({
+    type: 'enum',
+    enum: ['trial', 'active', 'suspended', 'blocked'],
+    default: 'active',
+  })
+  status: 'trial' | 'active' | 'suspended' | 'blocked';
+
+  @Column({ name: 'suspended_at', type: 'timestamptz', nullable: true })
+  suspendedAt: Date | null;
+
+  @Column({ name: 'suspended_reason', type: 'text', nullable: true })
+  suspendedReason: string | null;
+
+  @Column({ name: 'last_activity_at', type: 'timestamptz', nullable: true })
+  lastActivityAt: Date | null;
+
+  @Column({ name: 'usage_stats', type: 'jsonb', nullable: true })
+  usageStats: Record<string, any> | null; // Cached usage metrics, updated by cron job
+
+  @Column({ name: 'owner_notes', type: 'text', nullable: true })
+  ownerNotes: string | null;
+
+  @Column({ name: 'is_blocked', default: false })
+  isBlocked: boolean; // Automatically set when limits exceeded
+
+  @Column({ name: 'block_reason', type: 'text', nullable: true })
+  blockReason: string | null; // e.g., "Session limit exceeded: 305/300"
+
   @OneToMany(() => Studio, (studio) => studio.tenant)
   studios: Studio[];
 

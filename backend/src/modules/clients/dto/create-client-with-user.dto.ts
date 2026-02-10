@@ -32,11 +32,11 @@ export class CreateClientWithUserDto {
 
   @ApiProperty({
     description: 'Gender',
-    enum: ['male', 'female', 'other', 'pnts'],
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
   })
-  @IsEnum(['male', 'female', 'other', 'pnts'])
+  @IsEnum(['male', 'female', 'other', 'prefer_not_to_say'])
   @IsNotEmpty()
-  gender: 'male' | 'female' | 'other' | 'pnts';
+  gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
   @ApiPropertyOptional({ description: 'Phone number' })
   @IsString()
