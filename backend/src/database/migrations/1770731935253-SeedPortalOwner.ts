@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class SeedPortalOwner1770731935253 implements MigrationInterface {
     name = 'SeedPortalOwner1770731935253'
+    transaction = false;
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // 0. Update the Enum in DB if needed (Postgres specific)

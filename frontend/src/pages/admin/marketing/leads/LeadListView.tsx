@@ -4,6 +4,7 @@ import { Search, Plus } from 'lucide-react';
 import LeadForm from './LeadForm';
 import LeadActionMenu from './LeadActionMenu';
 import LeadConversionModal from './LeadConversionModal';
+import { LeadBookTrialModal } from './LeadBookTrialModal';
 import LeadDetailsModal from './LeadDetailsModal';
 
 const LeadListView: React.FC = () => {
@@ -13,6 +14,7 @@ const LeadListView: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+    const [isBookTrialModalOpen, setIsBookTrialModalOpen] = useState(false);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState<Lead | undefined>(undefined);
     const [leadToEdit, setLeadToEdit] = useState<Lead | undefined>(undefined);
@@ -73,6 +75,12 @@ const LeadListView: React.FC = () => {
     const handleConvert = (lead: Lead) => {
         setSelectedLead(lead);
         setIsConvertModalOpen(true);
+        setIsDetailsModalOpen(false);
+    };
+
+    const handleBookTrial = (lead: Lead) => {
+        setSelectedLead(lead);
+        setIsBookTrialModalOpen(true);
         setIsDetailsModalOpen(false);
     };
 
@@ -181,6 +189,7 @@ const LeadListView: React.FC = () => {
                                                 onEdit={handleEdit}
                                                 onDelete={handleDelete}
                                                 onConvert={handleConvert}
+                                                onBookTrial={handleBookTrial}
                                             />
                                         </div>
                                     </td>
@@ -215,6 +224,15 @@ const LeadListView: React.FC = () => {
                 onSuccess={() => {
                     loadLeads();
                     setIsConvertModalOpen(false);
+                }}
+            />
+
+            <LeadBookTrialModal
+                open={isBookTrialModalOpen}
+                onClose={() => setIsBookTrialModalOpen(false)}
+                leadId={selectedLead?.id || ''}
+                onSuccess={() => {
+                    loadLeads();
                 }}
             />
 
