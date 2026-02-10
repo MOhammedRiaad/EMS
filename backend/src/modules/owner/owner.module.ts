@@ -60,6 +60,7 @@ import { OwnerAnalyticsController } from './controllers/analytics.controller';
 import { AlertsController } from './controllers/alerts.controller';
 import { RoleController } from './controllers/role.controller';
 import { OwnerUsersController } from './controllers/owner-users.controller';
+import { OwnerSeedController } from './controllers/owner-seed.controller';
 
 import { MarketingModule } from '../marketing/marketing.module';
 
@@ -107,6 +108,7 @@ import { MarketingModule } from '../marketing/marketing.module';
     AlertsController,
     RoleController,
     OwnerUsersController,
+    OwnerSeedController,
   ],
   providers: [
     // Services
@@ -145,4 +147,4 @@ import { MarketingModule } from '../marketing/marketing.module';
     PlanLimitGuard,
   ],
 })
-export class OwnerModule {}
+export class OwnerModule { }
