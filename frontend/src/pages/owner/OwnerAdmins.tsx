@@ -53,7 +53,7 @@ const OwnerAdmins: React.FC = () => {
             const mappedUsers: AdminUser[] = response.items.map((u: any) => {
                 const userRoleKey = u.role;
                 // Find role object matching the key
-                const matchedRole = rolesData.find(r => r.key === userRoleKey);
+                const matchedRole = rolesData.find((r: { key: any; }) => r.key === userRoleKey);
 
                 return {
                     ...u,
