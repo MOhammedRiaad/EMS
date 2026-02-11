@@ -9,6 +9,7 @@ import {
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { Package } from './package.entity';
+import { Lead } from '../../leads/entities/lead.entity';
 
 export enum ClientPackageStatus {
   ACTIVE = 'active',
@@ -38,9 +39,9 @@ export class ClientPackage {
   @Column({ name: 'lead_id', nullable: true })
   leadId: string;
 
-  @ManyToOne('Lead', { onDelete: 'SET NULL', nullable: true })
+  @ManyToOne(() => Lead, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'lead_id' })
-  lead: any;
+  lead: Lead;
 
   @Column({ name: 'package_id' })
   packageId: string;

@@ -108,14 +108,24 @@ The dashboard provides a quick overview of your business:
 
 ## Managing Clients
 
-### Adding a Client
-
-1. Go to **Clients** → **Add Client**
-2. Enter client information:
-   - Name, Email, Phone
-   - Date of Birth
    - Health Notes
 3. Click **Save & Invite**
+
+### Bulk Importing Clients
+
+1. Go to **Clients** → **Import CSV**
+2. Upload your CSV file (must include `first_name`, `last_name`, `email` or `phone`)
+3. Choose a **Default Studio** for all imported clients
+4. Choose an **Email Preference**:
+   - **Use CSV Emails**: Use the emails provided in the file
+   - **Generate Dummy Emails**: Create `@dummy.ems` emails for clients without one (useful for offline-only clients)
+5. Click **Start Import**
+
+### Client List Management
+
+- **Pagination**: Navigate through large client lists using the page buttons at the bottom.
+- **Bulk Delete**: Select multiple clients using checkboxes and click the **Delete Selected** button (trash icon).
+- **Search**: Real-time filtering by name or email.
 
 ### Viewing Client History
 
@@ -232,10 +242,17 @@ Access your business metrics:
 
 Configure your studio's global policies and appearance by clicking on **Settings** in the sidebar.
 
-### Branding & Appearance
-Customize the look of your portal to match your business identity:
 - **Primary Color**: Sets the accent color for buttons, links, and active elements.
 - **Logo URL**: Enter a URL for your studio's logo (displayed in headers and emails).
+
+### Email Settings (SMTP)
+Configure how the system sends emails for your studio:
+- **Provider**: Choose between **Gmail** or **Manual SMTP**.
+- **Host / Port**: SMTP server details.
+- **User / Password**: Authentication credentials.
+- **From Name / Email**: The identity recipients will see.
+
+> **Tip**: You can send a **Test Email** to verify your configuration before saving.
 
 ### Coach Permissions
 Manage what your coaches are allowed to do:
@@ -247,6 +264,10 @@ Manage what your coaches are allowed to do:
 - **Cancellation Window**: Set the minimum hours required for cancellation.
    - If a client cancels within this window, the session credit is forfeited.
    - If cancelled before, the credit is returned.
+
+### Messaging Preferences
+- **WhatsApp Integration**: Enable automated WhatsApp messages for session reminders and lead welcome flows (requires Business API approval).
+- **Email System**: Configuration for studio-branded automated emails.
 
 ---
 

@@ -68,7 +68,7 @@ describe('AuditModule (e2e)', () => {
       .set('Authorization', `Bearer ${jwtToken}`)
       .expect(200);
 
-    const client = clientsRes.body[0];
+    const client = clientsRes.body.data[0];
 
     // Update client to trigger audit log
     await request(app.getHttpServer())

@@ -34,7 +34,8 @@ Manage individual studio tenants, their status, and their assigned roles.
 - **Anonymize (GDPR)**: Clear all PII for a tenant while keeping historical counts for analytics.
 
 ### Feature Rollouts
-Enable or disable specific features (e.g., "Marketing Automation") for individual tenants, bypassing their plan defaults for beta testing or custom deals.
+Enable or disable specific features for individual tenants, bypassing their plan defaults for beta testing or custom deals.
+- **Example**: enabling the `email-config` flag allows a tenant to use custom SMTP settings instead of the system default.
 
 ---
 

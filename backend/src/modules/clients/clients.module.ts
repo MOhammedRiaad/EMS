@@ -17,6 +17,7 @@ import { OwnerModule } from '../owner/owner.module';
 import { StorageModule } from '../storage/storage.module';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 import { Session } from '../sessions/entities/session.entity';
+import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
   imports: [
@@ -55,10 +56,11 @@ import { Session } from '../sessions/entities/session.entity';
     StorageModule,
     forwardRef(() => WaiversModule),
     AuditModule,
+    TenantsModule,
     forwardRef(() => OwnerModule),
   ],
   controllers: [ClientsController],
   providers: [ClientsService],
   exports: [ClientsService],
 })
-export class ClientsModule {}
+export class ClientsModule { }

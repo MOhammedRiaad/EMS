@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, IsNull } from 'typeorm';
 import { Session } from '../sessions/entities/session.entity';
 import { MailerService } from '../mailer/mailer.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class ReminderService {
@@ -13,7 +14,8 @@ export class ReminderService {
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
     private readonly mailerService: MailerService,
-  ) {}
+    private readonly tenantsService: TenantsService,
+  ) { }
 
   /**
    * Runs every hour to check for sessions 24h ahead and send reminders
@@ -40,6 +42,8 @@ export class ReminderService {
     this.logger.log(
       `Found ${upcomingSessions.length} sessions needing reminders`,
     );
+
+    const tenantSettingsCache = new Map<string, any>();
 
     for (const session of upcomingSessions) {
       if (!session.client?.email) {
@@ -93,11 +97,19 @@ export class ReminderService {
                     </div>
                 `;
 
+        // Fetch tenant settings (cached)
+        if (!tenantSettingsCache.has(session.tenantId)) {
+          const tenant = await this.tenantsService.findOne(session.tenantId);
+          tenantSettingsCache.set(session.tenantId, tenant.settings?.emailConfig);
+        }
+        const emailConfig = tenantSettingsCache.get(session.tenantId);
+
         await this.mailerService.sendMail(
           session.client.email,
           subject,
           text,
           html,
+          emailConfig,
         );
 
         // Mark reminder as sent
@@ -138,6 +150,8 @@ export class ReminderService {
       relations: ['client', 'coach', 'coach.user', 'room', 'studio'],
     });
 
+    const tenantSettingsCache = new Map<string, any>();
+
     for (const session of upcomingSessions) {
       if (!session.client?.email) continue;
 
@@ -147,7 +161,14 @@ export class ReminderService {
         const subject = `Reminder: Your EMS Session Tomorrow`;
         const text = `Hi ${session.client.firstName}, reminder for your session on ${sessionDate.toLocaleString()}`;
 
-        await this.mailerService.sendMail(session.client.email, subject, text);
+        // Fetch tenant settings (cached)
+        if (!tenantSettingsCache.has(session.tenantId)) {
+          const tenant = await this.tenantsService.findOne(session.tenantId);
+          tenantSettingsCache.set(session.tenantId, tenant.settings?.emailConfig);
+        }
+        const emailConfig = tenantSettingsCache.get(session.tenantId);
+
+        await this.mailerService.sendMail(session.client.email, subject, text, undefined, emailConfig);
         session.reminderSentAt = new Date();
         await this.sessionRepository.save(session);
         sent++;

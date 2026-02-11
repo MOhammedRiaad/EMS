@@ -97,7 +97,7 @@ describe('AuthService', () => {
 
   const mockTenantsService = {
     create: jest.fn(),
-    findOne: jest.fn(),
+    findOne: jest.fn().mockResolvedValue({ id: 'tenant-123', settings: {} }),
   };
 
   const mockMailerService = {
@@ -788,6 +788,7 @@ describe('AuthService', () => {
   describe('Password Reset', () => {
     it('should generate reset token for valid email', async () => {
       mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockTenantsService.findOne.mockResolvedValue({ id: 'tenant-123', settings: {} });
 
       const result = await service.forgotPassword(mockUser.email);
 

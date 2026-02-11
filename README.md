@@ -34,7 +34,10 @@ A dedicated PWA-ready web portal for clients:
 - **Package Management**: Session packs (10/20/50) with automated countdowns.
 - **Revenue Tracking**: Cash flow dashboards and receipt generation.
 - **Waiting List Funnel**: Admin tools to notify waiting clients when spots open.
-- **Notifications**: Automated email reminders (Cron) and in-app alerts.
+- **Multi-Tenant Email System**: Configurable SMTP settings per tenant (Gmail/SendGrid/Manual) with feature flag support.
+- **WhatsApp Business Integration**: Automated messaging for reminders, welcomes, and drip campaigns via Meta API.
+- **Bulk Import**: Rapidly onboard clients via CSV with automatic field mapping and studio assignment.
+- **Notifications**: Automated email reminders, drip campaigns, and in-app alerts.
 
 ---
 

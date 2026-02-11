@@ -11,9 +11,12 @@ import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
 import { AuditService } from '../audit/audit.service';
 import { PermissionService } from '../auth/services/permission.service';
 import { RoleService } from '../auth/services/role.service';
+import { TenantsService } from '../tenants/tenants.service';
 import { NotFoundException } from '@nestjs/common';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 import { Session } from '../sessions/entities/session.entity';
+import { ClientDocument } from './entities/client-document.entity';
+import { StorageService } from '../storage/storage.service';
 
 describe('ClientsService', () => {
   let service: ClientsService;
@@ -79,8 +82,10 @@ describe('ClientsService', () => {
               orWhere: jest.fn().mockReturnThis(),
               orderBy: jest.fn().mockReturnThis(),
               addOrderBy: jest.fn().mockReturnThis(),
+              skip: jest.fn().mockReturnThis(),
+              take: jest.fn().mockReturnThis(),
               leftJoinAndSelect: jest.fn().mockReturnThis(),
-              getMany: jest.fn().mockResolvedValue([mockClient]),
+              getManyAndCount: jest.fn().mockResolvedValue([[mockClient], 1]),
               getOne: jest.fn().mockResolvedValue(mockClient),
             })),
           },
@@ -192,6 +197,30 @@ describe('ClientsService', () => {
             })),
           },
         },
+        {
+          provide: getRepositoryToken(ClientDocument),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: StorageService,
+          useValue: {
+            uploadFile: jest.fn(),
+            deleteFile: jest.fn(),
+            getSignedUrl: jest.fn(),
+          },
+        },
+        {
+          provide: TenantsService,
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ id: 'tenant-123', settings: {} }),
+          },
+        },
       ],
     }).compile();
     module = moduleRef;
@@ -216,13 +245,27 @@ describe('ClientsService', () => {
   describe('findAll', () => {
     it('should return all active clients for tenant', async () => {
       const result = await service.findAll('tenant-123');
-      expect(result).toEqual([mockClient]);
+      expect(result.data).toEqual([mockClient]);
+      expect(result.total).toBe(1);
       expect(repository.createQueryBuilder).toHaveBeenCalledWith('client');
     });
 
     it('should apply search filter if provided', async () => {
       const queryBuilder: any = repository.createQueryBuilder();
-      await service.findAll('tenant-123', 'John');
+      const mockQueryBuilder = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        andWhereInIds: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[mockClient], 1]),
+      };
+      repository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+
+      await service.findAll('tenant-123', 1, 50, 'John');
       // We can't easily check the exact Brackets content with simple mocks,
       // but we can check if query builder was used.
       expect(repository.createQueryBuilder).toHaveBeenCalled();
@@ -440,6 +483,7 @@ describe('ClientsService', () => {
       expect(mailerService.sendClientInvitation).toHaveBeenCalledWith(
         'john@example.com',
         expect.stringContaining('token=invite-token'),
+        undefined,
       );
     });
 

@@ -46,6 +46,8 @@ import { Role } from '../src/modules/auth/entities/role.entity';
 import { UserRoleAssignment } from '../src/modules/auth/entities/user-role.entity';
 import { TermsAcceptance } from '../src/modules/terms/entities/terms-acceptance.entity';
 import { TermsOfService } from '../src/modules/terms/entities/terms.entity';
+import { Lead } from '../src/modules/leads/entities/lead.entity';
+import { LeadActivity } from '../src/modules/leads/entities/lead-activity.entity';
 
 // Feature Modules
 import { AuthModule } from '../src/modules/auth/auth.module';
@@ -69,6 +71,7 @@ import { WaiversModule } from '../src/modules/waivers/waivers.module';
 import { NotificationsModule } from '../src/modules/notifications/notifications.module';
 import { MarketingModule } from '../src/modules/marketing/marketing.module';
 import { OwnerModule } from '../src/modules/owner/owner.module';
+import { LeadsModule } from '../src/modules/leads/leads.module';
 
 import { AuditLog } from '../src/modules/audit/entities/audit-log.entity';
 import { AuditModule } from '../src/modules/audit/audit.module';
@@ -116,6 +119,8 @@ const ALL_ENTITIES = [
   UserRoleAssignment,
   TermsAcceptance,
   TermsOfService,
+  Lead,
+  LeadActivity,
 ];
 
 @Module({
@@ -173,8 +178,9 @@ const ALL_ENTITIES = [
     MarketingModule,
     AuditModule,
     OwnerModule,
+    LeadsModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],
 })
-export class TestAppModule {}
+export class TestAppModule { }

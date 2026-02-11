@@ -15,6 +15,7 @@ import { MailerService } from '../mailer/mailer.service';
 import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class AutomationService {
@@ -29,7 +30,8 @@ export class AutomationService {
     private usageTrackingService: UsageTrackingService,
     private whatsappService: WhatsAppService,
     private notificationsService: NotificationsService,
-  ) {}
+    private tenantsService: TenantsService,
+  ) { }
 
   async create(createDto: any, tenantId: string): Promise<AutomationRule> {
     const rule = this.ruleRepository.create({
@@ -268,6 +270,15 @@ export class AutomationService {
         return;
       }
 
+      // Fetch tenant settings
+      // We need tenantId. context.tenantId should be present.
+      const tenantId = context.tenantId;
+      let emailConfig = null;
+      if (tenantId) {
+        const tenant = await this.tenantsService.findOne(tenantId);
+        emailConfig = tenant.settings?.emailConfig;
+      }
+
       const templateId =
         payload.templateId || payload.templateName || payload.template;
 
@@ -277,6 +288,7 @@ export class AutomationService {
           recipient,
           templateId,
           context,
+          emailConfig,
         );
       } else {
         const subject = replaceVars(
@@ -292,6 +304,7 @@ export class AutomationService {
           subject,
           body,
           htmlBody,
+          emailConfig,
         );
       }
 

@@ -148,8 +148,8 @@ describe('ClientsModule (e2e)', () => {
       .set('Authorization', `Bearer ${jwtToken}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.length).toBe(1);
-        expect(res.body[0].firstName).toBe('Alice');
+        expect(res.body.data.length).toBe(1);
+        expect(res.body.data[0].firstName).toBe('Alice');
       });
 
     await request(app.getHttpServer())
@@ -157,7 +157,7 @@ describe('ClientsModule (e2e)', () => {
       .set('Authorization', `Bearer ${jwtToken}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.length).toBe(0);
+        expect(res.body.data.length).toBe(0);
       });
   });
 });

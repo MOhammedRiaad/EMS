@@ -16,6 +16,7 @@ import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 import { AuditService } from '../audit/audit.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 describe('AutomationService', () => {
   let service: AutomationService;
@@ -116,6 +117,12 @@ describe('AutomationService', () => {
           provide: NotificationsService,
           useValue: {
             sendNotification: jest.fn(),
+          },
+        },
+        {
+          provide: TenantsService,
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ id: 'tenant-123', settings: {} }),
           },
         },
       ],
@@ -273,6 +280,7 @@ describe('AutomationService', () => {
         'Hi', // From mockRule step 0 payload.subject
         'No content',
         expect.any(String),
+        null,
       );
 
       // Should advance to step 1
@@ -303,6 +311,7 @@ describe('AutomationService', () => {
         'Followup',
         expect.any(String),
         expect.any(String),
+        null,
       );
 
       expect(executionRepository.save).toHaveBeenCalledWith(

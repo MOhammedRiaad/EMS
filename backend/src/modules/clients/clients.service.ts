@@ -25,6 +25,7 @@ import { User } from '../auth/entities/user.entity';
 import { FavoriteCoach } from '../gamification/entities/favorite-coach.entity';
 import { Session } from '../sessions/entities/session.entity';
 import { StorageService } from '../storage/storage.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class ClientsService {
@@ -47,6 +48,7 @@ export class ClientsService {
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
     private readonly storageService: StorageService,
+    private readonly tenantsService: TenantsService,
   ) { }
 
   async findAll(
@@ -375,7 +377,9 @@ export class ClientsService {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const inviteLink = `${frontendUrl}/auth/setup?token=${token}`;
 
-    await this.mailerService.sendClientInvitation(client.email, inviteLink);
+    // Fetch tenant settings for email config
+    const tenant = await this.tenantsService.findOne(tenantId);
+    await this.mailerService.sendClientInvitation(client.email, inviteLink, tenant.settings?.emailConfig);
   }
 
   async addProgressPhoto(
