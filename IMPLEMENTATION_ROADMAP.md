@@ -221,7 +221,7 @@
 - [x] Fuzzy matching support
 - [x] Search filters & Client Pagination (Applied to Admin View)
 - [x] Bulk Management Actions (Clients Bulk Delete)
-- [x] Enhanced Bulk Import (CSV with Default Studio & Dummy Emails)
+- [x] Enhanced Bulk Import (CSV with Default Studio, Dummy Emails, and Auto-Name Splitting)
 
 #### 4.6 Audit Logging ✅
 - [x] Track all critical entity changes (AuditService)

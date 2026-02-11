@@ -14,7 +14,7 @@ import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 
 export interface ImportClientRow {
   firstName: string;
-  lastName: string;
+  lastName?: string;
   email?: string;
   phone?: string;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
@@ -26,11 +26,13 @@ export interface ImportClientRow {
 
 export interface ImportCoachRow {
   firstName: string;
-  lastName: string;
-  email: string;
+  lastName?: string;
+  email?: string;
   phone?: string;
   bio?: string;
   specializations?: string; // comma-separated
+  studioId?: string;
+  studioName?: string;
 }
 
 export interface ImportResult {
@@ -213,10 +215,25 @@ export class ImportService {
 
         try {
           // Validate required fields
-          if (!row.firstName || !row.lastName) {
-            throw new Error(
-              'Missing required fields: firstName, lastName',
-            );
+          if (!row.firstName) {
+            throw new Error('Missing required field: firstName');
+          }
+
+          let firstName = row.firstName.trim();
+          let lastName = row.lastName?.trim() || '';
+
+          // Name Splitting Logic: If lastName is empty and firstName has multiple words
+          if (!lastName && firstName.includes(' ')) {
+            const parts = firstName.split(/\s+/);
+            if (parts.length >= 2) {
+              firstName = parts[0];
+              lastName = parts.slice(1).join(' ');
+            }
+          }
+
+          if (!lastName) {
+            // If still no last name after splitting attempt
+            throw new Error('Missing required field: lastName (and could not be split from firstName)');
           }
 
           // Handle missing email with dummy
@@ -253,8 +270,8 @@ export class ImportService {
             tenantId,
             email: email.toLowerCase(),
             passwordHash,
-            firstName: row.firstName,
-            lastName: row.lastName,
+            firstName,
+            lastName,
             phone: row.phone || null,
             gender: row.gender || 'prefer_not_to_say',
             role: 'client',
@@ -281,8 +298,8 @@ export class ImportService {
           // Create client profile
           const client = queryRunner.manager.create(Client, {
             userId: savedUser.id,
-            firstName: row.firstName,
-            lastName: row.lastName,
+            firstName,
+            lastName,
             email: email.toLowerCase(),
             phone: row.phone || null,
             dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
@@ -331,23 +348,67 @@ export class ImportService {
     await queryRunner.startTransaction();
 
     try {
+      // Fetch first active studio if needed
+      let defaultStudioId: string | undefined;
+      const needsStudio = rows.some((r) => !r.studioId && !r.studioName);
+
+      if (needsStudio) {
+        const studio = await queryRunner.manager.findOne(Studio, {
+          where: { tenantId, active: true },
+          order: { createdAt: 'ASC' },
+        });
+        if (studio) {
+          defaultStudioId = studio.id;
+        }
+      }
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2;
 
         try {
-          if (!row.email || !row.firstName || !row.lastName) {
-            throw new Error(
-              'Missing required fields: email, firstName, lastName',
-            );
+          // Validate required fields
+          if (!row.firstName) {
+            throw new Error('Missing required field: firstName');
           }
 
+          let firstName = row.firstName.trim();
+          let lastName = row.lastName?.trim() || '';
+
+          // Name Splitting Logic: If lastName is empty and firstName has multiple words
+          if (!lastName && firstName.includes(' ')) {
+            const parts = firstName.split(/\s+/);
+            if (parts.length >= 2) {
+              firstName = parts[0];
+              lastName = parts.slice(1).join(' ');
+            }
+          }
+
+          if (!lastName) {
+            throw new Error('Missing required field: lastName (and could not be split from firstName)');
+          }
+
+          // Handle missing email with dummy
+          let email = row.email;
+          if (!email) {
+            const timestamp = new Date().getTime();
+            const random = Math.floor(Math.random() * 10000);
+            email = `dummy_coach_${timestamp}_${random}@example.com`;
+          }
+
+          // Check if email already exists
           const existingUser = await queryRunner.manager.findOne(User, {
-            where: { email: row.email.toLowerCase(), tenantId },
+            where: { email: email.toLowerCase(), tenantId },
           });
 
           if (existingUser) {
-            throw new Error(`Email ${row.email} already exists`);
+            if (row.email) {
+              throw new Error(`Email ${email} already exists`);
+            } else {
+              const timestamp = new Date().getTime();
+              const random = Math.floor(Math.random() * 10000);
+              email = `dummy_coach_${timestamp}_${random}_retry@example.com`;
+            }
           }
 
           const tempPassword = this.generateRandomPassword();
@@ -356,16 +417,30 @@ export class ImportService {
           // Create user with coach role
           const user = queryRunner.manager.create(User, {
             tenantId,
-            email: row.email.toLowerCase(),
+            email: email.toLowerCase(),
             passwordHash,
-            firstName: row.firstName,
-            lastName: row.lastName,
+            firstName,
+            lastName,
             phone: row.phone || null,
             role: 'coach',
             mustChangePassword: true,
             active: true,
           });
           const savedUser = await queryRunner.manager.save(User, user);
+
+          // Determine Studio ID
+          let studioId = row.studioId || defaultStudioId;
+
+          if (!studioId && row.studioName) {
+            const studio = await queryRunner.manager.findOne(Studio, {
+              where: { name: row.studioName, tenantId },
+            });
+            if (studio) studioId = studio.id;
+          }
+
+          if (!studioId) {
+            studioId = defaultStudioId;
+          }
 
           // Parse specializations
           const specializations = row.specializations
@@ -374,12 +449,14 @@ export class ImportService {
 
           // Create coach profile
           const coach = queryRunner.manager.create(Coach, {
-            tenantId,
             userId: savedUser.id,
             bio: row.bio || null,
             specializations,
-            isActive: true,
+            active: true,
+            studioId: studioId || undefined,
           });
+          // Set tenantId separately
+          (coach as any).tenantId = tenantId;
           await queryRunner.manager.save(Coach, coach);
 
           result.successCount++;

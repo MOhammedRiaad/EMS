@@ -152,8 +152,8 @@ const DataImport: React.FC = () => {
                             setError(null);
                         }}
                         className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${selectedType === 'clients'
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                             }`}
                     >
                         <Users size={24} className={selectedType === 'clients' ? 'text-blue-500' : 'text-gray-400'} />
@@ -172,8 +172,8 @@ const DataImport: React.FC = () => {
                             setError(null);
                         }}
                         className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${selectedType === 'coaches'
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                             }`}
                     >
                         <UserCheck size={24} className={selectedType === 'coaches' ? 'text-blue-500' : 'text-gray-400'} />
@@ -207,9 +207,22 @@ const DataImport: React.FC = () => {
                     <code className="text-xs text-gray-700 dark:text-gray-300">
                         {selectedType === 'clients'
                             ? 'firstName, lastName, email, phone, gender, dateOfBirth, notes'
-                            : 'firstName, lastName, email, phone, gender, preferredClientGender'
+                            : 'firstName, lastName, email, phone, bio, specializations'
                         }
                     </code>
+                </div>
+
+                {/* Processing Info */}
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg">
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center gap-2">
+                        <CheckCircle size={16} />
+                        How we handle your data:
+                    </h4>
+                    <ul className="text-xs space-y-1.5 text-blue-800 dark:text-blue-400">
+                        <li>• <strong>Missing Email?</strong> We generate a unique dummy email automatically.</li>
+                        <li>• <strong>No Last Name?</strong> If First Name has multiple words (e.g. "John Doe"), we split it automatically.</li>
+                        <li>• <strong>Missing Studio?</strong> Records are assigned to the first active studio for your account.</li>
+                    </ul>
                 </div>
             </div>
 
@@ -262,8 +275,8 @@ const DataImport: React.FC = () => {
                     ) : validation && (
                         <>
                             <div className={`p-4 rounded-lg mb-4 ${validation.canImport
-                                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                    : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                                : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
                                 }`}>
                                 <div className="flex items-start gap-3">
                                     {validation.canImport ? (

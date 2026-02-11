@@ -111,6 +111,14 @@ The dashboard provides a quick overview of your business:
    - Health Notes
 3. Click **Save & Invite**
 
+### Bulk Importing Coaches
+
+1. Go to **Coaches** → **Import CSV**
+2. Upload CSV file (`first_name`, `last_name` required)
+3. **Smart Defaults**:
+   - Coaches without emails will receive a generated `@dummy.ems` address.
+   - Coaches will be assigned to the **Default Studio** if not specified in the CSV.
+
 ### Bulk Importing Clients
 
 1. Go to **Clients** → **Import CSV**
