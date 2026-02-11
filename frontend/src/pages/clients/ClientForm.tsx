@@ -3,6 +3,8 @@ import { Upload, User } from 'lucide-react';
 import type { ClientFormData } from './useClientsState';
 import type { Studio } from '../../services/studios.service';
 
+import { getImageUrl } from '../../utils/imageUtils';
+
 interface ClientFormProps {
     formData: ClientFormData;
     setFormData: React.Dispatch<React.SetStateAction<ClientFormData>>;
@@ -61,7 +63,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({
                     }}>
                         {formData.avatarUrl ? (
                             <img
-                                src={`http://localhost:3000${formData.avatarUrl}`}
+                                src={getImageUrl(formData.avatarUrl) || ''}
                                 alt="Preview"
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
