@@ -69,7 +69,7 @@ export class SessionsService {
     private readonly featureFlagService: FeatureFlagService,
     private readonly automationService: AutomationService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   async findAll(tenantId: string, query: SessionQueryDto): Promise<Session[]> {
     const qb = this.sessionRepository
@@ -1043,23 +1043,29 @@ export class SessionsService {
 
     const originalTime = session.startTime.getTime();
 
-    // Selectively assign updatable fields, converting dates properly
-    if (dto.startTime) session.startTime = new Date(dto.startTime);
-    if (dto.endTime) session.endTime = new Date(dto.endTime);
-    if (dto.coachId) session.coachId = dto.coachId;
-    if (dto.roomId) session.roomId = dto.roomId;
-    if (dto.studioId) session.studioId = dto.studioId;
-    if (dto.clientId !== undefined) session.clientId = dto.clientId;
-    if (dto.leadId !== undefined) session.leadId = dto.leadId;
-    if (dto.emsDeviceId !== undefined) session.emsDeviceId = dto.emsDeviceId;
-    if (dto.programType !== undefined) session.programType = dto.programType;
-    if (dto.intensityLevel !== undefined)
-      session.intensityLevel = dto.intensityLevel;
-    if (dto.notes !== undefined) session.notes = dto.notes;
-    if (dto.type) session.type = dto.type;
-    if (dto.capacity !== undefined) session.capacity = dto.capacity;
+    // Create specific update object to ensure TypeORM processes FK updates correctly
+    // (avoiding issue where loaded relation objects override scalar ID updates)
+    const updateData: any = {
+      id: id,
+      tenantId: tenantId,
+    };
 
-    await this.sessionRepository.save(session);
+    if (dto.startTime) updateData.startTime = new Date(dto.startTime);
+    if (dto.endTime) updateData.endTime = new Date(dto.endTime);
+    if (dto.coachId) updateData.coachId = dto.coachId;
+    if (dto.roomId) updateData.roomId = dto.roomId;
+    if (dto.studioId) updateData.studioId = dto.studioId;
+    if (dto.clientId !== undefined) updateData.clientId = dto.clientId;
+    if (dto.leadId !== undefined) updateData.leadId = dto.leadId;
+    if (dto.emsDeviceId !== undefined) updateData.emsDeviceId = dto.emsDeviceId;
+    if (dto.programType !== undefined) updateData.programType = dto.programType;
+    if (dto.intensityLevel !== undefined)
+      updateData.intensityLevel = dto.intensityLevel;
+    if (dto.notes !== undefined) updateData.notes = dto.notes;
+    if (dto.type) updateData.type = dto.type;
+    if (dto.capacity !== undefined) updateData.capacity = dto.capacity;
+
+    await this.sessionRepository.save(updateData);
 
     // Reload with relations so the response includes updated room/coach/studio objects
     const saved = await this.findOne(id, tenantId);
@@ -1380,9 +1386,9 @@ export class SessionsService {
     if (availableSessions <= 0) {
       throw new BadRequestException(
         `Client has no available sessions for booking. ` +
-          `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
-          `Already scheduled: ${scheduledSessionsCount}. ` +
-          `Please complete existing sessions or renew the package.`,
+        `Package sessions remaining: ${activePackage.sessionsRemaining}, ` +
+        `Already scheduled: ${scheduledSessionsCount}. ` +
+        `Please complete existing sessions or renew the package.`,
       );
     }
   }
@@ -1599,12 +1605,12 @@ export class SessionsService {
           userId: client.userId,
           user: client.user
             ? {
-                id: client.user.id,
-                email: client.user.email,
-                firstName: client.user.firstName,
-                lastName: client.user.lastName,
-                phone: client.user.phone,
-              }
+              id: client.user.id,
+              email: client.user.email,
+              firstName: client.user.firstName,
+              lastName: client.user.lastName,
+              phone: client.user.phone,
+            }
             : null,
         };
 
