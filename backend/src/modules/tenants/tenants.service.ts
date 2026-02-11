@@ -7,13 +7,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from './entities/tenant.entity';
 import { CreateTenantDto, UpdateTenantDto } from './dto';
+import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class TenantsService {
   constructor(
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
-  ) {}
+    private readonly mailerService: MailerService,
+  ) { }
 
   async findAll(): Promise<Tenant[]> {
     return this.tenantRepository.find();
@@ -88,5 +90,24 @@ export class TenantsService {
     }
 
     return this.tenantRepository.save(tenant);
+  }
+
+  async testEmailConnection(config: any, to: string) {
+    try {
+      const result = await this.mailerService.sendMail(
+        to,
+        'Test Email Connection',
+        'This is a test email to verify your SMTP settings.',
+        '<p>This is a test email to verify your SMTP settings.</p>',
+        config
+      );
+      if (!result) {
+        throw new Error('Failed to send email');
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Email test failed:', error);
+      return { success: false, error: error.message };
+    }
   }
 }

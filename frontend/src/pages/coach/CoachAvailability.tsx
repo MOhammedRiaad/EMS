@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { coachPortalService } from '../../services/coach-portal.service';
 import { authenticatedFetch } from '../../services/api';
-import { Loader2, Plus, Trash2, Calendar, Save, Clock, Check, X, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Calendar, Save, Clock, Check, X, AlertCircle, Lock } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const WEEKDAYS = [
     { value: 'sunday', label: 'Sunday' },
@@ -40,6 +41,7 @@ interface TimeOffRequest {
 }
 
 const CoachAvailability = () => {
+    const { tenant } = useAuth();
     const [activeTab, setActiveTab] = useState<'weekly' | 'time-off'>('weekly');
 
     // Weekly Availability State
@@ -57,6 +59,8 @@ const CoachAvailability = () => {
         endDate: '',
         notes: ''
     });
+
+    const canEditAvailability = tenant?.settings?.allowCoachSelfEditAvailability === true;
 
     useEffect(() => {
         loadAvailability();
@@ -96,6 +100,7 @@ const CoachAvailability = () => {
     // --- Weekly Logic ---
 
     const handleSaveRules = async () => {
+        if (!canEditAvailability) return;
         setSavingRules(true);
         try {
             await coachPortalService.updateAvailability(rules);
@@ -109,14 +114,17 @@ const CoachAvailability = () => {
     };
 
     const addRule = () => {
+        if (!canEditAvailability) return;
         setRules([...rules, { dayOfWeek: 'monday', startTime: '09:00', endTime: '17:00', available: true }]);
     };
 
     const removeRule = (index: number) => {
+        if (!canEditAvailability) return;
         setRules(rules.filter((_, i) => i !== index));
     };
 
     const updateRule = (index: number, field: string, value: any) => {
+        if (!canEditAvailability) return;
         const newRules = [...rules];
         newRules[index] = { ...newRules[index], [field]: value };
         setRules(newRules);
@@ -196,30 +204,54 @@ const CoachAvailability = () => {
             {/* Tab Content */}
             {activeTab === 'weekly' ? (
                 <div className="space-y-4 animate-fade-in">
+
+                    {!canEditAvailability && (
+                        <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl p-4 flex items-center gap-3">
+                            <Lock size={20} className="text-amber-600 dark:text-amber-400" />
+                            <div>
+                                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-400">Editing Locked</h3>
+                                <p className="text-sm text-amber-700 dark:text-amber-500">
+                                    Your administrator manages your availability. Please contact them to request changes.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex justify-end">
-                        <button
-                            onClick={handleSaveRules}
-                            disabled={savingRules}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                        >
-                            {savingRules ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                            Save Changes
-                        </button>
+                        {canEditAvailability && (
+                            <button
+                                onClick={handleSaveRules}
+                                disabled={savingRules}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                                {savingRules ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                Save Changes
+                            </button>
+                        )}
                     </div>
 
+                    {rules.length === 0 && (
+                        <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-gray-200 dark:border-slate-800">
+                            <Calendar className="w-10 h-10 text-gray-300 dark:text-slate-700 mx-auto mb-2" />
+                            <p className="text-gray-500 dark:text-gray-400">No active shifts defined.</p>
+                        </div>
+                    )}
+
                     {rules.map((rule, index) => (
-                        <div key={index} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col gap-3">
+                        <div key={index} className={`bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col gap-3 ${!canEditAvailability ? 'opacity-75 pointer-events-none grayscale-[0.5]' : ''}`}>
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium">
                                     <Calendar size={18} />
                                     <span>Shift {index + 1}</span>
                                 </div>
-                                <button
-                                    onClick={() => removeRule(index)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
+                                {canEditAvailability && (
+                                    <button
+                                        onClick={() => removeRule(index)}
+                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -228,7 +260,8 @@ const CoachAvailability = () => {
                                     <select
                                         value={rule.dayOfWeek}
                                         onChange={(e) => updateRule(index, 'dayOfWeek', e.target.value)}
-                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-slate-900"
+                                        disabled={!canEditAvailability}
                                     >
                                         {WEEKDAYS.map(day => (
                                             <option key={day.value} value={day.value}>{day.label}</option>
@@ -242,7 +275,8 @@ const CoachAvailability = () => {
                                         type="time"
                                         value={rule.startTime}
                                         onChange={(e) => updateRule(index, 'startTime', e.target.value)}
-                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-slate-900"
+                                        disabled={!canEditAvailability}
                                     />
                                 </div>
                                 <div>
@@ -251,20 +285,23 @@ const CoachAvailability = () => {
                                         type="time"
                                         value={rule.endTime}
                                         onChange={(e) => updateRule(index, 'endTime', e.target.value)}
-                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                                        className="w-full p-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-slate-900"
+                                        disabled={!canEditAvailability}
                                     />
                                 </div>
                             </div>
                         </div>
                     ))}
 
-                    <button
-                        onClick={addRule}
-                        className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl text-gray-500 dark:text-gray-400 font-medium flex items-center justify-center gap-2 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                    >
-                        <Plus size={20} />
-                        Add Shift
-                    </button>
+                    {canEditAvailability && (
+                        <button
+                            onClick={addRule}
+                            className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl text-gray-500 dark:text-gray-400 font-medium flex items-center justify-center gap-2 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                            <Plus size={20} />
+                            Add Shift
+                        </button>
+                    )}
 
                     <p className="text-xs text-center text-gray-400 pt-4">
                         Changes apply to future sessions. Existing sessions are not affected.

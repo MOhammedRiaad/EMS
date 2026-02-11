@@ -6,6 +6,7 @@ import PageHeader from '../../components/common/PageHeader';
 import TwoFactorSetup from '../../components/auth/TwoFactorSetup';
 import PlanUsageOverview from '../../components/admin/PlanUsageOverview';
 import WhatsAppSettings from '../../components/admin/WhatsAppSettings';
+import EmailSettings from '../../components/admin/EmailSettings';
 
 const AdminSettings: React.FC = () => {
     const { user, isEnabled } = useAuth();
@@ -25,6 +26,7 @@ const AdminSettings: React.FC = () => {
     const [brandingColor, setBrandingColor] = useState('#7c3aed'); // Default purple
     const [brandingLogo, setBrandingLogo] = useState('');
     const [whatsappConfig, setWhatsappConfig] = useState<any>(null);
+    const [emailConfig, setEmailConfig] = useState<any>(null);
 
     const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
 
@@ -45,6 +47,7 @@ const AdminSettings: React.FC = () => {
                 setBrandingColor(settings.branding?.primaryColor ?? '#7c3aed');
                 setBrandingLogo(settings.branding?.logoUrl ?? '');
                 setWhatsappConfig(settings.whatsappConfig || { provider: 'meta', enabled: false, config: {} });
+                setEmailConfig(settings.emailConfig || null);
 
             } catch (err) {
                 console.error('Failed to fetch settings', err);
@@ -123,6 +126,25 @@ const AdminSettings: React.FC = () => {
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err: any) {
             setError(err.message || 'Failed to save WhatsApp settings');
+        }
+    };
+
+    const handleSaveEmail = async (config: any) => {
+        if (!user?.tenantId) return;
+        try {
+            const currentTenant = await tenantService.get(user.tenantId);
+            const updatedSettings = {
+                ...currentTenant.settings,
+                emailConfig: config
+            };
+            await tenantService.update(user.tenantId, {
+                settings: updatedSettings
+            });
+            setEmailConfig(config);
+            setSuccessMessage('Email settings updated');
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to save Email settings');
         }
     };
 
@@ -379,6 +401,14 @@ const AdminSettings: React.FC = () => {
                         <WhatsAppSettings
                             initialConfig={whatsappConfig}
                             onSave={handleSaveWhatsApp}
+                        />
+                    )}
+
+                    {/* Email Settings */}
+                    {isEnabled('core.email_config') && (
+                        <EmailSettings
+                            initialConfig={emailConfig}
+                            onSave={handleSaveEmail}
                         />
                     )}
 

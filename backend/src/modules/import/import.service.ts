@@ -9,16 +9,19 @@ import * as bcrypt from 'bcrypt';
 import { User } from '../auth/entities/user.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Coach } from '../coaches/entities/coach.entity';
+import { Studio } from '../studios/entities/studio.entity';
 import { UsageTrackingService } from '../owner/services/usage-tracking.service';
 
 export interface ImportClientRow {
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
   phone?: string;
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   dateOfBirth?: string;
   notes?: string;
+  studioId?: string;
+  studioName?: string;
 }
 
 export interface ImportCoachRow {
@@ -59,7 +62,7 @@ export class ImportService {
     private readonly clientRepo: Repository<Client>,
     @InjectRepository(Coach)
     private readonly coachRepo: Repository<Coach>,
-  ) {}
+  ) { }
 
   /**
    * Validate client import against package limits
@@ -188,25 +191,57 @@ export class ImportService {
     await queryRunner.startTransaction();
 
     try {
+      // Fetch first active studio if needed
+      let defaultStudioId: string | undefined;
+      const needsStudio = rows.some(r => !r.studioId && !r.studioName);
+
+      if (needsStudio) {
+        // We need to inject StudiosService or repository to fetch this. 
+        // For now, let's assume valid studioId is passed or handle it via a new query
+        const studio = await queryRunner.manager.findOne(Studio, {
+          where: { tenantId, active: true },
+          order: { createdAt: 'ASC' } // Stable selection
+        });
+        if (studio) {
+          defaultStudioId = studio.id;
+        }
+      }
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNum = i + 2; // +2 for 1-indexed and header row
 
         try {
           // Validate required fields
-          if (!row.email || !row.firstName || !row.lastName) {
+          if (!row.firstName || !row.lastName) {
             throw new Error(
-              'Missing required fields: email, firstName, lastName',
+              'Missing required fields: firstName, lastName',
             );
+          }
+
+          // Handle missing email with dummy
+          let email = row.email;
+          if (!email) {
+            const timestamp = new Date().getTime();
+            const random = Math.floor(Math.random() * 10000);
+            email = `dummy_${timestamp}_${random}@example.com`;
           }
 
           // Check if email already exists
           const existingUser = await queryRunner.manager.findOne(User, {
-            where: { email: row.email.toLowerCase(), tenantId },
+            where: { email: email.toLowerCase(), tenantId },
           });
 
           if (existingUser) {
-            throw new Error(`Email ${row.email} already exists`);
+            if (row.email) {
+              // If provided email exists, error out
+              throw new Error(`Email ${email} already exists`);
+            } else {
+              // If dummy email exists (unlikely), generate another one
+              const timestamp = new Date().getTime();
+              const random = Math.floor(Math.random() * 10000);
+              email = `dummy_${timestamp}_${random}_retry@example.com`;
+            }
           }
 
           // Generate password and hash
@@ -216,7 +251,7 @@ export class ImportService {
           // Create user
           const user = queryRunner.manager.create(User, {
             tenantId,
-            email: row.email.toLowerCase(),
+            email: email.toLowerCase(),
             passwordHash,
             firstName: row.firstName,
             lastName: row.lastName,
@@ -228,16 +263,32 @@ export class ImportService {
           });
           const savedUser = await queryRunner.manager.save(User, user);
 
+          // Determine Studio ID
+          let studioId = row.studioId || defaultStudioId;
+
+          if (!studioId && row.studioName) {
+            const studio = await queryRunner.manager.findOne(Studio, {
+              where: { name: row.studioName, tenantId }
+            });
+            if (studio) studioId = studio.id;
+          }
+
+          if (!studioId) {
+            // Fallback to default if still not found
+            studioId = defaultStudioId;
+          }
+
           // Create client profile
           const client = queryRunner.manager.create(Client, {
             userId: savedUser.id,
             firstName: row.firstName,
             lastName: row.lastName,
-            email: row.email.toLowerCase(),
+            email: email.toLowerCase(),
             phone: row.phone || null,
             dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
             notes: row.notes || null,
             status: 'active',
+            studioId: studioId || null
           });
           // Set tenantId separately since it's from base entity
           (client as any).tenantId = tenantId;

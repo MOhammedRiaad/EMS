@@ -47,9 +47,16 @@ export class ClientsService {
     private readonly mailerService: MailerService,
     private readonly auditService: AuditService,
     private readonly storageService: StorageService,
-  ) {}
+  ) { }
 
-  async findAll(tenantId: string, search?: string): Promise<Client[]> {
+  async findAll(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+    sortBy: string = 'lastName',
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ): Promise<{ data: Client[]; total: number; page: number; limit: number }> {
     const query = this.clientRepository
       .createQueryBuilder('client')
       .leftJoinAndSelect('client.studio', 'studio')
@@ -68,11 +75,23 @@ export class ClientsService {
       );
     }
 
-    query
-      .orderBy('client.lastName', 'ASC')
-      .addOrderBy('client.firstName', 'ASC');
+    const sortField = sortBy.includes('.') ? sortBy : `client.${sortBy}`;
+    query.orderBy(sortField, sortOrder);
 
-    return query.getMany();
+    // Secondary sort by ID to ensure stable pagination
+    query.addOrderBy('client.id', 'ASC');
+
+    const [data, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    };
   }
 
   async findOne(
@@ -246,6 +265,33 @@ export class ClientsService {
     }
 
     return saved;
+  }
+
+  async bulkDelete(ids: string[], tenantId: string): Promise<void> {
+    if (!ids.length) return;
+
+    // Use query builder for bulk update to avoid loading all entities
+    await this.clientRepository
+      .createQueryBuilder()
+      .update(Client)
+      .set({ status: 'inactive' })
+      .where('id IN (:...ids)', { ids })
+      .andWhere('tenantId = :tenantId', { tenantId })
+      .execute();
+
+    // Log the bulk action
+    await this.auditService.log(
+      tenantId,
+      'BULK_DELETE_CLIENTS',
+      'Client',
+      'BULK',
+      'API_USER', // TODO: Get actual user from context if possible or pass it down
+      {
+        ids,
+        count: ids.length,
+        action: 'soft_delete',
+      },
+    );
   }
 
   async remove(

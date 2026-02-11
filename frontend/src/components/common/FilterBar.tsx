@@ -28,6 +28,7 @@ interface FilterBarProps {
     filters: Record<string, any>;
     onFilterChange: (key: string, value: any) => void;
     onClearAll: () => void;
+    children?: React.ReactNode;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -38,7 +39,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
     dateRange,
     filters,
     onFilterChange,
-    onClearAll
+    onClearAll,
+    children
 }) => {
     const hasActiveFilters = () => {
         if (searchValue) return true;
@@ -123,6 +125,9 @@ const FilterBar: React.FC<FilterBarProps> = ({
                     Clear Filters
                 </button>
             )}
+
+            {/* Children (e.g. Action Buttons) */}
+            {children}
         </div>
     );
 };

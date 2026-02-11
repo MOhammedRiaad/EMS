@@ -7,12 +7,19 @@ import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   // Security Headers
   app.use(helmet());
+
+  // Increase payload limit for large imports
+  // Note: NestJS by default uses body-parser under the hood. 
+  // We can adjust the limit by passing options to the underlying platform (Express)
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
 
   // Use nestjs-pino logger
   const logger = app.get(Logger);

@@ -8,6 +8,7 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
+  Post,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,7 +23,7 @@ import { UpdateTenantDto } from './dto';
 @ApiTags('tenants')
 @Controller('tenants')
 export class TenantsController {
-  constructor(private readonly tenantsService: TenantsService) {}
+  constructor(private readonly tenantsService: TenantsService) { }
 
   @Get()
   @ApiOperation({ summary: 'List all tenants' })
@@ -72,5 +73,17 @@ export class TenantsController {
       throw new ForbiddenException('You can only update your own tenant');
     }
     return this.tenantsService.update(id, dto);
+  }
+
+  @Post('email/test-connection')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Test email connection' })
+  async testEmailConnection(@Body() body: { config: any; to: string }, @Request() req: any) {
+    // Verify the user is a tenant_owner (or admin)
+    if (req.user.role !== 'tenant_owner' && req.user.role !== 'owner') {
+      throw new ForbiddenException('Only tenant owners can test email settings');
+    }
+    return this.tenantsService.testEmailConnection(body.config, body.to);
   }
 }

@@ -52,9 +52,34 @@ export interface CreateProgressPhotoDto {
 }
 
 export const clientsService = {
+    async findAll(
+        page: number = 1,
+        limit: number = 50,
+        search?: string,
+        sortBy?: string,
+        sortOrder?: 'ASC' | 'DESC'
+    ): Promise<{ data: Client[], total: number, page: number, limit: number }> {
+        const params = new URLSearchParams();
+        params.append('page', String(page));
+        params.append('limit', String(limit));
+        if (search) params.append('search', search);
+        if (sortBy) params.append('sortBy', sortBy);
+        if (sortOrder) params.append('sortOrder', sortOrder);
+
+        return authenticatedFetch(`/clients?${params.toString()}`);
+    },
+
+    // Kept for backward compatibility if needed, but redirects to findAll
     async getAll(search?: string): Promise<Client[]> {
-        const query = search ? `?search=${encodeURIComponent(search)}` : '';
-        return authenticatedFetch(`/clients${query}`);
+        const result = await this.findAll(1, 1000, search);
+        return result.data;
+    },
+
+    async bulkDelete(ids: string[]): Promise<void> {
+        return authenticatedFetch('/clients/bulk-delete', {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        });
     },
 
     async create(data: Partial<Client>): Promise<Client> {

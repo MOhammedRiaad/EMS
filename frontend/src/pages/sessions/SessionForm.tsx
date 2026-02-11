@@ -7,6 +7,7 @@ import type { Studio } from '../../services/studios.service';
 import type { Room } from '../../services/rooms.service';
 import type { Device } from '../../services/devices.service';
 import type { SessionFormData } from './useSessionsState';
+import { SearchableSelect } from '../../components/common/SearchableSelect';
 
 interface SessionFormProps {
     formData: SessionFormData;
@@ -185,18 +186,19 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                 <div>
                     <label className={labelClass}>Client</label>
                     {formData.type === 'individual' ? (
-                        <select
+                        <SearchableSelect
                             required
                             value={formData.clientId}
-                            onChange={e => setFormData(prev => ({ ...prev, clientId: e.target.value, coachId: '' }))}
-                            className={inputClass}
+                            onChange={(value) => setFormData(prev => ({ ...prev, clientId: value, coachId: '' }))}
+                            options={filteredClients.map(c => ({
+                                label: `${c.firstName} ${c.lastName}`,
+                                value: c.id,
+                                description: c.email || undefined
+                            }))}
+                            placeholder={formData.studioId ? (filteredClients.length > 0 ? 'Select a Client' : 'No clients for this studio') : 'Select Studio first'}
                             disabled={!formData.studioId}
-                        >
-                            <option value="">{formData.studioId ? (filteredClients.length > 0 ? 'Select a Client' : 'No clients for this studio') : 'Select Studio first'}</option>
-                            {filteredClients.map(c => (
-                                <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-                            ))}
-                        </select>
+                            className="w-full"
+                        />
                     ) : (
                         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
                             Participants are managed in session details after creation.

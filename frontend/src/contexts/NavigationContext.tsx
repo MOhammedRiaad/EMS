@@ -12,7 +12,7 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user, isEnabled } = useAuth();
+    const { user, tenant, isEnabled } = useAuth();
 
     const filteredItems = useMemo(() => {
         if (!user) return [];
@@ -43,9 +43,16 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
 
+            // 5. Check Tenant Setting Requirement
+            if (item.requiredSetting && tenant?.settings) {
+                if (!tenant.settings[item.requiredSetting]) {
+                    return false;
+                }
+            }
+
             return true;
         });
-    }, [user, isEnabled]);
+    }, [user, tenant, isEnabled]);
 
     const sections = useMemo(() => {
         const result: Partial<Record<NavSection, NavItem[]>> = {};

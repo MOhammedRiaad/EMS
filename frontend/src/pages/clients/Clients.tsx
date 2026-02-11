@@ -189,9 +189,41 @@ const Clients: React.FC = () => {
                 filters={state.filters}
                 onFilterChange={state.handleFilterChange}
                 onClearAll={state.handleClearFilters}
-            />
+            >
+                {state.selectedIds.length > 0 && (canDelete) && (
+                    <button
+                        onClick={state.handleBulkDeleteClick}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            backgroundColor: 'var(--color-danger)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 'var(--border-radius-sm)',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            marginLeft: 'auto'
+                        }}
+                    >
+                        Delete Selected ({state.selectedIds.length})
+                    </button>
+                )}
+            </FilterBar>
 
-            <DataTable columns={columns} data={state.filteredClients} isLoading={state.loading} />
+            <DataTable
+                columns={columns}
+                data={state.clients}
+                isLoading={state.loading}
+                selectionMode={canDelete ? 'multiple' : undefined}
+                selectedItems={state.selectedIds}
+                onSelectionChange={state.handleSelectionChange}
+                pagination={{
+                    page: state.page,
+                    limit: state.limit,
+                    total: state.total,
+                    onPageChange: state.handlePageChange
+                }}
+            />
 
             {/* Create Modal */}
             <Modal
@@ -239,6 +271,18 @@ const Clients: React.FC = () => {
                 title="Delete Client"
                 message={`Are you sure you want to delete ${state.selectedClient?.firstName} ${state.selectedClient?.lastName}? This action cannot be undone.`}
                 confirmLabel="Delete"
+                isDestructive
+                loading={state.saving}
+            />
+
+            {/* Bulk Delete Dialog */}
+            <ConfirmDialog
+                isOpen={state.isBulkDeleteDialogOpen}
+                onClose={() => state.setIsBulkDeleteDialogOpen(false)}
+                onConfirm={state.handleBulkDeleteConfirm}
+                title="Bulk Delete Clients"
+                message={`Are you sure you want to delete ${state.selectedIds.length} selected clients? This action cannot be undone.`}
+                confirmLabel={`Delete ${state.selectedIds.length} Clients`}
                 isDestructive
                 loading={state.saving}
             />

@@ -126,7 +126,7 @@ function App() {
                 </Route>
 
                 {/* Coach Portal Routes */}
-                <Route element={<PermissionGuard requiredPermissions={['coach.availability.self.edit']} />}>
+                <Route element={<FeatureGuard feature="coach.portal" />}>
                   <Route path="/coach" element={<CoachLayout />}>
                     <Route index element={<Navigate to="home" replace />} />
                     <Route path="home" element={<CoachHome />} />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { clientsService, type Client } from '../../services/clients.service';
 import { studiosService, type Studio } from '../../services/studios.service';
 import { storageService } from '../../services/storage.service';
@@ -41,10 +41,18 @@ export function useClientsState() {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
 
+    const [page, setPage] = useState(1);
+    const [limit] = useState(50);
+    const [total, setTotal] = useState(0);
+
+    // Selection state
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
     // Modal state
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
@@ -58,20 +66,22 @@ export function useClientsState() {
     const fetchClients = useCallback(async () => {
         try {
             setLoading(true);
-            const [clientsData, studiosData] = await Promise.all([
-                clientsService.getAll(searchQuery),
+            const [clientsResponse, studiosData] = await Promise.all([
+                clientsService.findAll(page, limit, searchQuery),
                 studiosService.getAll()
             ]);
-            setClients(clientsData);
+            setClients(clientsResponse.data);
+            setTotal(clientsResponse.total);
             setStudios(studiosData);
         } catch (error) {
             console.error('Failed to fetch clients', error);
         } finally {
             setLoading(false);
         }
-    }, [searchQuery]);
+    }, [page, limit, searchQuery]); // Re-fetch when page/limit/search changes
 
-    // Debounce fetch
+    // Debounce fetch - only debounces search query changes
+    // Page changes should trigger immediately
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchClients();
@@ -79,13 +89,16 @@ export function useClientsState() {
         return () => clearTimeout(timer);
     }, [fetchClients]);
 
-    // Filtered clients (local filters only)
-    const filteredClients = useMemo(() => {
-        return clients.filter(client => {
-            if (filters.status !== 'all' && client.status !== filters.status) return false;
-            return true;
-        });
-    }, [clients, filters]);
+    // Handle Page Change
+    const handlePageChange = useCallback((newPage: number) => {
+        setPage(newPage);
+        // fetchClients will be triggered by dependency array
+    }, []);
+
+    // Handle Selection Change
+    const handleSelectionChange = useCallback((ids: string[]) => {
+        setSelectedIds(ids);
+    }, []);
 
     // Handlers
     const resetForm = useCallback(() => {
@@ -94,11 +107,13 @@ export function useClientsState() {
 
     const handleFilterChange = useCallback((key: string, value: any) => {
         setFilters(prev => ({ ...prev, [key]: value }));
+        setPage(1); // Reset to page 1 on filter change
     }, []);
 
     const handleClearFilters = useCallback(() => {
         setSearchQuery('');
         setFilters(initialFilters);
+        setPage(1);
     }, []);
 
     const handleCreate = useCallback(async (e: React.FormEvent) => {
@@ -223,11 +238,38 @@ export function useClientsState() {
         }
     }, []);
 
+    const handleBulkDeleteClick = useCallback(() => {
+        if (selectedIds.length === 0) return;
+        setIsBulkDeleteDialogOpen(true);
+    }, [selectedIds]);
+
+    const handleBulkDeleteConfirm = useCallback(async () => {
+        setSaving(true);
+        try {
+            await clientsService.bulkDelete(selectedIds);
+            setIsBulkDeleteDialogOpen(false);
+            setSelectedIds([]); // Clear selection
+            fetchClients();
+        } catch (error) {
+            console.error('Failed to delete clients', error);
+        } finally {
+            setSaving(false);
+        }
+    }, [selectedIds, fetchClients]);
+
     return {
         // Data
         clients,
-        filteredClients,
+        // filteredClients, // Removed as filtering is now server-side or implicitly handled
         studios,
+
+        // Pagination & Selection
+        page,
+        limit,
+        total,
+        handlePageChange,
+        selectedIds,
+        handleSelectionChange,
 
         // UI state
         loading,
@@ -241,6 +283,8 @@ export function useClientsState() {
         setIsEditModalOpen,
         isDeleteDialogOpen,
         setIsDeleteDialogOpen,
+        isBulkDeleteDialogOpen,
+        setIsBulkDeleteDialogOpen,
         isPackageModalOpen,
         setIsPackageModalOpen,
         selectedClient,
@@ -265,6 +309,8 @@ export function useClientsState() {
         handleToggleActive,
         handleDeleteClick,
         handleDeleteConfirm,
+        handleBulkDeleteClick,
+        handleBulkDeleteConfirm,
         handleInvite,
         handleAvatarUpload,
         handleManagePackages

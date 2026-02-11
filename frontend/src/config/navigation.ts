@@ -21,7 +21,8 @@ import {
     Megaphone,
     Home,
     Trophy,
-    Upload
+    Upload,
+    NotebookTabs,
 } from 'lucide-react';
 
 export type NavSection = 'core' | 'management' | 'client-business' | 'retail' | 'marketing' | 'analytics' | 'administration' | 'client-portal' | 'coach-portal';
@@ -35,6 +36,7 @@ export interface NavItem {
     requiredFeature?: string;
     requiredPermission?: string; // e.g., 'client.read'
     requiredRole?: string[]; // e.g., ['tenant_owner', 'admin']
+    requiredSetting?: string; // Check against tenant.settings
     adminOnly?: boolean; // Short hand for tenant_owner/admin role check
 }
 
@@ -42,7 +44,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     // Core
     { id: 'dashboard', path: '/', label: 'Dashboard', icon: LayoutDashboard, section: 'core' },
     { id: 'calendar', path: '/calendar', label: 'Calendar', icon: Calendar, section: 'core', requiredFeature: 'core.sessions' },
-    { id: 'sessions', path: '/sessions', label: 'Sessions', icon: Calendar, section: 'core', requiredFeature: 'core.sessions' },
+    { id: 'sessions', path: '/sessions', label: 'Sessions', icon: NotebookTabs, section: 'core', requiredFeature: 'core.sessions' },
     { id: 'clients', path: '/clients', label: 'Clients', icon: Users, section: 'core', requiredFeature: 'core.sessions' }, // Linked to sessions for now
 
     // Management
@@ -87,7 +89,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
 
     // Coach Portal
     { id: 'coach-home', path: '/coach/home', label: 'Home', icon: Home, section: 'coach-portal', requiredRole: ['coach'] },
-    { id: 'coach-availability', path: '/coach/availability', label: 'Availability', icon: Calendar, section: 'coach-portal', requiredRole: ['coach'], requiredPermission: 'coach.availability.self.edit' },
+    { id: 'coach-availability', path: '/coach/availability', label: 'Availability', icon: Calendar, section: 'coach-portal', requiredRole: ['coach'], requiredSetting: 'allowCoachSelfEditAvailability' },
     { id: 'coach-clients', path: '/coach/clients', label: 'Clients', icon: Users, section: 'coach-portal', requiredRole: ['coach'] },
     { id: 'coach-settings', path: '/coach/settings', label: 'Settings', icon: Settings, section: 'coach-portal', requiredRole: ['coach'] },
 ];

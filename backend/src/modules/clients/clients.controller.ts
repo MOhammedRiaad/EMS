@@ -38,12 +38,33 @@ export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly waiversService: WaiversService,
-  ) {}
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'List all clients for tenant' })
-  findAll(@TenantId() tenantId: string, @Query('search') search?: string) {
-    return this.clientsService.findAll(tenantId, search);
+  findAll(
+    @TenantId() tenantId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 50,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
+  ) {
+    return this.clientsService.findAll(
+      tenantId,
+      page,
+      limit,
+      search,
+      sortBy,
+      sortOrder,
+    );
+  }
+
+  @Post('bulk-delete')
+  @Roles('admin', 'tenant_owner')
+  @ApiOperation({ summary: 'Bulk delete clients' })
+  bulkDelete(@Body() body: { ids: string[] }, @TenantId() tenantId: string) {
+    return this.clientsService.bulkDelete(body.ids, tenantId);
   }
 
   @Get(':id')
