@@ -61,10 +61,12 @@ export interface UpgradeRequest {
 
 // --- Plan Types ---
 export interface PlanLimits {
-    clients: number;
-    coaches: number;
-    sessions_per_month: number;
-    storage_gb: number;
+    maxClients: number;
+    maxCoaches: number;
+    maxSessionsPerMonth: number;
+    storageGB: number;
+    smsAllowance: number;
+    emailAllowance: number;
     locations: number;
     custom_branding: boolean;
     white_label_email: boolean;

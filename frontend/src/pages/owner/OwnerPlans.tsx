@@ -52,10 +52,12 @@ const OwnerPlans: React.FC = () => {
             description: '',
             isActive: true,
             limits: {
-                clients: 10,
-                coaches: 1,
-                sessions_per_month: 100,
-                storage_gb: 1,
+                maxClients: 10,
+                maxCoaches: 1,
+                maxSessionsPerMonth: 100,
+                storageGB: 1,
+                smsAllowance: 0,
+                emailAllowance: 0,
                 locations: 1,
                 custom_branding: false,
                 white_label_email: false,
@@ -151,25 +153,25 @@ const OwnerPlans: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                         <Users size={14} className="text-blue-500" />
                                         <span className="text-gray-700 dark:text-gray-300">
-                                            {plan.limits.clients === -1 ? 'Unlimited' : plan.limits.clients} Clients
+                                            {plan.limits.maxClients === -1 ? 'Unlimited' : plan.limits.maxClients} Clients
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Activity size={14} className="text-green-500" />
                                         <span className="text-gray-700 dark:text-gray-300">
-                                            {plan.limits.sessions_per_month === -1 ? 'Unlimited' : plan.limits.sessions_per_month} Sessions
+                                            {plan.limits.maxSessionsPerMonth === -1 ? 'Unlimited' : plan.limits.maxSessionsPerMonth} Sessions
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Users size={14} className="text-indigo-500" />
                                         <span className="text-gray-700 dark:text-gray-300">
-                                            {plan.limits.coaches === -1 ? 'Unlimited' : plan.limits.coaches} Coaches
+                                            {plan.limits.maxCoaches === -1 ? 'Unlimited' : plan.limits.maxCoaches} Coaches
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <HardDrive size={14} className="text-purple-500" />
                                         <span className="text-gray-700 dark:text-gray-300">
-                                            {plan.limits.storage_gb === -1 ? 'Unlimited' : `${plan.limits.storage_gb}GB`}
+                                            {plan.limits.storageGB === -1 ? 'Unlimited' : `${plan.limits.storageGB}GB`}
                                         </span>
                                     </div>
                                 </div>
@@ -260,11 +262,13 @@ const OwnerPlans: React.FC = () => {
                                 <h4 className="font-medium text-gray-900 dark:text-white border-b pb-2">Limits (-1 for unlimited)</h4>
                                 <div className="grid grid-cols-2 gap-3">
                                     {[
-                                        { key: 'clients', label: 'Clients' },
-                                        { key: 'coaches', label: 'Coaches' },
-                                        { key: 'sessions_per_month', label: 'Sessions/Mo' },
+                                        { key: 'maxClients', label: 'Clients' },
+                                        { key: 'maxCoaches', label: 'Coaches' },
+                                        { key: 'maxSessionsPerMonth', label: 'Sessions/Mo' },
                                         { key: 'locations', label: 'Locations' },
-                                        { key: 'storage_gb', label: 'Storage (GB)' },
+                                        { key: 'storageGB', label: 'Storage (GB)' },
+                                        { key: 'smsAllowance', label: 'SMS Allowance' },
+                                        { key: 'emailAllowance', label: 'Email Allowance' },
                                     ].map(limit => (
                                         <div key={limit.key}>
                                             <label className="block text-xs text-gray-500 mb-1">{limit.label}</label>

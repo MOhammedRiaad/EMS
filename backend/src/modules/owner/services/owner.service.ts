@@ -59,7 +59,7 @@ export class OwnerService {
     private readonly auditService: OwnerAuditService,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Get dashboard overview stats
@@ -162,27 +162,79 @@ export class OwnerService {
 
     const tenants = await queryBuilder.getMany();
 
-    // Fetch owners for these tenants
+    // Fetch owners and real-time stats for these tenants
     const tenantIds = tenants.map((t) => t.id);
     const ownersMap = new Map<string, string>();
+    const statsMap = new Map<
+      string,
+      { clients: number; sessionsThisMonth: number }
+    >();
 
     if (tenantIds.length > 0) {
+      // Fetch owners
       const owners = await this.userRepository.find({
         where: {
           tenantId: In(tenantIds),
-          // We need to identify the owner. If permissions are fully in place, we check for 'tenant_owner' role.
-          // Assuming 'role' column references the key or we have to join user_roles.
-          // Let's assume 'role' string column still exists as per legacy or migration strategy mentions.
-          // If not, we might need to adjust. Let's use 'role' for now as getTenantDetails used it.
           role: 'tenant_owner',
         },
         select: ['tenantId', 'email'],
       });
       owners.forEach((u) => ownersMap.set(u.tenantId, u.email));
+
+      // Fetch Client Counts
+      const clientCounts = await this.clientRepository
+        .createQueryBuilder('client')
+        .select('client.tenantId', 'tenantId')
+        .addSelect('COUNT(client.id)', 'count')
+        .where('client.tenantId IN (:...tenantIds)', { tenantIds })
+        .groupBy('client.tenantId')
+        .getRawMany();
+
+      clientCounts.forEach((record) => {
+        const current = statsMap.get(record.tenantId) || {
+          clients: 0,
+          sessionsThisMonth: 0,
+        };
+        current.clients = parseInt(record.count, 10);
+        statsMap.set(record.tenantId, current);
+      });
+
+      // Fetch Session Counts (This Month)
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const sessionCounts = await this.sessionRepository
+        .createQueryBuilder('session')
+        .select('session.tenantId', 'tenantId')
+        .addSelect('COUNT(session.id)', 'count')
+        .where('session.tenantId IN (:...tenantIds)', { tenantIds })
+        .andWhere('session.startTime >= :startOfMonth', { startOfMonth })
+        .groupBy('session.tenantId')
+        .getRawMany();
+
+      sessionCounts.forEach((record) => {
+        const current = statsMap.get(record.tenantId) || {
+          clients: 0,
+          sessionsThisMonth: 0,
+        };
+        current.sessionsThisMonth = parseInt(record.count, 10);
+        statsMap.set(record.tenantId, current);
+      });
     }
 
     // Transform to DTO
     const items = tenants.map((tenant) => {
+      const liveStats = statsMap.get(tenant.id) || {
+        clients: 0,
+        sessionsThisMonth: 0,
+      };
+      // Merge with cached stats if available (prefer live for critical counts)
+      const stats = {
+        ...(tenant.usageStats || {}),
+        clients: liveStats.clients,
+        sessionsThisMonth: liveStats.sessionsThisMonth,
+      };
+
       return {
         id: tenant.id,
         name: tenant.name,
@@ -193,7 +245,7 @@ export class OwnerService {
         },
         contactEmail: ownersMap.get(tenant.id) || 'no-email@tenant.com',
         createdAt: tenant.createdAt,
-        stats: tenant.usageStats || { clients: 0, sessionsThisMonth: 0 },
+        stats,
       };
     });
 
@@ -820,24 +872,24 @@ export class OwnerService {
         marketingConsentRate:
           activeClientsCount > 0
             ? Math.round(
-                (parseInt(marketingConsentCount[0].count) /
-                  activeClientsCount) *
-                  100,
-              )
+              (parseInt(marketingConsentCount[0].count) /
+                activeClientsCount) *
+              100,
+            )
             : 0,
         dataProcessingConsentRate:
           activeClientsCount > 0
             ? Math.round(
-                (parseInt(dataProcessingConsentCount[0].count) /
-                  activeClientsCount) *
-                  100,
-              )
+              (parseInt(dataProcessingConsentCount[0].count) /
+                activeClientsCount) *
+              100,
+            )
             : 0,
         termsAcceptanceRate:
           activeClientsCount > 0
             ? Math.round(
-                (parseInt(termsAcceptedCount.count) / activeClientsCount) * 100,
-              )
+              (parseInt(termsAcceptedCount.count) / activeClientsCount) * 100,
+            )
             : 0,
       },
       rightToBeForgotten: {

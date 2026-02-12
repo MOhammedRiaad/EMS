@@ -17,6 +17,7 @@ interface AdminUserResponse {
     roles?: Role[]; // Future proofing
     lastLoginAt?: string;
     active: boolean;
+    tenantName?: string;
 }
 
 interface AdminUser extends AdminUserResponse {
@@ -217,6 +218,7 @@ const OwnerAdmins: React.FC = () => {
                     <thead className="bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-gray-400 text-xs uppercase">
                         <tr>
                             <th className="px-6 py-4 font-medium">User</th>
+                            <th className="px-6 py-4 font-medium">Tenant</th>
                             <th className="px-6 py-4 font-medium">Assigned Roles</th>
                             <th className="px-6 py-4 font-medium">Status</th>
                             <th className="px-6 py-4 font-medium">Last Login</th>
@@ -236,6 +238,11 @@ const OwnerAdmins: React.FC = () => {
                                             <div className="text-xs text-gray-500">{user.email}</div>
                                         </div>
                                     </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                        {user.tenantName || <span className="text-gray-400 italic">Global</span>}
+                                    </span>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-wrap gap-1">

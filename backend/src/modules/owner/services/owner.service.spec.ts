@@ -53,9 +53,12 @@ describe('OwnerService', () => {
         },
         {
           provide: getRepositoryToken(Session),
-          useValue: { count: jest.fn() },
+          useValue: { count: jest.fn(), createQueryBuilder: jest.fn() },
         },
-        { provide: getRepositoryToken(Client), useValue: { count: jest.fn() } },
+        {
+          provide: getRepositoryToken(Client),
+          useValue: { count: jest.fn(), createQueryBuilder: jest.fn() },
+        },
         { provide: getRepositoryToken(Coach), useValue: { count: jest.fn() } },
         {
           provide: getRepositoryToken(TermsAcceptance),
@@ -216,6 +219,27 @@ describe('OwnerService', () => {
         getMany: jest.fn().mockResolvedValue(mockTenants),
       } as any);
 
+      clientRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ tenantId: 't1', count: '5' }]),
+      } as any);
+
+      sessionRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ tenantId: 't1', count: '10' }]),
+      } as any);
+
       userRepo.find.mockResolvedValue(mockOwners);
 
       const result = await service.listTenants({});
@@ -226,7 +250,7 @@ describe('OwnerService', () => {
           id: 't1',
           plan: { key: 'pro', name: 'Pro' },
           contactEmail: 'owner1@test.com',
-          stats: { clients: 5 },
+          stats: { clients: 5, sessionsThisMonth: 10 },
         }),
       );
       expect(result.items[1].plan).toEqual({ key: 'starter', name: 'Starter' });
