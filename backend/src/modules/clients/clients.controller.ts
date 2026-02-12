@@ -49,6 +49,7 @@ export class ClientsController {
     @Query('search') search?: string,
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
+    @Query('studioId') studioId?: string,
   ) {
     return this.clientsService.findAll(
       tenantId,
@@ -57,6 +58,7 @@ export class ClientsController {
       search,
       sortBy,
       sortOrder,
+      studioId,
     );
   }
 

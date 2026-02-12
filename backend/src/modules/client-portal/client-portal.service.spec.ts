@@ -197,6 +197,7 @@ describe('ClientPortalService', () => {
 
       expect(packagesService.findBestPackageForSession).toHaveBeenCalledWith(
         'client-123',
+        null,
         'tenant-123',
       );
     });

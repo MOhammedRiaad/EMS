@@ -14,6 +14,7 @@ interface PlannerStudioSectionProps {
     maxTime: Date;
     onSessionClick: (session: Session) => void;
     onDrop: (session: Session, targetStudioId: string, targetCoachId: string, targetRoomId: string, offsetY: number) => void;
+    onSlotClick?: (studioId: string, coachId: string, roomId: string, time: Date) => void;
 }
 
 const PlannerStudioSection: React.FC<PlannerStudioSectionProps> = ({
@@ -26,7 +27,8 @@ const PlannerStudioSection: React.FC<PlannerStudioSectionProps> = ({
     minTime,
     maxTime,
     onSessionClick,
-    onDrop
+    onDrop,
+    onSlotClick
 }) => {
     // Filter coaches for this studio
     const activeCoaches = coaches.filter(c => c.studioId === studio.id);
@@ -60,6 +62,7 @@ const PlannerStudioSection: React.FC<PlannerStudioSectionProps> = ({
                         maxTime={maxTime}
                         onSessionClick={onSessionClick}
                         onDrop={onDrop}
+                        onSlotClick={onSlotClick}
                     />
                 ))}
             </div>

@@ -32,6 +32,7 @@ const mockRepository = () => ({
     getRawMany: jest.fn().mockReturnThis(),
     getRawOne: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockReturnThis(),
+    getCount: jest.fn(),
   })),
 });
 
@@ -88,6 +89,7 @@ describe('AnalyticsService', () => {
         .mockResolvedValueOnce(20); // Converted
 
       const mockQueryBuilder = {
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -104,12 +106,22 @@ describe('AnalyticsService', () => {
         .spyOn(leadRepo, 'createQueryBuilder')
         .mockReturnValue(mockQueryBuilder as any);
 
+      jest
+        .spyOn(clientPackageRepo, 'createQueryBuilder')
+        .mockReturnValue({
+          ...mockQueryBuilder,
+          getCount: jest.fn().mockResolvedValue(5),
+          getRawOne: jest.fn().mockResolvedValue({ total: '500' }),
+        } as any);
+
       const result = await service.getLeadAnalytics(tenantId, query);
 
       expect(result).toEqual({
         total: 100,
         converted: 20,
         conversionRate: 20,
+        packagesSold: 5,
+        revenue: 500,
         sources: [
           { source: 'Website', count: 50 },
           { source: 'Referral', count: 30 },
@@ -167,9 +179,10 @@ describe('AnalyticsService', () => {
 
       // Wait, array index 0 is first point?
       // x: 0 (1000), 1 (2000), 2 (3000), 3 (4000), 4 (5000), 5 (6000)
-      // m = 1000, b = 1000.
-      // Predict x=6 => 1000*6 + 1000 = 7000.
-
+      // 1000, 2000, 3000, 4000, 5000, 6000
+      // x=0..5, y=1000..6000
+      // Slope = 1000, Intercept = 1000
+      // Next period x=6 => 1000*6 + 1000 = 7000
       expect(result.forecast).toBeCloseTo(7000);
       expect(result.trend).toBe('up');
       expect(result.growthRate).toBeCloseTo(16.67, 1); // (7000-6000)/6000 = 1/6 = 16.666...
@@ -203,7 +216,7 @@ describe('AnalyticsService', () => {
 
       const result = await service.getRevenueForecast(tenantId);
 
-      expect(result.trend).toBe('insufficient_data');
+      expect(result.trend).toBe('flat');
       expect(result.forecast).toBe(0);
     });
   });

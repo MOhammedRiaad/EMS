@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { TenantsService } from './tenants.service';
 import { Tenant } from './entities/tenant.entity';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { MailerService } from '../mailer/mailer.service';
 
 describe('TenantsService', () => {
   let service: TenantsService;
@@ -32,6 +33,12 @@ describe('TenantsService', () => {
             findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
+          },
+        },
+        {
+          provide: MailerService,
+          useValue: {
+            sendMail: jest.fn(),
           },
         },
       ],

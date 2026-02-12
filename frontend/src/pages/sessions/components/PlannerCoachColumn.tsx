@@ -14,6 +14,7 @@ interface PlannerCoachColumnProps {
     maxTime: Date;
     onSessionClick: (session: Session) => void;
     onDrop: (session: Session, targetStudioId: string, targetCoachId: string, targetRoomId: string, offsetY: number) => void;
+    onSlotClick?: (studioId: string, coachId: string, roomId: string, time: Date) => void;
 }
 
 const PlannerCoachColumn: React.FC<PlannerCoachColumnProps> = ({
@@ -26,7 +27,8 @@ const PlannerCoachColumn: React.FC<PlannerCoachColumnProps> = ({
     minTime,
     maxTime,
     onSessionClick,
-    onDrop
+    onDrop,
+    onSlotClick
 }) => {
     // Each coach gets ALL active rooms for this studio as sub-columns
     // This allows scheduling the same coach in different rooms at different times
@@ -67,6 +69,7 @@ const PlannerCoachColumn: React.FC<PlannerCoachColumnProps> = ({
                         maxTime={maxTime}
                         onSessionClick={onSessionClick}
                         onDrop={onDrop}
+                        onSlotClick={onSlotClick}
                     />
                 ))}
                 {activeRooms.length === 0 && (

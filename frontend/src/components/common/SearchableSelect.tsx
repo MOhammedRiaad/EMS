@@ -15,7 +15,8 @@ interface SearchableSelectProps {
     searchPlaceholder?: string;
     disabled?: boolean;
     required?: boolean;
-    className?: string;
+    className?: string; // Wrapper class
+    triggerClassName?: string; // Trigger button class
     emptyMessage?: string;
 }
 
@@ -28,6 +29,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     disabled = false,
     required = false,
     className = '',
+    triggerClassName = '',
     emptyMessage = 'No options found'
 }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -95,6 +97,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                             ? 'border-brand-500 ring-1 ring-brand-500'
                             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                     }
+                    ${triggerClassName}
                 `}
             >
                 <div className="flex-1 truncate mr-2">

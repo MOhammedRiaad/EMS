@@ -18,6 +18,8 @@ import { PermissionService } from '../auth/services/permission.service';
 import { RoleService } from '../auth/services/role.service';
 import { AuditService } from '../audit/audit.service';
 import { AutomationService } from '../marketing/automation.service';
+import { Lead } from '../leads/entities/lead.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('SessionsService - Recurrence', () => {
   let service: SessionsService;
@@ -124,6 +126,14 @@ describe('SessionsService - Recurrence', () => {
           useValue: {
             triggerEvent: jest.fn().mockResolvedValue(undefined),
           },
+        },
+        {
+          provide: getRepositoryToken(Lead),
+          useValue: { findOne: jest.fn(), save: jest.fn() },
+        },
+        {
+          provide: NotificationsService,
+          useValue: { notify: jest.fn() },
         },
       ],
     }).compile();

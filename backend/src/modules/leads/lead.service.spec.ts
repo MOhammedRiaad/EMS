@@ -12,6 +12,8 @@ import { AutomationService } from '../marketing/automation.service';
 import { User } from '../auth/entities/user.entity';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AutomationTriggerType } from '../marketing/entities/automation-rule.entity';
+import { SessionsService } from '../sessions/sessions.service';
+import { PackagesService } from '../packages/packages.service';
 
 describe('LeadService', () => {
   let service: LeadService;
@@ -19,6 +21,8 @@ describe('LeadService', () => {
   let activityRepository: jest.Mocked<Repository<LeadActivity>>;
   let clientsService: jest.Mocked<ClientsService>;
   let automationService: jest.Mocked<AutomationService>;
+  let sessionsService: jest.Mocked<SessionsService>;
+  let packagesService: jest.Mocked<PackagesService>;
 
   const mockUser = {
     id: 'user-123',
@@ -74,10 +78,23 @@ describe('LeadService', () => {
             invite: jest.fn(),
           },
         },
+        // ... inside beforeEach ...
         {
           provide: AutomationService,
           useValue: {
             triggerEvent: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: SessionsService,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: PackagesService,
+          useValue: {
+            assignPackage: jest.fn(),
           },
         },
       ],
@@ -88,6 +105,8 @@ describe('LeadService', () => {
     activityRepository = module.get(getRepositoryToken(LeadActivity));
     clientsService = module.get(ClientsService);
     automationService = module.get(AutomationService);
+    sessionsService = module.get(SessionsService);
+    packagesService = module.get(PackagesService);
   });
 
   it('should be defined', () => {

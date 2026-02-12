@@ -57,12 +57,14 @@ export const clientsService = {
         limit: number = 50,
         search?: string,
         sortBy?: string,
-        sortOrder?: 'ASC' | 'DESC'
+        sortOrder?: 'ASC' | 'DESC',
+        studioId?: string
     ): Promise<{ data: Client[], total: number, page: number, limit: number }> {
         const params = new URLSearchParams();
         params.append('page', String(page));
         params.append('limit', String(limit));
         if (search) params.append('search', search);
+        if (studioId) params.append('studioId', studioId);
         if (sortBy) params.append('sortBy', sortBy);
         if (sortOrder) params.append('sortOrder', sortOrder);
 

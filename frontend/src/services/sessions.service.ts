@@ -66,6 +66,7 @@ export interface CreateSessionInput {
     type: 'individual' | 'group';
     capacity: number;
     allowTimeChangeOverride?: boolean;
+    intensityLevel?: number;
 }
 
 export interface SessionQuery {

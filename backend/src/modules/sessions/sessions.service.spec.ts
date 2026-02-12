@@ -681,7 +681,7 @@ describe('SessionsService', () => {
     };
 
     beforeEach(() => {
-      sessionRepository.findOne.mockResolvedValue(mockSession);
+      sessionRepository.findOne.mockResolvedValue({ ...mockSession });
       sessionRepository.save.mockImplementation(async (s) => s as Session);
       roomRepository.findOne.mockResolvedValue(mockRoom);
       studioRepository.findOne.mockResolvedValue(mockStudio);
@@ -698,6 +698,11 @@ describe('SessionsService', () => {
     });
 
     it('should update session successfully', async () => {
+      // Mock findOne to return original first, then updated
+      sessionRepository.findOne
+        .mockResolvedValueOnce({ ...mockSession })
+        .mockResolvedValueOnce({ ...mockSession, ...updateDto } as any);
+
       const result = await service.update(
         'session-123',
         updateDto,

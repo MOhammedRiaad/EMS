@@ -58,6 +58,7 @@ export class ClientsService {
     search?: string,
     sortBy: string = 'lastName',
     sortOrder: 'ASC' | 'DESC' = 'ASC',
+    studioId?: string,
   ): Promise<{ data: Client[]; total: number; page: number; limit: number }> {
     const query = this.clientRepository
       .createQueryBuilder('client')
@@ -65,6 +66,10 @@ export class ClientsService {
       .leftJoinAndSelect('client.user', 'user')
       .where('client.tenantId = :tenantId', { tenantId })
       .andWhere('client.status = :status', { status: 'active' });
+
+    if (studioId) {
+      query.andWhere('client.studioId = :studioId', { studioId });
+    }
 
     if (search) {
       query.andWhere(

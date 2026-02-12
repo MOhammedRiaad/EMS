@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { SessionsService } from './sessions.service';
 import { Session } from './entities/session.entity';
 import { Room } from '../rooms/entities/room.entity';
+import { Lead } from '../leads/entities/lead.entity';
 import { Studio } from '../studios/entities/studio.entity';
 import { Coach } from '../coaches/entities/coach.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
@@ -18,6 +19,7 @@ import { PermissionService } from '../auth/services/permission.service';
 import { RoleService } from '../auth/services/role.service';
 import { AuditService } from '../audit/audit.service';
 import { AutomationService } from '../marketing/automation.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('SessionsService - Gender Validation', () => {
   let service: SessionsService;
@@ -83,6 +85,7 @@ describe('SessionsService - Gender Validation', () => {
         },
         { provide: getRepositoryToken(Coach), useValue: mockRepo },
         { provide: getRepositoryToken(Tenant), useValue: mockRepo },
+        { provide: getRepositoryToken(Lead), useValue: mockRepo },
         {
           provide: getRepositoryToken(CoachTimeOffRequest),
           useValue: mockRepo,
@@ -124,6 +127,12 @@ describe('SessionsService - Gender Validation', () => {
           provide: AutomationService,
           useValue: {
             triggerEvent: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            notify: jest.fn(),
           },
         },
       ],

@@ -8,6 +8,7 @@ import PlannerStudioSection from './components/PlannerStudioSection';
 import RescheduleConfirmModal from './components/RescheduleConfirmModal';
 import CalendarDetailsPanel from './components/CalendarDetailsPanel';
 import SessionDetailsModal from './SessionDetailsModal';
+import QuickBookModal from './components/QuickBookModal';
 import { useNavigate } from 'react-router-dom';
 import type { Session } from '../../services/sessions.service';
 import { toast } from '../../utils/toast';
@@ -39,6 +40,15 @@ const DailyPlannerPage: React.FC = () => {
         newCoachId: string;
         newRoomId: string;
         newStudioId: string;
+    } | null>(null);
+
+    // Quick Book Modal State
+    const [quickBookModalOpen, setQuickBookModalOpen] = useState(false);
+    const [quickBookData, setQuickBookData] = useState<{
+        studio: { id: string; name: string };
+        coach: { id: string; firstName: string; lastName: string; preferredClientGender?: 'male' | 'female' | 'any' };
+        room: { id: string; name: string };
+        startTime: Date;
     } | null>(null);
 
     // Fetch time-offs
@@ -157,6 +167,27 @@ const DailyPlannerPage: React.FC = () => {
             toast.error(err.message || 'Failed to reschedule');
         } finally {
             setUpdating(false);
+        }
+    };
+
+    const handleSlotClick = (studioId: string, coachId: string, roomId: string, time: Date) => {
+        const studio = studios.find(s => s.id === studioId);
+        const coach = allCoaches.find(c => c.id === coachId);
+        const room = allRooms.find(r => r.id === roomId);
+
+        if (studio && coach && room) {
+            setQuickBookData({
+                studio: { id: studio.id, name: studio.name },
+                coach: {
+                    id: coach.id,
+                    firstName: coach.firstName,
+                    lastName: coach.lastName,
+                    preferredClientGender: coach.preferredClientGender
+                },
+                room: { id: room.id, name: room.name },
+                startTime: time
+            });
+            setQuickBookModalOpen(true);
         }
     };
 
@@ -298,6 +329,7 @@ const DailyPlannerPage: React.FC = () => {
                                 maxTime={maxTime}
                                 onSessionClick={(s) => setSelectedSession(s)}
                                 onDrop={handleDrop}
+                                onSlotClick={handleSlotClick}
                             />
                         ))}
                     </div>
@@ -334,6 +366,13 @@ const DailyPlannerPage: React.FC = () => {
                 onClose={() => setDetailsModalOpen(false)}
                 session={selectedSession}
                 onSessionUpdated={refresh}
+            />
+
+            <QuickBookModal
+                isOpen={quickBookModalOpen}
+                onClose={() => setQuickBookModalOpen(false)}
+                onSuccess={refresh}
+                initialData={quickBookData}
             />
         </div>
     );

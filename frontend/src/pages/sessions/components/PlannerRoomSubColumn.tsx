@@ -15,6 +15,7 @@ interface PlannerRoomSubColumnProps {
     maxTime: Date;
     onSessionClick: (session: Session) => void;
     onDrop: (session: Session, targetStudioId: string, targetCoachId: string, targetRoomId: string, offsetY: number) => void;
+    onSlotClick?: (studioId: string, coachId: string, roomId: string, time: Date) => void;
 }
 
 const PIXELS_PER_MINUTE = 2;
@@ -30,7 +31,8 @@ const PlannerRoomSubColumn: React.FC<PlannerRoomSubColumnProps> = ({
     minTime,
     maxTime,
     onSessionClick,
-    onDrop
+    onDrop,
+    onSlotClick
 }) => {
     const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -171,6 +173,23 @@ const PlannerRoomSubColumn: React.FC<PlannerRoomSubColumnProps> = ({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
+                onClick={(e) => {
+                    // Only trigger if clicking the background, not a session card
+                    // Session cards stop propagation usually, but just in case
+                    if (e.target !== e.currentTarget && e.target !== timelineRef.current) return;
+
+                    if (onSlotClick) {
+                        // calculated inside click handler to avoid unused var warning if we extracted it before
+
+
+                        if (timelineRef.current) {
+                            const rect = timelineRef.current.getBoundingClientRect();
+                            const clickY = e.clientY - rect.top;
+                            const time = offsetToTime(clickY);
+                            onSlotClick(studioId, coachId, roomId, time);
+                        }
+                    }
+                }}
             >
                 {/* Grid Lines */}
                 {renderGridLines()}
