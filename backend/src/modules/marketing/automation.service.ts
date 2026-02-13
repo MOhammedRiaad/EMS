@@ -105,8 +105,8 @@ export class AutomationService {
       (context.lead ? context.lead.tenantId : null);
 
     if (!tenantId) {
-      this.logger.warn(
-        `Trigger event ${type} missing tenantId context.Skipping automation.`,
+      this.logger.error(
+        `Trigger event ${type} missing tenantId context. Skipping automation.`,
       );
       return;
     }

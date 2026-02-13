@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +12,8 @@ import { MailerService } from '../mailer/mailer.service';
 
 @Injectable()
 export class TenantsService {
+  private readonly logger = new Logger(TenantsService.name);
+
   constructor(
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
@@ -106,7 +109,7 @@ export class TenantsService {
       }
       return { success: true };
     } catch (error) {
-      console.error('Email test failed:', error);
+      this.logger.error(`Email test failed: ${error.message}`, error.stack);
       return { success: false, error: error.message };
     }
   }

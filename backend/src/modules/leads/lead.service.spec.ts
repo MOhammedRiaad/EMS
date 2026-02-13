@@ -114,6 +114,17 @@ describe('LeadService', () => {
   });
 
   describe('create', () => {
+    it('should successfully create a lead', async () => {
+      const dto = { firstName: 'Test', lastName: 'Lead', email: 'test@example.com' };
+      // Cast to any for mock return to avoid deep entity property noise in tests
+      leadRepository.save.mockResolvedValue({ id: 'lead-123', ...dto, tenantId: 'tenant-123' } as any);
+
+      const result = await service.create(dto, 'tenant-123', mockUser);
+
+      expect(leadRepository.create).toHaveBeenCalled();
+      expect(leadRepository.save).toHaveBeenCalled();
+      expect(result).toMatchObject({ id: 'lead-123', firstName: 'Test' });
+    });
     it('should create a lead and trigger NEW_LEAD automation', async () => {
       const createDto = {
         firstName: 'John',

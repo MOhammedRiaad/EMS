@@ -361,7 +361,12 @@ describe('ClientsService', () => {
         ...createDto,
         tenantId: 'tenant-123',
       });
-      expect(result).toBe(mockClient);
+      expect(result).toMatchObject({
+        id: 'client-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+      });
     });
   });
 
@@ -383,7 +388,11 @@ describe('ClientsService', () => {
       const result = await service.createWithUser(createDto, 'tenant-123');
 
       expect(authService.createClientUser).toHaveBeenCalled();
-      expect(result).toBe(mockClient);
+      expect(result).toMatchObject({
+        id: 'client-123',
+        firstName: 'John',
+        email: 'john@example.com',
+      });
     });
 
     it('should throw error if email already exists', async () => {

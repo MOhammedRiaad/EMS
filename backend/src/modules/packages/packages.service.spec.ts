@@ -165,7 +165,11 @@ describe('PackagesService', () => {
         tenantId: 'tenant-123',
       });
       expect(packageRepo.save).toHaveBeenCalled();
-      expect(result).toBe(mockPackage);
+      expect(result).toMatchObject({
+        id: 'pkg-123',
+        name: '10 Session Pack',
+        price: 500,
+      });
     });
   });
 
@@ -241,7 +245,11 @@ describe('PackagesService', () => {
           sessionsRemaining: mockPackage.totalSessions,
         }),
       );
-      expect(result).toBe(mockClientPackage);
+      expect(result).toMatchObject({
+        id: 'cp-123',
+        clientId: 'client-123',
+        packageId: 'pkg-123',
+      });
     });
 
     it('should throw NotFoundException if package not found', async () => {

@@ -35,9 +35,7 @@ export class TenantProvisioningService {
         try {
             await this.planService.assignPlanToTenant(tenant.id, planKey);
         } catch (error) {
-            // Fallback to basic or log error if trial plan doesn't exist? 
-            // For now, assume trial plan exists as per requirement.
-            console.warn(`Failed to assign plan ${planKey} to tenant ${tenant.id}: ${error.message}`);
+            throw new Error(`Failed to assign plan ${planKey} to tenant ${tenant.id}: ${error.message}`);
         }
 
         // 3. Create User (Tenant Owner)
@@ -59,7 +57,7 @@ export class TenantProvisioningService {
         if (role) {
             await this.roleService.assignRoleToUser(user.id, role.id);
         } else {
-            console.warn('Role tenant_owner not found during provisioning');
+            throw new NotFoundException('Role tenant_owner not found during provisioning');
         }
 
         // 5. Initialize Settings (branding, cancellation policy defaults)

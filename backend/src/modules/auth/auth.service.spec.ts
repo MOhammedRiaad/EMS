@@ -218,7 +218,7 @@ describe('AuthService', () => {
       mockUserRepository.findOne.mockResolvedValue(null);
       mockTenantProvisioningService.provisionTenant.mockResolvedValue({
         tenant: mockTenant,
-        user: mockUser,
+        user: { ...mockUser, email: registerDto.email },
       });
       mockJwtService.sign.mockReturnValue('mock-jwt-token');
 
@@ -228,9 +228,11 @@ describe('AuthService', () => {
         where: { email: registerDto.email },
       });
       expect(mockTenantProvisioningService.provisionTenant).toHaveBeenCalledWith(registerDto);
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('user');
-      expect(result).toHaveProperty('tenant');
+      expect(result).toMatchObject({
+        accessToken: expect.any(String),
+        user: { id: expect.any(String), email: registerDto.email },
+        tenant: { id: expect.any(String) },
+      });
     });
 
     it('should throw UnauthorizedException if email already exists', async () => {
@@ -260,9 +262,10 @@ describe('AuthService', () => {
         tenantId: 'tenant-123',
       })) as any;
 
-      expect(result).toHaveProperty('accessToken');
-      expect(result).toHaveProperty('user');
-      expect(result.user.email).toBe(mockUser.email);
+      expect(result).toMatchObject({
+        accessToken: 'mock-jwt-token',
+        user: expect.objectContaining({ email: mockUser.email }),
+      });
     });
 
     it('should throw UnauthorizedException with invalid password', async () => {
@@ -316,7 +319,10 @@ describe('AuthService', () => {
 
       const result = (await service.login(loginDto)) as any;
 
-      expect(result).toHaveProperty('accessToken');
+      expect(result).toMatchObject({
+        accessToken: 'mock-token',
+        user: expect.objectContaining({ email: mockUser.email }),
+      });
       expect(mockUserRepository.find).toHaveBeenCalledWith({
         where: { email: loginDto.email },
         relations: ['client'],

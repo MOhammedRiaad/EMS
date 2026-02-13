@@ -64,8 +64,10 @@ describe('TenantProvisioningService', () => {
         expect(planService.assignPlanToTenant).toHaveBeenCalledWith('tenant-123', 'trial');
         expect(userRepository.create).toHaveBeenCalled();
         expect(roleService.assignRoleToUser).toHaveBeenCalledWith('user-123', 'role-123');
-        expect(result.tenant.id).toBe('tenant-123');
-        expect(result.user.id).toBe('user-123');
+
+        // Harden assertions: verify properties instead of just presence
+        expect(result.tenant).toMatchObject({ id: 'tenant-123', name: 'Test Biz' });
+        expect(result.user).toMatchObject({ id: 'user-123' });
     });
 
     it('should provision a tenant with selected plan', async () => {
@@ -81,5 +83,33 @@ describe('TenantProvisioningService', () => {
         await service.provisionTenant(dto);
 
         expect(planService.assignPlanToTenant).toHaveBeenCalledWith('tenant-123', 'starter');
+    });
+
+    it('should throw Error if plan assignment fails', async () => {
+        const dto: RegisterTenantOwnerDto = {
+            businessName: 'Test Biz',
+            email: 'test@example.com',
+            password: 'password123',
+            firstName: 'John',
+            lastName: 'Doe',
+        };
+
+        (planService.assignPlanToTenant as jest.Mock).mockRejectedValue(new Error('Plan not found'));
+
+        await expect(service.provisionTenant(dto)).rejects.toThrow('Failed to assign plan trial to tenant tenant-123: Plan not found');
+    });
+
+    it('should throw NotFoundException if tenant_owner role matches', async () => {
+        const dto: RegisterTenantOwnerDto = {
+            businessName: 'Test Biz',
+            email: 'test@example.com',
+            password: 'password123',
+            firstName: 'John',
+            lastName: 'Doe',
+        };
+
+        (roleService.getRoleByKey as jest.Mock).mockResolvedValue(null);
+
+        await expect(service.provisionTenant(dto)).rejects.toThrow('Role tenant_owner not found during provisioning');
     });
 });

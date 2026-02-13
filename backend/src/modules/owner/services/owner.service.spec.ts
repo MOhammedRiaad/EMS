@@ -13,7 +13,7 @@ import { FeatureFlagService } from './feature-flag.service';
 import { PlanService } from './plan.service';
 import { OwnerAuditService } from './owner-audit.service';
 import { JwtService } from '@nestjs/jwt';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 describe('OwnerService', () => {
   let service: OwnerService;
@@ -344,6 +344,143 @@ describe('OwnerService', () => {
     it('should throw NotFoundException if tenant not found', async () => {
       tenantRepo.findOne.mockResolvedValue(null);
       await expect(service.updateTenantSubscription('t1', new Date(), 'o1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getComplianceStats edge cases', () => {
+    it('should return 0 rates when activeClientsCount is 0', async () => {
+      clientRepo.count.mockResolvedValue(0);
+      const dataSource = service['dataSource'];
+      (dataSource.query as jest.Mock).mockResolvedValue([{ count: '0' }]);
+
+      const termsRepo = service['termsAcceptanceRepository'];
+      const qbMock = {
+        select: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ count: '0' }),
+      };
+      (termsRepo.createQueryBuilder as jest.Mock).mockReturnValue(qbMock);
+
+      const result = await service.getComplianceStats();
+      expect(result.clients.marketingConsentRate).toBe(0);
+      expect(result.clients.dataProcessingConsentRate).toBe(0);
+      expect(result.clients.termsAcceptanceRate).toBe(0);
+    });
+  });
+
+  describe('deleteTenant', () => {
+    it('should execute transaction and log action', async () => {
+      tenantRepo.findOne.mockResolvedValue(mockTenant);
+      const dataSource = service['dataSource'];
+      (dataSource.transaction as jest.Mock).mockImplementation(async (cb) => {
+        await cb({ query: jest.fn().mockResolvedValue([]) });
+      });
+
+      await service.deleteTenant('t1', 'owner-1', '127.0.0.1');
+
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        'owner-1',
+        'DELETE_TENANT',
+        expect.any(Object),
+        't1',
+        '127.0.0.1',
+      );
+      expect(dataSource.transaction).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if tenant not found', async () => {
+      tenantRepo.findOne.mockResolvedValue(null);
+      await expect(service.deleteTenant('none', 'o1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getTenantsApproachingLimits', () => {
+    it('should return tenants exceeding the threshold', async () => {
+      tenantRepo.find.mockResolvedValue([mockTenant]);
+      const usageService = service['usageTrackingService'];
+      (usageService.getUsageSnapshot as jest.Mock).mockResolvedValue({
+        clients: { percentage: 85 },
+        coaches: { percentage: 10 },
+        sessionsThisMonth: { percentage: 0 },
+        smsThisMonth: { percentage: 0 },
+        emailThisMonth: { percentage: 0 },
+        storageGB: { percentage: 0 },
+      });
+
+      const result = await service.getTenantsApproachingLimits(80);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].limitType).toBe('clients');
+      expect(result[0].percentage).toBe(85);
+    });
+  });
+
+  describe('generateImpersonationToken', () => {
+    it('should sign a token for the tenant owner', async () => {
+      tenantRepo.findOne.mockResolvedValue(mockTenant);
+      userRepo.findOne.mockResolvedValue({ id: 'u1', email: 'owner@t1.com', role: 'tenant_owner' } as User);
+      const jwtService = service['jwtService'];
+      (jwtService.sign as jest.Mock).mockReturnValue('mock-token');
+
+      const result = await service.generateImpersonationToken('t1', 'owner-1');
+
+      expect(result.token).toBe('mock-token');
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        'owner-1',
+        'IMPERSONATE',
+        expect.any(Object),
+        't1',
+        undefined,
+      );
+    });
+
+    it('should throw if no tenant owner found', async () => {
+      tenantRepo.findOne.mockResolvedValue(mockTenant);
+      userRepo.findOne.mockResolvedValue(null);
+      await expect(service.generateImpersonationToken('t1', 'o1')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateTenantPlan', () => {
+    it('should update plan and log action if compatible', async () => {
+      tenantRepo.findOne.mockResolvedValue(mockTenant);
+      const planService = service['planService'];
+      const usageService = service['usageTrackingService'];
+      (usageService.getUsageSnapshot as jest.Mock).mockResolvedValue({
+        clients: { current: 5 },
+        coaches: { current: 1 },
+        storageGB: { current: 0.1 },
+      });
+      (planService.getPlanByKey as jest.Mock).mockResolvedValue({
+        limits: { maxClients: 100, maxCoaches: 10, storageGB: 1 }
+      });
+      (planService.assignPlanToTenant as jest.Mock).mockResolvedValue({ ...mockTenant, plan: 'pro' });
+
+      const result = await service.updateTenantPlan('t1', 'pro', 'owner-1');
+
+      expect(result.plan).toBe('pro');
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        'owner-1',
+        'UPDATE_PLAN',
+        expect.any(Object),
+        't1',
+        undefined,
+      );
+    });
+
+    it('should throw BadRequestException if incompatible', async () => {
+      tenantRepo.findOne.mockResolvedValue(mockTenant);
+      const planService = service['planService'];
+      const usageService = service['usageTrackingService'];
+      (usageService.getUsageSnapshot as jest.Mock).mockResolvedValue({
+        clients: { current: 200 },
+        coaches: { current: 1 },
+        storageGB: { current: 0.1 },
+      });
+      (planService.getPlanByKey as jest.Mock).mockResolvedValue({
+        limits: { maxClients: 100, maxCoaches: 10, storageGB: 1 }
+      });
+
+      await expect(service.updateTenantPlan('t1', 'basic', 'o1')).rejects.toThrow(BadRequestException);
     });
   });
 });

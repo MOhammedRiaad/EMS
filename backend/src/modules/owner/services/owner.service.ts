@@ -307,9 +307,6 @@ export class OwnerService {
     };
   }
 
-  /**
-   * Suspend a tenant
-   */
   async suspendTenant(
     tenantId: string,
     reason: string,
@@ -602,9 +599,6 @@ export class OwnerService {
     return this.tenantRepository.save(tenant);
   }
 
-  /**
-   * Get tenants approaching limits (for alerts)
-   */
   async getTenantsApproachingLimits(threshold = 80): Promise<
     Array<{
       tenant: Tenant;
@@ -625,8 +619,8 @@ export class OwnerService {
     for (const tenant of tenants) {
       const usage = await this.usageTrackingService.getUsageSnapshot(tenant.id);
 
-      const checkLimit = (item: { percentage: number }, type: string) => {
-        if (item.percentage >= threshold) {
+      const checkLimit = (item: { percentage: number } | undefined, type: string) => {
+        if (item && item.percentage >= threshold) {
           results.push({
             tenant,
             limitType: type,
@@ -645,6 +639,7 @@ export class OwnerService {
 
     return results.sort((a, b) => b.percentage - a.percentage);
   }
+
   async getMessagingStats() {
     return this.usageTrackingService.getGlobalUsageStats();
   }
@@ -1004,6 +999,6 @@ export class OwnerService {
         anonymizedUsersIndividual: anonymizedUsersCount,
       },
       generatedAt: new Date(),
-    };
+    }
   }
 }

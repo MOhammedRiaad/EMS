@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,6 +21,8 @@ import { PackagesService } from '../packages/packages.service';
 
 @Injectable()
 export class LeadService {
+  private readonly logger = new Logger(LeadService.name);
+
   constructor(
     @InjectRepository(Lead)
     private leadRepository: Repository<Lead>,
@@ -29,7 +32,7 @@ export class LeadService {
     private readonly automationService: AutomationService,
     private readonly sessionsService: SessionsService,
     private readonly packagesService: PackagesService,
-  ) {}
+  ) { }
 
   async create(
     createLeadDto: any,
@@ -289,7 +292,7 @@ export class LeadService {
     try {
       await this.clientsService.invite(client.id, user.tenantId);
     } catch (e) {
-      console.warn('Failed to send invitation email during conversion', e);
+      this.logger.warn(`Failed to send invitation email during conversion for lead ${id}: ${e.message}`);
       // Don't fail the whole process if email fails, but log it.
     }
 

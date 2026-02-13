@@ -150,6 +150,7 @@ describe('AutomationService', () => {
         tenantId,
       });
 
+      expect(ruleRepository.find).toHaveBeenCalledTimes(1);
       expect(ruleRepository.find).toHaveBeenCalledWith({
         where: {
           triggerType: AutomationTriggerType.NEW_LEAD,
@@ -157,14 +158,34 @@ describe('AutomationService', () => {
           tenantId,
         },
       });
+      expect(executionRepository.create).toHaveBeenCalledTimes(1);
       expect(executionRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           ruleId: mockRule.id,
           entityId: 'client-123',
           tenantId,
+          status: AutomationExecutionStatus.PENDING,
+          currentStepIndex: 0,
+          context: { clientId: 'client-123', tenantId: 'tenant-123' },
         }),
       );
-      expect(executionRepository.save).toHaveBeenCalled();
+      expect(executionRepository.save).toHaveBeenCalledTimes(1);
+      expect(executionRepository.save).toHaveBeenCalledWith(mockExecution);
+    });
+
+    it('should not create execution if tenantId is missing in context', async () => {
+      ruleRepository.find.mockResolvedValue([]); // No rules found for undefined tenantId
+      executionRepository.create.mockClear();
+      executionRepository.save.mockClear();
+
+      await service.triggerEvent(AutomationTriggerType.NEW_LEAD, {
+        clientId: 'client-123',
+        // tenantId is intentionally missing
+      });
+
+      expect(ruleRepository.find).not.toHaveBeenCalled();
+      expect(executionRepository.create).not.toHaveBeenCalled();
+      expect(executionRepository.save).not.toHaveBeenCalled();
     });
 
     it('should handle SESSION_COMPLETED trigger with client context', async () => {
