@@ -10,6 +10,7 @@ import {
   UsageMetric,
   OwnerAuditLog,
   PlanUpgradeRequest,
+  PlatformRevenue,
 } from './entities';
 import { BroadcastMessage } from './entities/broadcast-message.entity';
 import { SystemSettings } from './entities/system-settings.entity';
@@ -35,6 +36,7 @@ import {
   BroadcastService,
   SystemConfigService,
   OwnerDataExportService,
+  PlatformRevenueService,
 } from './services';
 import { OwnerAnalyticsService } from './services/owner-analytics.service';
 import { AlertsService } from './services/alerts.service';
@@ -45,22 +47,21 @@ import { RoleService } from '../auth/services/role.service';
 import { PermissionGuard, PlanLimitGuard } from './guards';
 
 // Controllers
-import { OwnerController } from './controllers/owner.controller';
-import { FeatureFlagController } from './controllers/feature-flag.controller';
-import { PlanController } from './controllers/plan.controller';
 import {
+  OwnerController,
+  FeatureFlagController,
+  PlanController,
   UpgradeRequestController,
   TenantUpgradeRequestController,
-} from './controllers/upgrade-request.controller';
-import {
   UsageController,
   TenantUsageController,
-} from './controllers/usage.controller';
-import { OwnerAnalyticsController } from './controllers/analytics.controller';
-import { AlertsController } from './controllers/alerts.controller';
-import { RoleController } from './controllers/role.controller';
-import { OwnerUsersController } from './controllers/owner-users.controller';
-import { OwnerSeedController } from './controllers/owner-seed.controller';
+  OwnerAnalyticsController,
+  AlertsController,
+  PlatformRevenueController,
+  RoleController,
+  OwnerUsersController,
+  OwnerSeedController,
+} from './controllers';
 
 import { MarketingModule } from '../marketing/marketing.module';
 
@@ -76,6 +77,7 @@ import { MarketingModule } from '../marketing/marketing.module';
       PlanUpgradeRequest,
       BroadcastMessage,
       SystemSettings,
+      PlatformRevenue,
       // Shared entities
       Tenant,
       User,
@@ -106,6 +108,7 @@ import { MarketingModule } from '../marketing/marketing.module';
     TenantUsageController,
     OwnerAnalyticsController,
     AlertsController,
+    PlatformRevenueController,
     RoleController,
     OwnerUsersController,
     OwnerSeedController,
@@ -123,6 +126,7 @@ import { MarketingModule } from '../marketing/marketing.module';
     BroadcastService,
     SystemConfigService,
     OwnerDataExportService,
+    PlatformRevenueService,
     PermissionService,
     RoleService,
     // Guards
@@ -141,6 +145,7 @@ import { MarketingModule } from '../marketing/marketing.module';
     BroadcastService,
     SystemConfigService,
     OwnerDataExportService,
+    PlatformRevenueService,
     PermissionService,
     RoleService,
     PermissionGuard,

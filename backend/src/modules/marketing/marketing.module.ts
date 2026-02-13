@@ -19,7 +19,7 @@ import { SessionReminderCron } from './crons/session-reminder.cron';
     MailerModule,
     AuditModule,
     WhatsAppModule,
-    TenantsModule,
+    forwardRef(() => TenantsModule),
     NotificationsModule,
     forwardRef(() => OwnerModule),
   ],
@@ -27,4 +27,4 @@ import { SessionReminderCron } from './crons/session-reminder.cron';
   providers: [AutomationService, SessionReminderCron],
   exports: [TypeOrmModule, AutomationService],
 })
-export class MarketingModule {}
+export class MarketingModule { }

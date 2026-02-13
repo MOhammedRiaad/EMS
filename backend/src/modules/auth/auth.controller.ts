@@ -30,7 +30,7 @@ import {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
@@ -55,6 +55,12 @@ export class AuthController {
     @Body() dto: RegisterTenantOwnerDto,
   ): Promise<AuthResponseDto> {
     return this.authService.register(dto);
+  }
+
+  @Get('plans')
+  @ApiOperation({ summary: 'Get available plans for registration' })
+  async getPlans() {
+    return this.authService.getPublicPlans();
   }
 
   @Get('users')

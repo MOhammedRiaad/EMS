@@ -40,8 +40,10 @@ import { MarketingModule } from './modules/marketing/marketing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { OwnerModule } from './modules/owner/owner.module';
 import { MaintenanceGuard } from './common/guards/maintenance.guard';
+import { SubscriptionGuard } from './modules/owner/guards/subscription.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ImportModule } from './modules/import/import.module';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -64,11 +66,11 @@ import { ImportModule } from './modules/import/import.module';
             transport: isProduction
               ? undefined
               : {
-                  target: 'pino-pretty',
-                  options: {
-                    singleLine: true,
-                  },
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
                 },
+              },
           },
         };
       },
@@ -142,6 +144,7 @@ import { ImportModule } from './modules/import/import.module';
     OwnerModule,
     WhatsAppModule,
     ImportModule,
+    SupportModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -154,6 +157,10 @@ import { ImportModule } from './modules/import/import.module';
       provide: APP_GUARD,
       useClass: MaintenanceGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -42,6 +42,7 @@ import { PlanUpgradeRequest } from '../src/modules/owner/entities/plan-upgrade-r
 import { BroadcastMessage } from '../src/modules/owner/entities/broadcast-message.entity';
 import { SystemSettings } from '../src/modules/owner/entities/system-settings.entity';
 import { Permission } from '../src/modules/auth/entities/permission.entity';
+import { PlatformRevenue } from '../src/modules/owner/entities/platform-revenue.entity';
 import { Role } from '../src/modules/auth/entities/role.entity';
 import { UserRoleAssignment } from '../src/modules/auth/entities/user-role.entity';
 import { TermsAcceptance } from '../src/modules/terms/entities/terms-acceptance.entity';
@@ -121,6 +122,7 @@ const ALL_ENTITIES = [
   TermsOfService,
   Lead,
   LeadActivity,
+  PlatformRevenue,
 ];
 
 @Module({

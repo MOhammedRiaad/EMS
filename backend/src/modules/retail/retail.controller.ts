@@ -11,7 +11,8 @@ import {
   Query,
   UseInterceptors,
 } from '@nestjs/common';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { TenantCacheInterceptor } from '../../common/interceptors';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -35,7 +36,7 @@ export class RetailController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly salesService: SalesService,
-  ) {}
+  ) { }
 
   // --- Products ---
 
@@ -46,7 +47,7 @@ export class RetailController {
   }
 
   @Get('products')
-  @UseInterceptors(CacheInterceptor)
+  @UseInterceptors(TenantCacheInterceptor)
   @CacheTTL(300000) // 5 minutes (catalog changes infrequently)
   @ApiOperation({ summary: 'List all products' })
   findAllProducts(@Request() req: any) {
@@ -54,7 +55,7 @@ export class RetailController {
   }
 
   @Get('products/:id')
-  @UseInterceptors(CacheInterceptor)
+  @UseInterceptors(TenantCacheInterceptor)
   @CacheTTL(300000) // 5 minutes
   @ApiOperation({ summary: 'Get a product by ID' })
   findOneProduct(@Request() req: any, @Param('id') id: string) {

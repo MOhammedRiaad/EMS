@@ -101,7 +101,7 @@ export class AlertsService {
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
     private readonly ownerService: OwnerService,
-  ) {}
+  ) { }
 
   /**
    * Get all active alerts with optional filters
@@ -282,6 +282,18 @@ export class AlertsService {
    * Check for inactive tenants
    */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async runDailyChecks(): Promise<void> {
+    this.logger.log('Running daily system checks...');
+    await Promise.all([
+      this.checkInactiveTenants(),
+      this.checkSubscriptionExpirations(),
+    ]);
+    this.logger.log('Daily system checks complete.');
+  }
+
+  /**
+   * Check for inactive tenants
+   */
   async checkInactiveTenants(): Promise<void> {
     this.logger.log('Checking for inactive tenants...');
 
@@ -298,7 +310,7 @@ export class AlertsService {
       for (const tenant of inactiveTenants) {
         const daysSinceActivity = Math.floor(
           (Date.now() - (tenant.lastActivityAt?.getTime() || 0)) /
-            (1000 * 60 * 60 * 24),
+          (1000 * 60 * 60 * 24),
         );
 
         // Avoid duplicate alerts
@@ -321,6 +333,69 @@ export class AlertsService {
       );
     } catch (error) {
       this.logger.error(`Failed to check inactive tenants: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check for expiring subscriptions
+   */
+  async checkSubscriptionExpirations(): Promise<void> {
+    this.logger.log('Checking for expiring subscriptions...');
+
+    try {
+      const now = new Date();
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(now.getDate() + 7);
+
+      const tenants = await this.tenantRepository.find({
+        where: {
+          status: 'active',
+        },
+      });
+
+      for (const tenant of tenants) {
+        if (!tenant.subscriptionEndsAt) continue;
+
+        const expirationDate = new Date(tenant.subscriptionEndsAt);
+
+        // 1. Check for expired subscriptions
+        if (expirationDate < now) {
+          // Avoid duplicate alerts (only one critical alert per 7 days)
+          if (!this.hasRecentAlert('subscription_expired', tenant.id, 24 * 7)) {
+            this.createAlert(
+              'subscription_expired',
+              'critical',
+              'billing',
+              'Subscription Expired',
+              `Tenant ${tenant.name}'s subscription expired on ${expirationDate.toLocaleDateString()}`,
+              tenant.id,
+              tenant.name,
+              { expirationDate },
+            );
+          }
+        }
+        // 2. Check for expiring subscriptions (within 7 days)
+        else if (expirationDate < sevenDaysFromNow) {
+          // Avoid duplicate alerts (only one warning alert per 7 days)
+          if (!this.hasRecentAlert('subscription_expiring', tenant.id, 24 * 7)) {
+            const daysLeft = Math.max(0, Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+            this.createAlert(
+              'subscription_expiring',
+              'warning',
+              'billing',
+              'Subscription Expiring Soon',
+              `Tenant ${tenant.name}'s subscription expires in ${daysLeft} days`,
+              tenant.id,
+              tenant.name,
+              { expirationDate, daysLeft },
+            );
+          }
+        }
+      }
+
+      this.logger.log('Subscription expiration check complete.');
+    } catch (error) {
+      this.logger.error(`Failed to check subscription expirations: ${error.message}`);
     }
   }
 

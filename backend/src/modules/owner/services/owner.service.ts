@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In, MoreThanOrEqual, DataSource } from 'typeorm';
@@ -243,6 +244,7 @@ export class OwnerService {
           key: tenant.plan,
           name: tenant.plan.charAt(0).toUpperCase() + tenant.plan.slice(1), // Simple capitalization
         },
+        subscriptionEndsAt: tenant.subscriptionEndsAt,
         contactEmail: ownersMap.get(tenant.id) || 'no-email@tenant.com',
         createdAt: tenant.createdAt,
         stats,
@@ -375,6 +377,7 @@ export class OwnerService {
     planKey: string,
     ownerId: string,
     ipAddress?: string,
+    subscriptionEndsAt?: Date,
   ): Promise<Tenant> {
     const tenant = await this.tenantRepository.findOne({
       where: { id: tenantId },
@@ -383,11 +386,25 @@ export class OwnerService {
       throw new NotFoundException(`Tenant ${tenantId} not found`);
     }
 
+    // Check if downgrade is possible
+    const eligibility = await this.checkDowngradeEligibility(tenantId, planKey);
+    if (!eligibility.compatible) {
+      throw new BadRequestException({
+        message: 'Plan downgrade not possible due to resource limits',
+        errors: eligibility.violations,
+      });
+    }
+
     const previousPlan = tenant.plan;
     const updatedTenant = await this.planService.assignPlanToTenant(
       tenantId,
       planKey,
     );
+
+    if (subscriptionEndsAt) {
+      updatedTenant.subscriptionEndsAt = subscriptionEndsAt;
+      await this.tenantRepository.save(updatedTenant);
+    }
 
     await this.auditService.logAction(
       ownerId,
@@ -398,6 +415,95 @@ export class OwnerService {
     );
 
     return updatedTenant;
+  }
+
+  /**
+   * Update tenant subscription details (manual renewal/extension)
+   */
+  async updateTenantSubscription(
+    tenantId: string,
+    subscriptionEndsAt: Date,
+    ownerId: string,
+    ipAddress?: string,
+  ): Promise<Tenant> {
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantId} not found`);
+    }
+
+    const previousEndsAt = tenant.subscriptionEndsAt;
+    tenant.subscriptionEndsAt = subscriptionEndsAt;
+
+    // If setting a future date, ensure status is active if it was expired/suspended (optional logic, maybe keep it simple for now and just update date)
+    // For now, just update the date.
+
+    const savedTenant = await this.tenantRepository.save(tenant);
+
+    await this.auditService.logAction(
+      ownerId,
+      'UPDATE_SUBSCRIPTION',
+      { previousEndsAt, newEndsAt: subscriptionEndsAt },
+      tenantId,
+      ipAddress,
+    );
+
+    return savedTenant;
+  }
+
+  /**
+   * Check if a tenant can be downgraded to a specific plan
+   */
+  async checkDowngradeEligibility(
+    tenantId: string,
+    newPlanKey: string,
+  ): Promise<{ compatible: boolean; violations: string[] }> {
+    const currentUsage = await this.usageTrackingService.getUsageSnapshot(
+      tenantId,
+    );
+    const newPlan = await this.planService.getPlanByKey(newPlanKey);
+    const violations: string[] = [];
+
+    const check = (
+      current: number,
+      limit: number,
+      name: string,
+    ) => {
+      if (limit !== -1 && current > limit) {
+        violations.push(
+          `${name} count (${current}) exceeds new plan limit (${limit})`,
+        );
+      }
+    };
+
+    check(
+      currentUsage.clients.current,
+      newPlan.limits.maxClients,
+      'Active Clients',
+    );
+    check(
+      currentUsage.coaches.current,
+      newPlan.limits.maxCoaches,
+      'Active Coaches',
+    );
+    // Sessions and messages usually don't block downgrades immediately (they just stop working),
+    // but strict downgrades might want to block these too. 
+    // For now, let's focus on "hard" resources (Entities).
+    // check(currentUsage.sessionsThisMonth.current, newPlan.limits.maxSessionsPerMonth, 'Monthly Sessions');
+
+    // Storage check
+    check(
+      currentUsage.storageGB.current,
+      newPlan.limits.storageGB,
+      'Storage Usage'
+    );
+
+
+    return {
+      compatible: violations.length === 0,
+      violations,
+    };
   }
 
   /**

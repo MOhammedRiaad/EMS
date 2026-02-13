@@ -17,7 +17,7 @@ import './Layout.css';
 
 const Layout: React.FC = () => {
     const navigate = useNavigate();
-    const { user, tenant, logout, isAuthenticated } = useAuth();
+    const { user, tenant, logout, isAuthenticated, isImpersonating, stopImpersonating } = useAuth();
     const { isPinned } = useMenuPreferences();
     const { items: allItems, sections: navSections } = useNavigation();
     const [isCollapsed, setIsCollapsed] = React.useState(() => {
@@ -188,6 +188,22 @@ const Layout: React.FC = () => {
             </aside>
 
             <main className="main-content">
+                {/* Impersonation Banner */}
+                {isAuthenticated && isImpersonating && (
+                    <div className="bg-amber-500 text-white px-4 py-2 flex justify-between items-center text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                            <LogOut size={16} />
+                            <span>You are currently impersonating a tenant.</span>
+                        </div>
+                        <button
+                            onClick={stopImpersonating}
+                            className="bg-white text-amber-600 px-3 py-1 rounded text-xs font-bold hover:bg-amber-50 transition-colors"
+                        >
+                            Exit Impersonation
+                        </button>
+                    </div>
+                )}
+
                 <header className="header">
                     <div>
                         <Breadcrumbs />

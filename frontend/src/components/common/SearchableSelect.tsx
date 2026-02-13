@@ -18,6 +18,7 @@ interface SearchableSelectProps {
     className?: string; // Wrapper class
     triggerClassName?: string; // Trigger button class
     emptyMessage?: string;
+    onSearchChange?: (term: string) => void;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -30,7 +31,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     required = false,
     className = '',
     triggerClassName = '',
-    emptyMessage = 'No options found'
+    emptyMessage = 'No options found',
+    onSearchChange
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -41,13 +43,23 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     const selectedOption = options.find(opt => opt.value === value);
 
     useEffect(() => {
-        setFilteredOptions(
-            options.filter(opt =>
-                opt.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (opt.description && opt.description.toLowerCase().includes(searchTerm.toLowerCase()))
-            )
-        );
-    }, [searchTerm, options]);
+        if (onSearchChange) {
+            // Server-side filtering: options are already filtered by parent
+            setFilteredOptions(options);
+            // Trigger search when term changes (debounce handled by parent if needed, 
+            // but usually we want to trigger it here. Actually parent handles debounce usually)
+            // But wait, if I put onSearchChange here, it runs on every render if I'm not careful.
+            // Better to trigger onSearchChange in the input onChange handler.
+        } else {
+            // Local filtering
+            setFilteredOptions(
+                options.filter(opt =>
+                    opt.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (opt.description && opt.description.toLowerCase().includes(searchTerm.toLowerCase()))
+                )
+            );
+        }
+    }, [searchTerm, options, onSearchChange]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -139,7 +151,12 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                                 className="w-full pl-9 pr-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-gray-900 dark:text-white placeholder-gray-400"
                                 placeholder={searchPlaceholder}
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    if (onSearchChange) {
+                                        onSearchChange(e.target.value);
+                                    }
+                                }}
                                 onClick={(e) => e.stopPropagation()}
                             />
                         </div>

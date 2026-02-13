@@ -46,6 +46,23 @@ export class Tenant extends BaseEntityWithUpdate {
   })
   status: 'trial' | 'active' | 'suspended' | 'blocked';
 
+  @Column({
+    name: 'billing_cycle',
+    type: 'enum',
+    enum: ['monthly', 'annually'],
+    default: 'monthly',
+  })
+  billingCycle: 'monthly' | 'annually';
+
+  @Column({ name: 'subscription_ends_at', type: 'timestamptz', nullable: true })
+  subscriptionEndsAt: Date | null;
+
+  @Column({ name: 'auto_renew', default: true })
+  autoRenew: boolean;
+
+  @Column({ name: 'trial_ends_at', type: 'timestamptz', nullable: true })
+  trialEndsAt: Date | null;
+
   @Column({ name: 'suspended_at', type: 'timestamptz', nullable: true })
   suspendedAt: Date | null;
 

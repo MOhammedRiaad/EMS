@@ -4,7 +4,9 @@ import { api } from './api';
 export interface GlobalAnalytics {
     revenue: {
         totalRevenue: number;
-        revenueByPeriod: Array<{ date: string; amount: number }>;
+        saasRevenue: number;
+        gmvRevenue: number;
+        revenueByPeriod: Array<{ date: string; amount: number; saas: number; gmv: number }>;
         projectedMonthly: number;
     };
     usage: {
@@ -151,6 +153,7 @@ export interface TenantSummary {
         key: string;
         name: string;
     };
+    subscriptionEndsAt?: string;
     contactEmail: string;
     createdAt: string;
     stats: {
@@ -197,8 +200,13 @@ export const ownerPortalService = {
         return response.data;
     },
 
-    updateTenantPlan: async (tenantId: string, planKey: string) => {
-        const response = await api.patch(`/owner/tenants/${tenantId}/plan`, { planKey });
+    updateTenantPlan: async (tenantId: string, planKey: string, subscriptionEndsAt?: Date) => {
+        const response = await api.patch(`/owner/tenants/${tenantId}/plan`, { planKey, subscriptionEndsAt });
+        return response.data;
+    },
+
+    updateTenantSubscription: async (tenantId: string, subscriptionEndsAt: Date) => {
+        const response = await api.patch(`/owner/tenants/${tenantId}/subscription`, { subscriptionEndsAt });
         return response.data;
     },
 
@@ -303,8 +311,8 @@ export const ownerPortalService = {
         return response.data;
     },
 
-    approveUpgrade: async (requestId: string, notes: string) => {
-        const response = await api.post(`/owner/upgrade-requests/${requestId}/approve`, { notes });
+    approveUpgrade: async (requestId: string, notes: string, subscriptionEndsAt?: Date) => {
+        const response = await api.post(`/owner/upgrade-requests/${requestId}/approve`, { notes, subscriptionEndsAt });
         return response.data;
     },
 
@@ -440,7 +448,7 @@ export const ownerPortalService = {
     searchUsers: async (params: { search?: string; role?: string; limit?: number; offset?: number }) => {
         const response = await api.get('/owner/users', params);
         return response.data;
-    }
+    },
 };
 
 // Helper

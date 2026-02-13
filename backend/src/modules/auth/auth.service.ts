@@ -29,6 +29,9 @@ import { RoleService } from './services/role.service';
 import { SystemConfigService } from '../owner/services/system-config.service';
 import { isPermissionAllowed } from '../../config/permissions.config';
 
+import { TenantProvisioningService } from '../tenants/services/tenant-provisioning.service';
+import { PlanService } from '../owner/services/plan.service';
+
 @Injectable()
 export class AuthService {
   // ... (constructor remains as previous valid state, skipping to resetPassword implementation)
@@ -44,6 +47,8 @@ export class AuthService {
     private readonly roleService: RoleService,
     private readonly featureFlagService: FeatureFlagService,
     private readonly systemConfigService: SystemConfigService,
+    private readonly tenantProvisioningService: TenantProvisioningService,
+    private readonly planService: PlanService,
   ) { }
 
   // Public registration - creates new Tenant + Tenant Owner
@@ -54,29 +59,29 @@ export class AuthService {
     });
 
     if (existingUser) {
+      // If user exists but is not active or similar ? 
+      // For now, simple check.
       throw new UnauthorizedException('Email already registered');
     }
 
-    // Create the Tenant
-    const tenant = await this.tenantsService.create({
-      name: dto.businessName,
-    });
-
-    // Create the Tenant Owner user
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    const user = this.userRepository.create({
-      tenantId: tenant.id,
-      email: dto.email,
-      passwordHash,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      role: 'tenant_owner',
-    });
-
-    await this.userRepository.save(user);
+    // Provision Tenant using new service
+    const { tenant, user } = await this.tenantProvisioningService.provisionTenant(dto);
 
     return this.generateTokens(user, tenant);
+  }
+
+  async getPublicPlans() {
+    // Return plans for public signup
+    // Filter out internal stats or ensure only active plans are returned
+    const plans = await this.planService.getAllPlans();
+    return plans.map(p => ({
+      key: p.key,
+      name: p.name,
+      price: p.price,
+      description: p.description,
+      features: p.features,
+      limits: p.limits
+    }));
   }
 
   // Create user within a tenant (for admins/owners)

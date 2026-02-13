@@ -1,7 +1,9 @@
-import { Controller, Get, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { SkipSubscriptionCheck } from '../../../common/decorators/skip-subscription-check.decorator';
 import { UsageTrackingService } from '../services/usage-tracking.service';
 import { PlanService } from '../services/plan.service';
+import { OwnerService } from '../services/owner.service';
 import {
   RequirePermissions,
   PermissionGuard,
@@ -13,7 +15,7 @@ export class UsageController {
   constructor(
     private readonly usageTrackingService: UsageTrackingService,
     private readonly planService: PlanService,
-  ) {}
+  ) { }
 
   /**
    * Get global usage stats (all tenants)
@@ -39,11 +41,13 @@ export class UsageController {
  */
 @Controller('tenant/usage')
 @UseGuards(AuthGuard('jwt'))
+@SkipSubscriptionCheck()
 export class TenantUsageController {
   constructor(
     private readonly usageTrackingService: UsageTrackingService,
     private readonly planService: PlanService,
-  ) {}
+    private readonly ownerService: OwnerService,
+  ) { }
 
   /**
    * Get current tenant usage snapshot
@@ -71,5 +75,19 @@ export class TenantUsageController {
   @Get('plans')
   async getPlans() {
     return this.planService.comparePlans();
+  }
+
+  /**
+   * Check downgrade eligibility
+   */
+  @Post('check-downgrade')
+  async checkDowngrade(
+    @Request() req: any,
+    @Body('planKey') planKey: string,
+  ) {
+    return this.ownerService.checkDowngradeEligibility(
+      req.user.tenantId,
+      planKey,
+    );
   }
 }

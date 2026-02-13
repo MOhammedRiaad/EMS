@@ -23,7 +23,7 @@ export class UpgradeRequestService {
     private readonly tenantRepository: Repository<Tenant>,
     private readonly planService: PlanService,
     private readonly usageTrackingService: UsageTrackingService,
-  ) {}
+  ) { }
 
   /**
    * Submit a plan upgrade request (tenant owner action)
@@ -112,6 +112,7 @@ export class UpgradeRequestService {
     requestId: string,
     reviewedById: string,
     reviewNotes?: string,
+    subscriptionEndsAt?: Date,
   ): Promise<PlanUpgradeRequest> {
     const request = await this.upgradeRequestRepository.findOne({
       where: { id: requestId },
@@ -127,10 +128,15 @@ export class UpgradeRequestService {
     }
 
     // Update the tenant's plan
-    await this.planService.assignPlanToTenant(
+    const updatedTenant = await this.planService.assignPlanToTenant(
       request.tenantId,
       request.requestedPlan,
     );
+
+    if (subscriptionEndsAt) {
+      updatedTenant.subscriptionEndsAt = subscriptionEndsAt;
+      await this.tenantRepository.save(updatedTenant);
+    }
 
     // Clear any blocks
     await this.usageTrackingService.clearBlockStatus(request.tenantId);

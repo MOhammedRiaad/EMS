@@ -29,7 +29,7 @@ import { OwnerModule } from '../owner/owner.module';
       }),
       inject: [ConfigService],
     }),
-    TenantsModule,
+    forwardRef(() => TenantsModule),
     forwardRef(() => OwnerModule),
   ],
   controllers: [AuthController],
@@ -43,4 +43,4 @@ import { OwnerModule } from '../owner/owner.module';
     JwtModule,
   ],
 })
-export class AuthModule {}
+export class AuthModule { }

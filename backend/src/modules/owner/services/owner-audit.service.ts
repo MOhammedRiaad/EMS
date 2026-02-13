@@ -20,14 +20,15 @@ export type OwnerAction =
   | 'UPDATE_PERMISSIONS'
   | 'UPDATE_SYSTEM_SETTING'
   | 'DELETE_TENANT'
-  | 'ANONYMIZE_TENANT';
+  | 'ANONYMIZE_TENANT'
+  | 'UPDATE_SUBSCRIPTION';
 
 @Injectable()
 export class OwnerAuditService {
   constructor(
     @InjectRepository(OwnerAuditLog)
     private readonly auditLogRepository: Repository<OwnerAuditLog>,
-  ) {}
+  ) { }
 
   /**
    * Log an owner action

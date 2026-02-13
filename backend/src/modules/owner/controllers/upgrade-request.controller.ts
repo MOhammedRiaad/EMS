@@ -9,6 +9,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { SkipSubscriptionCheck } from '../../../common/decorators/skip-subscription-check.decorator';
 import { UpgradeRequestService } from '../services/upgrade-request.service';
 import type { UpgradeRequestStatus } from '../entities/plan-upgrade-request.entity';
 import {
@@ -19,7 +20,7 @@ import {
 @Controller('owner/upgrade-requests')
 @UseGuards(AuthGuard('jwt'), PermissionGuard)
 export class UpgradeRequestController {
-  constructor(private readonly upgradeRequestService: UpgradeRequestService) {}
+  constructor(private readonly upgradeRequestService: UpgradeRequestService) { }
 
   /**
    * Get all pending upgrade requests (owner view)
@@ -57,12 +58,14 @@ export class UpgradeRequestController {
   async approveRequest(
     @Param('requestId') requestId: string,
     @Body('notes') notes: string,
+    @Body('subscriptionEndsAt') subscriptionEndsAt: string,
     @Request() req: any,
   ) {
     return this.upgradeRequestService.approveRequest(
       requestId,
       req.user.id,
       notes,
+      subscriptionEndsAt ? new Date(subscriptionEndsAt) : undefined,
     );
   }
 
@@ -89,8 +92,9 @@ export class UpgradeRequestController {
  */
 @Controller('tenant/upgrade-requests')
 @UseGuards(AuthGuard('jwt'))
+@SkipSubscriptionCheck()
 export class TenantUpgradeRequestController {
-  constructor(private readonly upgradeRequestService: UpgradeRequestService) {}
+  constructor(private readonly upgradeRequestService: UpgradeRequestService) { }
 
   /**
    * Submit an upgrade request (tenant action)

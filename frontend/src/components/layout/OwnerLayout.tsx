@@ -12,7 +12,8 @@ import {
     Zap,
     Workflow,
     Mail,
-    FileCheck
+    FileCheck,
+    LifeBuoy
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -63,6 +64,7 @@ const OwnerLayout: React.FC = () => {
         { path: '/owner/plans', label: 'Plans & Billing', icon: CreditCard },
         { path: '/owner/admins', label: 'Admin Team', icon: Users }, // Reusing Users or importing UserCog
         { path: '/owner/roles', label: 'Roles & Permissions', icon: Shield },
+        { path: '/owner/support', label: 'Platform Support', icon: LifeBuoy },
         { path: '/owner/settings', label: 'System Settings', icon: Settings },
     ];
 

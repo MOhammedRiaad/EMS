@@ -5,6 +5,7 @@ import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Client } from '../../clients/entities/client.entity';
 import { Session } from '../../sessions/entities/session.entity';
 import { Transaction } from '../../packages/entities/transaction.entity';
+import { PlatformRevenue, RevenueStatus } from '../entities/platform-revenue.entity';
 
 export interface GlobalAnalytics {
   revenue: RevenueAnalytics;
@@ -14,8 +15,10 @@ export interface GlobalAnalytics {
 }
 
 export interface RevenueAnalytics {
-  totalRevenue: number;
-  revenueByPeriod: { date: string; amount: number }[];
+  totalRevenue: number; // Combined
+  saasRevenue: number; // Platform fees
+  gmvRevenue: number; // Tenant transactions
+  revenueByPeriod: { date: string; amount: number; saas?: number; gmv?: number }[];
   revenueByPlan: { plan: string; amount: number }[];
   averageRevenuePerTenant: number;
   projectedMonthly: number;
@@ -74,7 +77,9 @@ export class OwnerAnalyticsService {
     private readonly sessionRepository: Repository<Session>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-  ) {}
+    @InjectRepository(PlatformRevenue)
+    private readonly platformRevenueRepository: Repository<PlatformRevenue>,
+  ) { }
 
   /**
    * Get comprehensive global analytics
@@ -106,7 +111,7 @@ export class OwnerAnalyticsService {
   ): Promise<RevenueAnalytics> {
     try {
       // Total revenue from transactions
-      const revenueResult = await this.transactionRepository
+      const gmvRevenueResult = await this.transactionRepository
         .createQueryBuilder('t')
         .select('SUM(t.amount)', 'total')
         .where('t.createdAt BETWEEN :start AND :end', {
@@ -116,10 +121,25 @@ export class OwnerAnalyticsService {
         .andWhere('t.type = :type', { type: 'credit' })
         .getRawOne();
 
-      const totalRevenue = parseFloat(revenueResult?.total || '0');
+      const gmvRevenue = parseFloat(gmvRevenueResult?.total || '0');
+
+      // Platform SaaS Revenue
+      const saasRevenueResult = await this.platformRevenueRepository
+        .createQueryBuilder('p')
+        .select('SUM(p.amount)', 'total')
+        .where('p.createdAt BETWEEN :start AND :end', {
+          start: startDate,
+          end: endDate,
+        })
+        .andWhere('p.status = :status', { status: RevenueStatus.COMPLETED })
+        .getRawOne();
+
+      const saasRevenue = parseFloat(saasRevenueResult?.total || '0');
+
+      const totalRevenue = saasRevenue + gmvRevenue;
 
       // Revenue by period (last 12 months)
-      const revenueByPeriod = await this.getRevenueByPeriod(12);
+      const revenueByPeriod = await this.getDetailedRevenueByPeriod(12);
 
       // Revenue by plan (would need plan info on tenants)
       const revenueByPlan: { plan: string; amount: number }[] = [];
@@ -140,6 +160,8 @@ export class OwnerAnalyticsService {
 
       return {
         totalRevenue,
+        saasRevenue,
+        gmvRevenue,
         revenueByPeriod,
         revenueByPlan,
         averageRevenuePerTenant,
@@ -149,6 +171,8 @@ export class OwnerAnalyticsService {
       this.logger.error(`Failed to get revenue analytics: ${error.message}`);
       return {
         totalRevenue: 0,
+        saasRevenue: 0,
+        gmvRevenue: 0,
         revenueByPeriod: [],
         revenueByPlan: [],
         averageRevenuePerTenant: 0,
@@ -257,8 +281,8 @@ export class OwnerAnalyticsService {
       const tenantGrowthRate =
         newTenantsLastMonth > 0
           ? ((newTenantsThisMonth - newTenantsLastMonth) /
-              newTenantsLastMonth) *
-            100
+            newTenantsLastMonth) *
+          100
           : 0;
 
       // New clients this month
@@ -368,6 +392,52 @@ export class OwnerAnalyticsService {
         });
       } catch {
         results.push({ date: start.toISOString().slice(0, 7), amount: 0 });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Get combined revenue by period (monthly) with breakdown
+   */
+  private async getDetailedRevenueByPeriod(
+    months: number,
+  ): Promise<{ date: string; amount: number; saas: number; gmv: number }[]> {
+    const results: { date: string; amount: number; saas: number; gmv: number }[] = [];
+    const now = new Date();
+
+    for (let i = months - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+      try {
+        const [gmvResult, saasResult] = await Promise.all([
+          this.transactionRepository
+            .createQueryBuilder('t')
+            .select('SUM(t.amount)', 'total')
+            .where('t.createdAt BETWEEN :start AND :end', { start, end })
+            .andWhere('t.type = :type', { type: 'credit' })
+            .getRawOne(),
+          this.platformRevenueRepository
+            .createQueryBuilder('p')
+            .select('SUM(p.amount)', 'total')
+            .where('p.createdAt BETWEEN :start AND :end', { start, end })
+            .andWhere('p.status = :status', { status: RevenueStatus.COMPLETED })
+            .getRawOne(),
+        ]);
+
+        const gmv = parseFloat(gmvResult?.total || '0');
+        const saas = parseFloat(saasResult?.total || '0');
+
+        results.push({
+          date: start.toISOString().slice(0, 7),
+          amount: gmv + saas,
+          gmv,
+          saas,
+        });
+      } catch {
+        results.push({ date: start.toISOString().slice(0, 7), amount: 0, gmv: 0, saas: 0 });
       }
     }
 

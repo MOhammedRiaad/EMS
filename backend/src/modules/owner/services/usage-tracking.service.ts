@@ -40,7 +40,7 @@ export class UsageTrackingService {
     private readonly coachRepository: Repository<Coach>,
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
-  ) {}
+  ) { }
 
   /**
    * Get current usage snapshot for a tenant
@@ -166,6 +166,37 @@ export class UsageTrackingService {
       default:
         return null;
     }
+  }
+
+  /**
+   * Check subscription status
+   */
+  async checkSubscriptionStatus(
+    tenantId: string,
+  ): Promise<{ status: 'active' | 'expired'; inGracePeriod: boolean }> {
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new Error(`Tenant ${tenantId} not found`);
+    }
+
+    // Trial logic
+    if (tenant.status === 'trial') {
+      if (tenant.trialEndsAt && new Date() > tenant.trialEndsAt) {
+        return { status: 'expired', inGracePeriod: false };
+      }
+      return { status: 'active', inGracePeriod: false };
+    }
+
+    // Active subscription logic
+    if (tenant.subscriptionEndsAt && new Date() > tenant.subscriptionEndsAt) {
+      // Todo: Implement graceful period check if needed
+      return { status: 'expired', inGracePeriod: false };
+    }
+
+    return { status: 'active', inGracePeriod: false };
   }
 
   /**

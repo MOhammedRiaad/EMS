@@ -11,6 +11,7 @@ export interface RegisterDto {
     password: string;
     firstName?: string;
     lastName?: string;
+    planKey?: string;
 }
 
 export interface SetupPasswordDto {
@@ -38,7 +39,23 @@ export interface AuthResponse {
     };
 }
 
+export interface Plan {
+    key: string;
+    name: string;
+    price: number | null;
+    description: string | null;
+    features: string[];
+    limits: any;
+}
+
+
 class AuthService {
+    async getPlans(): Promise<Plan[]> {
+        return authenticatedFetch('/auth/plans', {
+            method: 'GET'
+        });
+    }
+
     async login(credentials: LoginCredentials): Promise<AuthResponse> {
         return authenticatedFetch('/auth/login', {
             method: 'POST',

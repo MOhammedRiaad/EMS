@@ -8,7 +8,8 @@ import {
     Activity,
     Lock,
     Unlock,
-    LogIn
+    LogIn,
+    RotateCw
 } from 'lucide-react';
 import { ownerPortalService } from '../../services/owner-portal.service';
 import type { TenantSummary } from '../../services/owner-portal.service';
@@ -51,11 +52,42 @@ const OwnerTenants: React.FC = () => {
         if (!confirm('Are you sure you want to log in as this tenant admin?')) return;
         try {
             const { token } = await ownerPortalService.impersonateTenant(tenantId);
-            // Store token and redirect (simplified for now, ideally handle session swap)
-            localStorage.setItem('token', token);
-            window.location.href = '/';
+            if (token) {
+                // Save current owner state
+                const currentToken = localStorage.getItem('token');
+                const currentUser = localStorage.getItem('user');
+                if (currentToken && currentUser) {
+                    localStorage.setItem('ownerToken', currentToken);
+                    localStorage.setItem('ownerUser', currentUser);
+                }
+
+                localStorage.setItem('token', token);
+                window.location.href = '/';
+            } else {
+                alert('Failed to get access token');
+            }
         } catch (error) {
+            console.error('Impersonation failed', error);
             alert('Failed to impersonate tenant');
+        }
+    };
+
+    const handleQuickRenew = async (tenantId: string, currentEndsAt?: string) => {
+        if (!confirm('Extend subscription by 1 month?')) return;
+
+        try {
+            const now = new Date();
+            const current = currentEndsAt ? new Date(currentEndsAt) : new Date();
+
+            // If expired, start from now. If active, add to current end.
+            let newEnd = new Date(current < now ? now : current);
+            newEnd.setMonth(newEnd.getMonth() + 1);
+
+            await ownerPortalService.updateTenantSubscription(tenantId, newEnd);
+            loadTenants();
+        } catch (error) {
+            console.error('Renewal failed', error);
+            alert('Failed to renew subscription');
         }
     };
 
@@ -98,6 +130,7 @@ const OwnerTenants: React.FC = () => {
                             <tr className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
                                 <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Tenant Name</th>
                                 <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Plan</th>
+                                <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Subscription</th>
                                 <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Status</th>
                                 <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Usage</th>
                                 <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Created</th>
@@ -131,6 +164,23 @@ const OwnerTenants: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
+                                            {tenant.subscriptionEndsAt ? (
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                                        {new Date(tenant.subscriptionEndsAt).toLocaleDateString()}
+                                                    </div>
+                                                    {(() => {
+                                                        const daysLeft = Math.ceil((new Date(tenant.subscriptionEndsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                                        if (daysLeft < 0) return <span className="text-xs font-bold text-red-600">Expired</span>;
+                                                        if (daysLeft <= 7) return <span className="text-xs font-bold text-orange-600">Expiring in {daysLeft} days</span>;
+                                                        return null;
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-gray-500">Auto-Renew</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
                                             <span className={`
                                                 inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize
                                                 ${tenant.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -161,6 +211,13 @@ const OwnerTenants: React.FC = () => {
                                                     title="Log in as Admin"
                                                 >
                                                     <LogIn size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleQuickRenew(tenant.id, tenant.subscriptionEndsAt)}
+                                                    className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="Quick Renew (1 Month)"
+                                                >
+                                                    <RotateCw size={18} />
                                                 </button>
                                                 {tenant.status === 'suspended' ? (
                                                     <button className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Reactivate">

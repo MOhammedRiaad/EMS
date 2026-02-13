@@ -51,6 +51,11 @@ export class RegisterTenantOwnerDto {
   @IsOptional()
   @IsString()
   lastName?: string;
+
+  @ApiPropertyOptional({ description: 'Selected plan key (defaults to trial)' })
+  @IsOptional()
+  @IsString()
+  planKey?: string;
 }
 
 // For admin/owner to create users within their tenant

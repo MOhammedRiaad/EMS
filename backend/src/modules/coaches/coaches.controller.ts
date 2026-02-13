@@ -11,7 +11,8 @@ import {
   UseInterceptors,
   Request,
 } from '@nestjs/common';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { TenantCacheInterceptor } from '../../common/interceptors';
+import { CacheTTL } from '@nestjs/cache-manager';
 import {
   ApiTags,
   ApiOperation,
@@ -34,10 +35,10 @@ import {
 @UseGuards(AuthGuard('jwt'), TenantGuard, RolesGuard, PlanLimitGuard)
 @Controller('coaches')
 export class CoachesController {
-  constructor(private readonly coachesService: CoachesService) {}
+  constructor(private readonly coachesService: CoachesService) { }
 
   @Get()
-  @UseInterceptors(CacheInterceptor)
+  @UseInterceptors(TenantCacheInterceptor)
   @CacheTTL(300000) // 5 minutes
   @ApiOperation({ summary: 'List all coaches or by studio' })
   @ApiQuery({ name: 'studioId', required: false })
@@ -54,7 +55,7 @@ export class CoachesController {
   }
 
   @Get(':id')
-  @UseInterceptors(CacheInterceptor)
+  @UseInterceptors(TenantCacheInterceptor)
   @CacheTTL(300000) // 5 minutes
   @ApiOperation({ summary: 'Get a coach by ID' })
   findOne(@Param('id') id: string, @TenantId() tenantId: string) {

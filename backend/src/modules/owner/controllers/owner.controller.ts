@@ -38,7 +38,7 @@ export class OwnerController {
     private readonly systemConfigService: SystemConfigService,
     private readonly featureFlagService: FeatureFlagService,
     private readonly dataExportService: OwnerDataExportService,
-  ) {}
+  ) { }
 
   /**
    * Get global automation statistics
@@ -229,6 +229,7 @@ export class OwnerController {
   async updateTenantPlan(
     @Param('tenantId') tenantId: string,
     @Body('planKey') planKey: string,
+    @Body('subscriptionEndsAt') subscriptionEndsAt: string,
     @Request() req: any,
     @Ip() ip: string,
   ) {
@@ -237,7 +238,39 @@ export class OwnerController {
       planKey,
       req.user.id,
       ip,
+      subscriptionEndsAt ? new Date(subscriptionEndsAt) : undefined,
     );
+  }
+
+  /**
+   * Update tenant subscription (manual renewal)
+   */
+  @Patch('tenants/:tenantId/subscription')
+  @RequirePermissions('owner.tenant.update.plan')
+  async updateTenantSubscription(
+    @Param('tenantId') tenantId: string,
+    @Body('subscriptionEndsAt') subscriptionEndsAt: string,
+    @Request() req: any,
+    @Ip() ip: string,
+  ) {
+    return this.ownerService.updateTenantSubscription(
+      tenantId,
+      new Date(subscriptionEndsAt),
+      req.user.id,
+      ip,
+    );
+  }
+
+  /**
+   * Check downgrade eligibility
+   */
+  @Post('tenants/:tenantId/check-downgrade')
+  @RequirePermissions('owner.tenant.update.plan')
+  async checkDowngrade(
+    @Param('tenantId') tenantId: string,
+    @Body('planKey') planKey: string,
+  ) {
+    return this.ownerService.checkDowngradeEligibility(tenantId, planKey);
   }
 
   /**

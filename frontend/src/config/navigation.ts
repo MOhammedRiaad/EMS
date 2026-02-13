@@ -23,6 +23,7 @@ import {
     Trophy,
     Upload,
     NotebookTabs,
+    LifeBuoy,
 } from 'lucide-react';
 
 export type NavSection = 'core' | 'management' | 'client-business' | 'retail' | 'marketing' | 'analytics' | 'administration' | 'client-portal' | 'coach-portal';
@@ -80,6 +81,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     { id: 'announcements', path: '/admin/announcements', label: 'Announcements', icon: Megaphone, section: 'administration', adminOnly: true, requiredFeature: 'communication.announcements' },
     { id: 'audit-logs', path: '/admin/audit-logs', label: 'Audit Logs', icon: FileText, section: 'administration', adminOnly: true, requiredFeature: 'compliance.audit_logs' },
     { id: 'data-import', path: '/admin/import', label: 'Data Import', icon: Upload, section: 'administration', adminOnly: true, requiredFeature: 'core.data_import' },
+    { id: 'support', path: '/admin/support', label: 'Support', icon: LifeBuoy, section: 'administration' },
 
     // Client Portal
     { id: 'client-home', path: '/client/home', label: 'Home', icon: Home, section: 'client-portal', requiredRole: ['client'] },

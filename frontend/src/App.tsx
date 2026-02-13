@@ -28,6 +28,7 @@ import AuditLogsPage from './pages/admin/AuditLogsPage';
 import Reviews from './pages/admin/Reviews';
 import TimeOffRequests from './pages/admin/TimeOffRequests';
 import DataImport from './pages/admin/DataImport';
+import Support from './pages/admin/Support';
 import ProductListPage from './pages/admin/retail/ProductListPage';
 import InventoryPage from './pages/admin/retail/InventoryPage';
 import POSPage from './pages/admin/retail/POSPage';
@@ -89,8 +90,10 @@ import OwnerSettings from './pages/owner/OwnerSettings';
 import OwnerAutomations from './pages/owner/OwnerAutomations';
 import OwnerMessaging from './pages/owner/OwnerMessaging';
 import OwnerCompliance from './pages/owner/OwnerCompliance';
+import OwnerSupport from './pages/owner/OwnerSupport';
 
 import LimitReachedModal from './components/admin/LimitReachedModal';
+import SubscriptionExpiredModal from './components/admin/SubscriptionExpiredModal';
 
 function App() {
   return (
@@ -100,6 +103,7 @@ function App() {
           <NavigationProvider>
             <BrowserRouter>
               <LimitReachedModal />
+              <SubscriptionExpiredModal />
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -183,6 +187,7 @@ function App() {
                     <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                     <Route path="admin/announcements" element={<AnnouncementManager />} />
                     <Route path="admin/time-off" element={<TimeOffRequests />} />
+                    <Route path="admin/support" element={<Support />} />
                     <Route path="admin/import" element={
                       <FeatureGuard feature="core.data_import">
                         <DataImport />
@@ -221,6 +226,7 @@ function App() {
                     <Route path="automations" element={<OwnerAutomations />} />
                     <Route path="messaging" element={<OwnerMessaging />} />
                     <Route path="compliance" element={<OwnerCompliance />} />
+                    <Route path="support" element={<OwnerSupport />} />
                   </Route>
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />

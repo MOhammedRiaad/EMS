@@ -69,7 +69,11 @@ export const api = {
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
             if (response.status === 402) {
-                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                if (data.code === 'SUBSCRIPTION_EXPIRED') {
+                    apiEvents.dispatchEvent(new CustomEvent('subscription-expired', { detail: data }));
+                } else {
+                    apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                }
             }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts, data);
@@ -95,7 +99,11 @@ export const api = {
 
         if (!response.ok) {
             if (response.status === 402) {
-                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                if (data.code === 'SUBSCRIPTION_EXPIRED') {
+                    apiEvents.dispatchEvent(new CustomEvent('subscription-expired', { detail: data }));
+                } else {
+                    apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                }
             }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts, data);
@@ -115,7 +123,11 @@ export const api = {
 
         if (!response.ok) {
             if (response.status === 402) {
-                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                if (data.code === 'SUBSCRIPTION_EXPIRED') {
+                    apiEvents.dispatchEvent(new CustomEvent('subscription-expired', { detail: data }));
+                } else {
+                    apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                }
             }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts, data);
@@ -135,7 +147,11 @@ export const api = {
 
         if (!response.ok) {
             if (response.status === 402) {
-                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                if (data.code === 'SUBSCRIPTION_EXPIRED') {
+                    apiEvents.dispatchEvent(new CustomEvent('subscription-expired', { detail: data }));
+                } else {
+                    apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                }
             }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts, data);
@@ -154,7 +170,11 @@ export const api = {
 
         if (!response.ok) {
             if (response.status === 402) {
-                apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                if (data.code === 'SUBSCRIPTION_EXPIRED') {
+                    apiEvents.dispatchEvent(new CustomEvent('subscription-expired', { detail: data }));
+                } else {
+                    apiEvents.dispatchEvent(new CustomEvent('limit-reached', { detail: data }));
+                }
             }
             const message = formatErrorMessage(data);
             throw new ApiError(message, response.status, data.error, data.conflicts, data);

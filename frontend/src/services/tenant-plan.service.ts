@@ -124,4 +124,12 @@ export const tenantPlanService = {
     cancelRequest: async (requestId: string): Promise<void> => {
         await api.post(`/tenant/upgrade-requests/${requestId}/cancel`, {});
     },
+
+    /**
+     * Check if a plan downgrade is possible
+     */
+    checkDowngrade: async (planKey: string): Promise<{ compatible: boolean; violations: string[] }> => {
+        const response = await api.post('/tenant/usage/check-downgrade', { planKey });
+        return response.data;
+    },
 };

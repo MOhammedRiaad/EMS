@@ -4,3 +4,6 @@ export * from './plan.entity';
 export * from './usage-metric.entity';
 export * from './owner-audit-log.entity';
 export * from './plan-upgrade-request.entity';
+export * from './broadcast-message.entity';
+export * from './system-settings.entity';
+export * from './platform-revenue.entity';

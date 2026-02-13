@@ -36,6 +36,8 @@ interface AuthContextType {
     needsOnboarding: boolean;
     setTenant: (tenant: Tenant) => void;
     isEnabled: (featureKey: string) => boolean;
+    isImpersonating: boolean;
+    stopImpersonating: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,6 +90,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
     };
 
+    const isImpersonating = !!localStorage.getItem('ownerToken');
+
+    const stopImpersonating = () => {
+        const ownerToken = localStorage.getItem('ownerToken');
+        const ownerUserStr = localStorage.getItem('ownerUser');
+
+        if (ownerToken && ownerUserStr) {
+            const ownerUser = JSON.parse(ownerUserStr);
+            login(ownerToken, ownerUser); // Restores token and user
+
+            // Cleanup impersonation data
+            localStorage.removeItem('ownerToken');
+            localStorage.removeItem('ownerUser');
+
+            // Force reload to clear any tenant-specific state/cache
+            window.location.href = '/owner/tenants';
+        } else {
+            // Fallback logout if something is wrong
+            logout();
+            window.location.href = '/login';
+        }
+    };
+
     // Check if tenant owner needs to complete onboarding
     const needsOnboarding = !!user && user.role === 'tenant_owner' && !!tenant && !tenant.isComplete;
 
@@ -102,6 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             needsOnboarding,
             setTenant,
             isEnabled,
+            isImpersonating,
+            stopImpersonating
         }}>
             {children}
         </AuthContext.Provider>

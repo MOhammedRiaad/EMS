@@ -48,18 +48,29 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
             devicesService.getAvailableByStudio(initialData.studio.id)
                 .then(setDevices)
                 .catch(console.error);
-
-            // Initial client fetch for studio
-            clientsService.findAll(1, 100, undefined, undefined, undefined, initialData.studio.id)
-                .then((res: any) => setClients(res.data))
-                .catch(console.error);
         }
     }, [isOpen, initialData]);
 
-    // Client Search logic (not used yet as SearchableSelect is local)
-    // const handleClientSearch = (term: string) => {
-    //     clientsService.findAll(1, 50, term).then((res: any) => setClients(res.data)).catch(console.error);
-    // };
+    // Client Search logic
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (initialData?.studio.id) {
+                // If search term is empty, just fetch default list (first 50)
+                // If search term exists, search
+                clientsService.findAll(1, 50, searchTerm, undefined, undefined, initialData.studio.id)
+                    .then((res: any) => setClients(res.data))
+                    .catch(console.error);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, initialData?.studio.id]);
+
+    const handleClientSearch = (term: string) => {
+        setSearchTerm(term);
+    };
 
     // Filter clients based on coach gender preference
     const filteredClients = useMemo(() => {
@@ -182,6 +193,7 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
                         options={clientOptions}
                         value={selectedClientId}
                         onChange={setSelectedClientId}
+                        onSearchChange={handleClientSearch}
                         placeholder="Search for a client..."
                         required
                     />

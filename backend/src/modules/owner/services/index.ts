@@ -7,3 +7,4 @@ export * from './owner-audit.service';
 export * from './broadcast.service';
 export * from './system-config.service';
 export * from './data-export.service';
+export * from './platform-revenue.service';

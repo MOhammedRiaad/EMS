@@ -89,43 +89,46 @@ const OwnerAnalytics: React.FC = () => {
                     color="green"
                 />
                 <KPICard
+                    title="SaaS Revenue"
+                    value={`$${data.revenue.saasRevenue.toLocaleString()}`}
+                    subtext="Platform Fees"
+                    icon={DollarSign}
+                    trend={5.2}
+                    color="blue"
+                />
+                <KPICard
+                    title="Gross Volume (GMV)"
+                    value={`$${data.revenue.gmvRevenue.toLocaleString()}`}
+                    subtext="Tenant Transactions"
+                    icon={Activity}
+                    trend={15.8}
+                    color="indigo"
+                />
+                <KPICard
                     title="Active Tenants"
                     value={data.engagement.activeTenants7d.toString()}
                     subtext="Active in last 7 days"
                     icon={Users}
                     trend={data.growth.tenantGrowthRate}
-                    color="blue"
-                />
-                <KPICard
-                    title="Total Sessions"
-                    value={data.usage.totalSessions.toLocaleString()}
-                    subtext="Across all tenants"
-                    icon={Activity}
-                    trend={8.2}
-                    color="indigo"
-                />
-                <KPICard
-                    title="Churn Rate"
-                    value={`${data.growth.churnRate}%`}
-                    subtext="This month"
-                    icon={ArrowDown}
-                    trend={-2.1}
                     color="orange"
-                    inverseTrend
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Revenue Chart */}
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Revenue Growth</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Revenue Breakdown</h3>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={data.revenue.revenueByPeriod}>
                                 <defs>
-                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                                    <linearGradient id="colorSaas" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorGmv" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -144,16 +147,27 @@ const OwnerAnalytics: React.FC = () => {
                                 />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value: number | undefined) => [`$${value}`, 'Revenue'] as [string, string]}
+                                    formatter={(value: number | undefined, name: string | undefined) => [
+                                        `$${(value || 0).toLocaleString()}`,
+                                        name === 'saas' ? 'SaaS Revenue' : 'GMV'
+                                    ] as [string, string]}
                                     labelFormatter={(label) => new Date(label).toLocaleDateString()}
                                 />
                                 <Area
                                     type="monotone"
-                                    dataKey="amount"
-                                    stroke="#10B981"
-                                    fillOpacity={1}
-                                    fill="url(#colorRevenue)"
-                                    strokeWidth={3}
+                                    dataKey="saas"
+                                    stackId="1"
+                                    stroke="#3B82F6"
+                                    fill="url(#colorSaas)"
+                                    name="saas"
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="gmv"
+                                    stackId="1"
+                                    stroke="#8B5CF6"
+                                    fill="url(#colorGmv)"
+                                    name="gmv"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>

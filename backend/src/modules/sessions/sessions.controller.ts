@@ -24,7 +24,8 @@ import {
 import { TenantId } from '../../common/decorators';
 import { TenantGuard } from '../../common/guards';
 import { Roles, RolesGuard } from '../../common/guards/roles.guard';
-import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { CacheTTL } from '@nestjs/cache-manager';
+import { TenantCacheInterceptor } from '../../common/interceptors';
 import {
   CheckPlanLimit,
   PlanLimitGuard,
@@ -40,19 +41,19 @@ export class SessionsController {
   constructor(
     private readonly sessionsService: SessionsService,
     private readonly participantsService: SessionParticipantsService,
-  ) {}
+  ) { }
 
   @Get()
-  // @UseInterceptors(CacheInterceptor)
-  // @CacheTTL(60000) // 1 minute
+  @UseInterceptors(TenantCacheInterceptor)
+  @CacheTTL(60000) // 1 minute
   @ApiOperation({ summary: 'List sessions with filters' })
   findAll(@Query() query: SessionQueryDto, @TenantId() tenantId: string) {
     return this.sessionsService.findAll(tenantId, query);
   }
 
   @Get(':id')
-  // @UseInterceptors(CacheInterceptor)
-  // @CacheTTL(60000) // 1 minute
+  @UseInterceptors(TenantCacheInterceptor)
+  @CacheTTL(60000) // 1 minute
   @ApiOperation({ summary: 'Get session by ID' })
   findOne(@Param('id') id: string, @TenantId() tenantId: string) {
     return this.sessionsService.findOne(id, tenantId);
