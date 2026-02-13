@@ -13,7 +13,8 @@ import { FeatureFlagService } from '../owner/services/feature-flag.service';
 import { SystemConfigService } from '../owner/services/system-config.service';
 import { PermissionService } from './services/permission.service';
 import { RoleService } from './services/role.service';
-import { UsageTrackingService } from '../owner/services/usage-tracking.service';
+import { TenantProvisioningService } from '../tenants/services/tenant-provisioning.service';
+import { PlanService } from '../owner/services/plan.service';
 import {
   RegisterTenantOwnerDto,
   LoginDto,
@@ -117,6 +118,15 @@ describe('AuthService', () => {
     ]),
   };
 
+  const mockTenantProvisioningService = {
+    provisionTenant: jest.fn(),
+  };
+
+  const mockPlanService = {
+    getPlanByKey: jest.fn(),
+    getAllPlans: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -161,17 +171,18 @@ describe('AuthService', () => {
           },
         },
         {
-          provide: UsageTrackingService,
-          useValue: {
-            recordMetric: jest.fn().mockResolvedValue(undefined),
-            checkLimit: jest.fn().mockResolvedValue(null),
-          },
-        },
-        {
           provide: SystemConfigService,
           useValue: {
             get: jest.fn().mockResolvedValue(false),
           },
+        },
+        {
+          provide: TenantProvisioningService,
+          useValue: mockTenantProvisioningService,
+        },
+        {
+          provide: PlanService,
+          useValue: mockPlanService,
         },
       ],
     }).compile();
@@ -205,14 +216,9 @@ describe('AuthService', () => {
 
     it('should successfully register a new tenant owner', async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
-      mockTenantsService.create.mockResolvedValue(mockTenant);
-      mockUserRepository.create.mockReturnValue({
-        ...mockUser,
-        email: registerDto.email,
-      });
-      mockUserRepository.save.mockResolvedValue({
-        ...mockUser,
-        email: registerDto.email,
+      mockTenantProvisioningService.provisionTenant.mockResolvedValue({
+        tenant: mockTenant,
+        user: mockUser,
       });
       mockJwtService.sign.mockReturnValue('mock-jwt-token');
 
@@ -221,11 +227,7 @@ describe('AuthService', () => {
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({
         where: { email: registerDto.email },
       });
-      expect(mockTenantsService.create).toHaveBeenCalledWith({
-        name: registerDto.businessName,
-      });
-      expect(mockUserRepository.create).toHaveBeenCalled();
-      expect(mockUserRepository.save).toHaveBeenCalled();
+      expect(mockTenantProvisioningService.provisionTenant).toHaveBeenCalledWith(registerDto);
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('user');
       expect(result).toHaveProperty('tenant');
@@ -239,21 +241,6 @@ describe('AuthService', () => {
       );
     });
 
-    it('should create user with role tenant_owner', async () => {
-      mockUserRepository.findOne.mockResolvedValue(null);
-      mockTenantsService.create.mockResolvedValue(mockTenant);
-      mockUserRepository.save.mockResolvedValue(mockUser);
-      mockJwtService.sign.mockReturnValue('mock-token');
-
-      const createSpy = jest.spyOn(mockUserRepository, 'create');
-      mockUserRepository.create.mockReturnValue(mockUser);
-
-      await service.register(registerDto);
-
-      expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ role: 'tenant_owner' }),
-      );
-    });
   });
 
   describe('login', () => {

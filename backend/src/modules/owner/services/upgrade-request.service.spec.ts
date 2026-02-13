@@ -48,13 +48,13 @@ describe('UpgradeRequestService', () => {
         },
         {
           provide: getRepositoryToken(Tenant),
-          useValue: { findOne: jest.fn() },
+          useValue: { findOne: jest.fn(), save: jest.fn() },
         },
         {
           provide: PlanService,
           useValue: {
             getPlanByKey: jest.fn(),
-            assignPlanToTenant: jest.fn(),
+            assignPlanToTenant: jest.fn().mockResolvedValue(mockTenant),
           },
         },
         {
@@ -112,6 +112,22 @@ describe('UpgradeRequestService', () => {
       expect(usageTrackingService.clearBlockStatus).toHaveBeenCalledWith('t1');
       expect(result.status).toBe('approved');
       expect(result.reviewedById).toBe('owner-1');
+    });
+
+    it('should update subscription end date if provided', async () => {
+      const futureDate = new Date('2030-01-01');
+      requestRepo.findOne.mockResolvedValue({
+        ...mockRequest,
+        tenant: mockTenant,
+      } as any);
+      requestRepo.save.mockImplementation(async (r) => r as PlanUpgradeRequest);
+
+      await service.approveRequest('req-1', 'owner-1', 'Notes', futureDate);
+
+      expect(tenantRepo.save).toHaveBeenCalledWith(expect.objectContaining({
+        id: 't1',
+        subscriptionEndsAt: futureDate,
+      }));
     });
 
     it('should throw ConflictException if request is not pending', async () => {

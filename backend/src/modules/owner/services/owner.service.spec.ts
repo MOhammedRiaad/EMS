@@ -320,4 +320,30 @@ describe('OwnerService', () => {
       expect(result.contactEmail).toBe('N/A');
     });
   });
+
+  describe('updateTenantSubscription', () => {
+    it('should update the subscription end date and log the action', async () => {
+      const newDate = new Date();
+      newDate.setFullYear(newDate.getFullYear() + 1);
+
+      tenantRepo.findOne.mockResolvedValue(mockTenant);
+      tenantRepo.save.mockImplementation(async (t) => t as Tenant);
+
+      const result = await service.updateTenantSubscription('t1', newDate, 'owner-1');
+
+      expect(result.subscriptionEndsAt).toEqual(newDate);
+      expect(auditService.logAction).toHaveBeenCalledWith(
+        'owner-1',
+        'UPDATE_SUBSCRIPTION',
+        expect.objectContaining({ previousEndsAt: undefined, newEndsAt: newDate }),
+        't1',
+        undefined,
+      );
+    });
+
+    it('should throw NotFoundException if tenant not found', async () => {
+      tenantRepo.findOne.mockResolvedValue(null);
+      await expect(service.updateTenantSubscription('t1', new Date(), 'o1')).rejects.toThrow(NotFoundException);
+    });
+  });
 });
