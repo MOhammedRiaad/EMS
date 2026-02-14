@@ -91,7 +91,7 @@ const AddParticipantModal: React.FC<AddParticipantModalProps> = ({ isOpen, onClo
                             >
                                 <div>
                                     <div className="font-medium text-gray-900 dark:text-gray-100">{c.firstName} {c.lastName}</div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">{c.email || 'No email'}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">{c.email || '---'}</div>
                                 </div>
                                 {addingId === c.id && <span className="text-sm text-blue-500">Adding...</span>}
                             </button>

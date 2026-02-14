@@ -8,6 +8,7 @@ import type { Room } from '../../services/rooms.service';
 import type { Device } from '../../services/devices.service';
 import type { SessionFormData } from './useSessionsState';
 import { SearchableSelect } from '../../components/common/SearchableSelect';
+import { FastClientAddDrawer } from '../../components/clients/FastClientAddDrawer';
 
 interface SessionFormProps {
     formData: SessionFormData;
@@ -22,6 +23,7 @@ interface SessionFormProps {
     isEdit: boolean;
     onSubmit: (e: React.FormEvent) => void;
     onCancel: () => void;
+    onRefreshClients?: () => void;
 }
 
 const inputClass = "w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-900";
@@ -39,8 +41,11 @@ export const SessionForm: React.FC<SessionFormProps> = ({
     saving,
     isEdit,
     onSubmit,
-    onCancel
+    onCancel,
+    onRefreshClients
 }) => {
+    const [isClientDrawerOpen, setIsClientDrawerOpen] = React.useState(false);
+    const [clientSearchTerm, setClientSearchTerm] = React.useState('');
     const { isEnabled } = useAuth();
     const canCreateGroupSessions = isEnabled('core.group_sessions');
 
@@ -193,11 +198,16 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                             options={filteredClients.map(c => ({
                                 label: `${c.firstName} ${c.lastName}`,
                                 value: c.id,
-                                description: c.email || undefined
+                                description: c.email || '---'
                             }))}
                             placeholder={formData.studioId ? (filteredClients.length > 0 ? 'Select a Client' : 'No clients for this studio') : 'Select Studio first'}
                             disabled={!formData.studioId}
                             className="w-full"
+                            onAddNew={(searchTerm) => {
+                                setClientSearchTerm(searchTerm);
+                                setIsClientDrawerOpen(true);
+                            }}
+                            onAddNewLabel="Add Client"
                         />
                     ) : (
                         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
@@ -320,6 +330,21 @@ export const SessionForm: React.FC<SessionFormProps> = ({
                     {saving ? 'Saving...' : isEdit ? 'Reschedule Session' : 'Schedule Session'}
                 </button>
             </div>
+
+            <FastClientAddDrawer
+                isOpen={isClientDrawerOpen}
+                onClose={() => setIsClientDrawerOpen(false)}
+                onSuccess={(newClient) => {
+                    if (onRefreshClients) onRefreshClients();
+                    setFormData(prev => ({
+                        ...prev,
+                        clientId: newClient.id,
+                        coachId: '' // Clear coach as gender preference might change
+                    }));
+                }}
+                initialStudioId={formData.studioId}
+                initialName={clientSearchTerm}
+            />
         </form>
     );
 };

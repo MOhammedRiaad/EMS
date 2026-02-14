@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { ChevronDown, Search, X, Plus } from 'lucide-react';
 
 export interface SearchableSelectOption {
     label: string;
@@ -19,6 +19,8 @@ interface SearchableSelectProps {
     triggerClassName?: string; // Trigger button class
     emptyMessage?: string;
     onSearchChange?: (term: string) => void;
+    onAddNew?: (searchTerm: string) => void;
+    onAddNewLabel?: string;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -32,7 +34,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     className = '',
     triggerClassName = '',
     emptyMessage = 'No options found',
-    onSearchChange
+    onSearchChange,
+    onAddNew,
+    onAddNewLabel = 'Add New'
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -96,6 +100,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         }
     };
 
+    const handleAddNew = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onAddNew) {
+            onAddNew(searchTerm);
+            setIsOpen(false);
+        }
+    };
+
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
             <div
@@ -141,7 +153,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             </div>
 
             {isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-60 flex flex-col overflow-hidden">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-80 flex flex-col overflow-hidden">
                     <div className="p-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 sticky top-0">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -162,31 +174,55 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto max-h-[200px] scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                    <div className="overflow-y-auto max-h-[250px] scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
                         {filteredOptions.length > 0 ? (
-                            filteredOptions.map((option) => (
-                                <div
-                                    key={option.value}
-                                    onClick={() => handleSelect(option.value)}
-                                    className={`
-                                        px-3 py-2 cursor-pointer transition-colors
-                                        ${value === option.value
-                                            ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
-                                            : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                                        }
-                                    `}
-                                >
-                                    <div className="font-medium">{option.label}</div>
-                                    {option.description && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            {option.description}
-                                        </div>
-                                    )}
-                                </div>
-                            ))
+                            <>
+                                {filteredOptions.map((option) => (
+                                    <div
+                                        key={option.value}
+                                        onClick={() => handleSelect(option.value)}
+                                        className={`
+                                            px-3 py-2 cursor-pointer transition-colors
+                                            ${value === option.value
+                                                ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
+                                                : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                            }
+                                        `}
+                                    >
+                                        <div className="font-medium">{option.label}</div>
+                                        {option.description && (
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                {option.description}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {onAddNew && searchTerm && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddNew}
+                                        className="w-full flex items-center gap-2 px-3 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/10 border-t border-gray-100 dark:border-gray-700 transition-colors"
+                                    >
+                                        <Plus size={16} />
+                                        {onAddNewLabel} "{searchTerm}"
+                                    </button>
+                                )}
+                            </>
                         ) : (
-                            <div className="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800">
-                                {emptyMessage}
+                            <div className="flex flex-col items-center py-6 px-4">
+                                <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
+                                    {emptyMessage}
+                                </div>
+                                {onAddNew && searchTerm && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddNew}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                                    >
+                                        <Plus size={16} />
+                                        {onAddNewLabel} "{searchTerm}"
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

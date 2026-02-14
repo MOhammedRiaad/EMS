@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../../../components/common/Modal';
 import { SearchableSelect } from '../../../components/common/SearchableSelect';
+import { FastClientAddDrawer } from '../../../components/clients/FastClientAddDrawer';
 import { clientsService, type Client } from '../../../services/clients.service';
 import { devicesService, type Device } from '../../../services/devices.service';
 import { sessionsService } from '../../../services/sessions.service';
@@ -24,6 +25,10 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
     const [loading, setLoading] = useState(false);
     const [clients, setClients] = useState<Client[]>([]);
     const [devices, setDevices] = useState<Device[]>([]);
+
+    // Fast Add Client State
+    const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+    const [quickAddSearchTerm, setQuickAddSearchTerm] = useState('');
 
     // Form State
     const [selectedClientId, setSelectedClientId] = useState('');
@@ -54,15 +59,20 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
     // Client Search logic
     const [searchTerm, setSearchTerm] = useState('');
 
+    const refreshClients = async () => {
+        if (initialData?.studio.id) {
+            try {
+                const res: any = await clientsService.findAll(1, 100, searchTerm, undefined, undefined, initialData.studio.id);
+                setClients(res.data);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    };
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (initialData?.studio.id) {
-                // If search term is empty, just fetch default list (first 50)
-                // If search term exists, search
-                clientsService.findAll(1, 50, searchTerm, undefined, undefined, initialData.studio.id)
-                    .then((res: any) => setClients(res.data))
-                    .catch(console.error);
-            }
+            refreshClients();
         }, 300); // 300ms debounce
 
         return () => clearTimeout(timer);
@@ -90,8 +100,14 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
     const clientOptions = useMemo(() => filteredClients.map(c => ({
         label: `${c.firstName} ${c.lastName}`,
         value: c.id,
-        description: [c.email, c.phone].filter(Boolean).join(' • ')
+        description: c.email || '---'
     })), [filteredClients]);
+
+    const handleAddClientSuccess = async (client: any) => {
+        await refreshClients();
+        setSelectedClientId(client.id);
+        toast.success('Client added and selected');
+    };
 
     // Device Options
     const deviceOptions = useMemo(() => devices.map(d => ({
@@ -193,9 +209,14 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
                         options={clientOptions}
                         value={selectedClientId}
                         onChange={setSelectedClientId}
-                        onSearchChange={handleClientSearch}
+                        onSearchChange={(val) => {
+                            handleClientSearch(val);
+                            setQuickAddSearchTerm(val);
+                        }}
                         placeholder="Search for a client..."
                         required
+                        onAddNew={() => setIsAddDrawerOpen(true)}
+                        onAddNewLabel="Add Client"
                     />
                     {/* Hacky way to update search results when typing */}
                     {/* SearchableSelect doesn't expose onSearchChange. We might need to modify it or assume it filters local options. 
@@ -286,6 +307,14 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
                     </button>
                 </div>
             </form>
+
+            <FastClientAddDrawer
+                isOpen={isAddDrawerOpen}
+                onClose={() => setIsAddDrawerOpen(false)}
+                onSuccess={handleAddClientSuccess}
+                initialStudioId={initialData?.studio.id}
+                initialName={quickAddSearchTerm}
+            />
         </Modal>
     );
 };

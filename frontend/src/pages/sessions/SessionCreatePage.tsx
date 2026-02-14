@@ -118,6 +118,7 @@ const SessionCreatePage: React.FC = () => {
                         isEdit={isEdit}
                         onSubmit={handleSubmit}
                         onCancel={() => navigate('/sessions')}
+                        onRefreshClients={state.refresh}
                     />
                 </div>
             </div>

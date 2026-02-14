@@ -56,7 +56,7 @@ const Clients: React.FC = () => {
             render: (client) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-secondary)' }}>
                     <Mail size={14} />
-                    {client.email || '-'}
+                    {client.email || '---'}
                 </div>
             )
         },
