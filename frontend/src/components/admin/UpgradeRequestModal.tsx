@@ -17,7 +17,6 @@ const UpgradeRequestModal: React.FC<UpgradeRequestModalProps> = ({ onClose, onSu
     const [reason, setReason] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [compatibility, setCompatibility] = useState<{ compatible: boolean; violations: string[] } | null>(null);
-    const [checkingCompatibility, setCheckingCompatibility] = useState(false);
 
     useEffect(() => {
         const fetchPlans = async () => {
@@ -49,15 +48,13 @@ const UpgradeRequestModal: React.FC<UpgradeRequestModalProps> = ({ onClose, onSu
                 return;
             }
 
-            setCheckingCompatibility(true);
+
             try {
                 const result = await tenantPlanService.checkDowngrade(selectedPlan);
                 setCompatibility(result);
             } catch (err) {
                 console.error('Failed to check compatibility', err);
                 // Don't block UI on check failure, but maybe warn?
-            } finally {
-                setCheckingCompatibility(false);
             }
         };
 
