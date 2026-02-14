@@ -13,6 +13,7 @@ import {
   Transaction,
   TransactionType,
   TransactionCategory,
+  TransactionStatus,
 } from '../packages/entities/transaction.entity';
 import { ClientProgressPhoto } from './entities/client-progress-photo.entity';
 import {
@@ -161,16 +162,25 @@ export class ClientsService {
     await this.clientRepository.save(client);
 
     // Create Transaction
+    // For Studio Balance
+    const lastStudioTx = await this.transactionRepository.findOne({
+      where: { tenantId },
+      order: { createdAt: 'DESC' },
+    });
+    const currentStudioBalance = lastStudioTx ? Number(lastStudioTx.runningBalance) : 0;
+    const newStudioBalance = (amount > 0) ? currentStudioBalance + amount : currentStudioBalance - Math.abs(amount);
+
     const transaction = this.transactionRepository.create({
       tenantId,
       clientId: client.id,
-      studioId: undefined, // Optional, maybe allow passing it?
       type: amount > 0 ? TransactionType.INCOME : TransactionType.REFUND,
       amount: amount,
       category: TransactionCategory.MANUAL_ADJUSTMENT,
       description: description || 'Manual Balance Adjustment',
       createdBy: userId,
-      runningBalance: newBalance,
+      status: TransactionStatus.PAID,
+      runningBalance: newStudioBalance,
+      clientRunningBalance: newBalance,
     });
 
     await this.transactionRepository.save(transaction);

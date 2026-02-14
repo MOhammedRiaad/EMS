@@ -28,7 +28,7 @@ import { TenantId } from '../../common/decorators';
 @UseGuards(AuthGuard('jwt'), TenantGuard)
 @Controller()
 export class PackagesController {
-  constructor(private readonly packagesService: PackagesService) {}
+  constructor(private readonly packagesService: PackagesService) { }
 
   // ===== PACKAGES =====
   @Get('packages')
@@ -166,5 +166,21 @@ export class PackagesController {
     @Request() req: any,
   ) {
     return this.packagesService.createTransaction(dto, tenantId, req.user.id);
+  }
+
+  @Post('transactions/:id/confirm-payment')
+  @ApiOperation({ summary: 'Confirm a pending transaction' })
+  confirmPayment(
+    @Param('id') id: string,
+    @Body('paymentMethod') paymentMethod: string,
+    @TenantId() tenantId: string,
+    @Request() req: any,
+  ) {
+    return this.packagesService.confirmPayment(
+      id,
+      paymentMethod,
+      tenantId,
+      req.user.id,
+    );
   }
 }

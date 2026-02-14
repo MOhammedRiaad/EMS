@@ -5,6 +5,7 @@ import DataTable, { type Column } from '../../common/DataTable';
 import Modal from '../../common/Modal';
 import { FormField, FormInput, FormTextarea } from '../../common/FormField';
 import { clientsService } from '../../../services/clients.service';
+import { packagesService } from '../../../services/packages.service';
 import { api } from '../../../services/api';
 
 interface Transaction {
@@ -15,6 +16,8 @@ interface Transaction {
     description: string;
     createdAt: string;
     runningBalance: number;
+    clientRunningBalance?: number;
+    status?: 'paid' | 'pending';
 }
 
 const FinanceTab: React.FC = () => {
@@ -29,6 +32,10 @@ const FinanceTab: React.FC = () => {
     const [description, setDescription] = useState('');
     const [processing, setProcessing] = useState(false);
     const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+    // Confirm Payment
+    const [confirmingTx, setConfirmingTx] = useState<Transaction | null>(null);
+    const [confirmPaymentMethod, setConfirmPaymentMethod] = useState('cash');
 
     const showNotify = (type: 'success' | 'error', msg: string) => {
         setNotification({ type, message: msg });
@@ -76,6 +83,22 @@ const FinanceTab: React.FC = () => {
         }
     };
 
+    const handleConfirmPayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!confirmingTx) return;
+        setProcessing(true);
+        try {
+            await packagesService.confirmPayment(confirmingTx.id, confirmPaymentMethod);
+            showNotify('success', 'Payment confirmed');
+            setConfirmingTx(null);
+            fetchFinanceData();
+        } catch (error) {
+            showNotify('error', 'Failed to confirm payment');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     const columns: Column<Transaction>[] = [
         {
             key: 'createdAt',
@@ -86,10 +109,17 @@ const FinanceTab: React.FC = () => {
             key: 'type',
             header: 'Type',
             render: (item) => (
-                <span className={`px-2 py-1 rounded text-xs uppercase font-semibold ${item.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                    {item.type}
-                </span>
+                <div className="flex flex-col gap-1">
+                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-semibold text-center ${item.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                        {item.type}
+                    </span>
+                    {item.status === 'pending' && (
+                        <span className="px-2 py-0.5 rounded text-[10px] uppercase font-semibold text-center bg-yellow-100 text-yellow-800">
+                            Pending
+                        </span>
+                    )}
+                </div>
             )
         },
         {
@@ -106,15 +136,25 @@ const FinanceTab: React.FC = () => {
             key: 'amount',
             header: 'Amount',
             render: (item) => (
-                <span className={`font-medium ${item.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                    {item.amount > 0 ? '+' : ''}{Number(item.amount).toFixed(2)} €
-                </span>
+                <div className="flex flex-col">
+                    <span className={`font-medium ${item.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                        {item.amount > 0 ? '+' : ''}{Number(item.amount).toFixed(2)} €
+                    </span>
+                    {item.status === 'pending' && (
+                        <button
+                            onClick={() => setConfirmingTx(item)}
+                            className="text-[10px] text-primary-600 underline hover:text-primary-700 text-left"
+                        >
+                            Confirm Payment
+                        </button>
+                    )}
+                </div>
             )
         },
         {
-            key: 'runningBalance',
+            key: 'clientRunningBalance',
             header: 'Balance',
-            render: (item) => item.runningBalance ? <span className="text-gray-600 dark:text-gray-400">{Number(item.runningBalance).toFixed(2)} €</span> : '-'
+            render: (item) => item.clientRunningBalance != null ? <span className="text-gray-600 dark:text-gray-400">{Number(item.clientRunningBalance).toFixed(2)} €</span> : '-'
         },
     ];
 
@@ -211,6 +251,54 @@ const FinanceTab: React.FC = () => {
                                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                             >
                                 {processing ? 'Processing...' : 'Confirm'}
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+
+            {confirmingTx && (
+                <Modal
+                    title="Confirm Payment"
+                    isOpen={!!confirmingTx}
+                    onClose={() => setConfirmingTx(null)}
+                >
+                    <form onSubmit={handleConfirmPayment} className="space-y-4">
+                        <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded text-sm">
+                            <p className="text-gray-600 dark:text-gray-400">Transaction:</p>
+                            <p className="font-medium">{confirmingTx.description}</p>
+                            <p className="font-bold mt-1 text-primary-600">{Number(confirmingTx.amount).toFixed(2)} €</p>
+                        </div>
+
+                        <FormField label="Payment Method" required>
+                            <select
+                                value={confirmPaymentMethod}
+                                onChange={e => setConfirmPaymentMethod(e.target.value)}
+                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:border-gray-700 sm:text-sm"
+                                required
+                            >
+                                <option value="cash">Cash</option>
+                                <option value="card">Credit Card</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="online">Online Payment</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </FormField>
+
+                        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmingTx(null)}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                            >
+                                {processing ? 'Confirming...' : 'Confirm'}
                             </button>
                         </div>
                     </form>

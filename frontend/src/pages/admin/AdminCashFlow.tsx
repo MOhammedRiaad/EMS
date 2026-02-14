@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Modal from '../../components/common/Modal';
 import { packagesService, type Transaction } from '../../services/packages.service';
-import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, RefreshCw, Loader2 } from 'lucide-react';
 
 const AdminCashFlow: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -16,6 +16,8 @@ const AdminCashFlow: React.FC = () => {
         amount: 0,
         description: ''
     });
+    const [confirmingTx, setConfirmingTx] = useState<Transaction | null>(null);
+    const [paymentMethod, setPaymentMethod] = useState('cash');
 
     const fetchData = async () => {
         setLoading(true);
@@ -52,6 +54,19 @@ const AdminCashFlow: React.FC = () => {
         }
     };
 
+    const handleConfirmPayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!confirmingTx) return;
+        try {
+            await packagesService.confirmPayment(confirmingTx.id, paymentMethod);
+            setConfirmingTx(null);
+            fetchData();
+        } catch (error) {
+            console.error('Error confirming payment:', error);
+            alert('Failed to confirm payment');
+        }
+    };
+
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
     };
@@ -66,7 +81,7 @@ const AdminCashFlow: React.FC = () => {
     };
 
     return (
-        <div>
+        <div className="space-y-6 pb-12">
             <PageHeader
                 title="Cash Flow"
                 description="Track income, expenses, and cash balance"
@@ -75,130 +90,119 @@ const AdminCashFlow: React.FC = () => {
             />
 
             {/* Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{
-                    padding: '1.5rem',
-                    backgroundColor: 'var(--color-bg-primary)',
-                    borderRadius: 'var(--border-radius-lg)',
-                    border: '1px solid var(--border-color)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <DollarSign size={20} style={{ color: 'var(--color-primary)' }} />
-                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Current Balance</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <DollarSign size={20} className="text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Balance</span>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{formatCurrency(balance)}</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(balance)}</div>
                 </div>
 
-                <div style={{
-                    padding: '1.5rem',
-                    backgroundColor: 'var(--color-bg-primary)',
-                    borderRadius: 'var(--border-radius-lg)',
-                    border: '1px solid var(--border-color)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <TrendingUp size={20} style={{ color: 'var(--color-success)' }} />
-                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Total Income</span>
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <TrendingUp size={20} className="text-green-600 dark:text-green-400" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</span>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-success)' }}>
-                        {formatCurrency(summary.income)}
-                    </div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(summary.income)}</div>
                 </div>
 
-                <div style={{
-                    padding: '1.5rem',
-                    backgroundColor: 'var(--color-bg-primary)',
-                    borderRadius: 'var(--border-radius-lg)',
-                    border: '1px solid var(--border-color)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <TrendingDown size={20} style={{ color: 'var(--color-danger)' }} />
-                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Total Expenses</span>
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                            <TrendingDown size={20} className="text-red-600 dark:text-red-400" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</span>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-danger)' }}>
-                        {formatCurrency(summary.expense + summary.refund)}
-                    </div>
+                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(summary.expense + (summary.refund || 0))}</div>
                 </div>
 
-                <div style={{
-                    padding: '1.5rem',
-                    backgroundColor: 'var(--color-bg-primary)',
-                    borderRadius: 'var(--border-radius-lg)',
-                    border: '1px solid var(--border-color)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <RefreshCw size={20} style={{ color: 'var(--color-primary)' }} />
-                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Net Profit</span>
+                <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-2 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                            <RefreshCw size={20} className="text-gray-600 dark:text-gray-400" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Net Profit</span>
                     </div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: summary.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    <div className={`text-2xl font-bold ${summary.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                         {formatCurrency(summary.net)}
                     </div>
                 </div>
             </div>
 
             {/* Transactions List */}
-            <div style={{
-                backgroundColor: 'var(--color-bg-primary)',
-                borderRadius: 'var(--border-radius-lg)',
-                border: '1px solid var(--border-color)',
-                overflow: 'hidden'
-            }}>
-                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', fontWeight: 600 }}>
-                    Recent Transactions
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
+                    <button
+                        onClick={fetchData}
+                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-blue-600 transition-all"
+                        title="Refresh"
+                    >
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    </button>
                 </div>
 
                 {loading ? (
-                    <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>
+                    <div className="py-12 flex flex-col items-center justify-center gap-3">
+                        <Loader2 className="animate-spin text-blue-600" size={32} />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Loading transactions...</p>
+                    </div>
                 ) : transactions.length === 0 ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                    <div className="py-12 text-center text-gray-500 dark:text-gray-400">
                         No transactions yet
                     </div>
                 ) : (
-                    <div>
-                        {transactions.slice(0, 20).map(tx => (
+                    <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                        {transactions.slice(0, 50).map(tx => (
                             <div
                                 key={tx.id}
-                                style={{
-                                    padding: '1rem 1.5rem',
-                                    borderBottom: '1px solid var(--border-color)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}
+                                className="px-6 py-4 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors group"
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '50%',
-                                        backgroundColor: tx.type === 'income' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        {tx.type === 'income' ? (
-                                            <ArrowUpRight size={20} style={{ color: 'var(--color-success)' }} />
-                                        ) : (
-                                            <ArrowDownRight size={20} style={{ color: 'var(--color-danger)' }} />
-                                        )}
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${tx.type === 'income'
+                                        ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                                        : 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                                        }`}>
+                                        {tx.type === 'income' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
                                     </div>
                                     <div>
-                                        <div style={{ fontWeight: 500 }}>{tx.description || tx.category}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="font-semibold text-gray-900 dark:text-white">{tx.description || tx.category}</span>
+                                            {tx.status === 'pending' && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50">
+                                                    Pending
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
                                             {formatDate(tx.createdAt)}
                                         </div>
                                     </div>
                                 </div>
-                                <div style={{
-                                    fontWeight: 600,
-                                    color: tx.type === 'income' ? 'var(--color-success)' : 'var(--color-danger)'
-                                }}>
-                                    {tx.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
+                                <div className="flex items-center gap-6">
+                                    {tx.status === 'pending' && (
+                                        <button
+                                            onClick={() => setConfirmingTx(tx)}
+                                            className="px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all border border-blue-200 dark:border-blue-800/50"
+                                        >
+                                            Confirm Payment
+                                        </button>
+                                    )}
+                                    <div className={`font-bold text-lg ${tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                        }`}>
+                                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
-            </div>
+            </div >
 
             {/* Add Transaction Modal */}
             <Modal
@@ -206,13 +210,13 @@ const AdminCashFlow: React.FC = () => {
                 onClose={() => setIsModalOpen(false)}
                 title="Add Transaction"
             >
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Type</label>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
                         <select
                             value={formData.type}
                             onChange={e => setFormData({ ...formData, type: e.target.value as any })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all dark:text-white"
                         >
                             <option value="income">Income</option>
                             <option value="expense">Expense</option>
@@ -220,62 +224,105 @@ const AdminCashFlow: React.FC = () => {
                         </select>
                     </div>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Category</label>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
                         <select
                             value={formData.category}
                             onChange={e => setFormData({ ...formData, category: e.target.value })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all dark:text-white"
                         >
                             <option value="package_sale">Package Sale</option>
                             <option value="session_fee">Session Fee</option>
-                            <option value="refund">Refund</option>
+                            <option value="manual_adjustment">Manual Adjustment</option>
                             <option value="other">Other</option>
                         </select>
                     </div>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Amount</label>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
                         <input
                             type="number"
-                            required
-                            min={0.01}
-                            step={0.01}
                             value={formData.amount}
                             onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all dark:text-white"
+                            placeholder="0.00"
+                            required
                         />
                     </div>
 
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Description</label>
-                        <input
-                            type="text"
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                        <textarea
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all dark:text-white min-h-[80px]"
                             placeholder="Optional description"
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}
                         />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-800">
                         <button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            style={{ padding: '0.5rem 1rem', color: 'var(--color-text-secondary)' }}
+                            className="px-4 py-2 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            style={{
-                                padding: '0.5rem 1rem',
-                                backgroundColor: 'var(--color-primary)',
-                                color: 'white',
-                                borderRadius: 'var(--border-radius-md)'
-                            }}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/20"
                         >
-                            Add Transaction
+                            Save Transaction
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Confirm Payment Modal */}
+            <Modal
+                isOpen={!!confirmingTx}
+                onClose={() => setConfirmingTx(null)}
+                title="Confirm Payment"
+            >
+                <form onSubmit={handleConfirmPayment} className="space-y-4">
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider mb-2">Transaction Details</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                            {confirmingTx?.description || confirmingTx?.category}
+                        </p>
+                        <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                            {formatCurrency(confirmingTx?.amount || 0)}
+                        </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                        <select
+                            value={paymentMethod}
+                            onChange={e => setPaymentMethod(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all dark:text-white"
+                        >
+                            <option value="cash">Cash</option>
+                            <option value="card">Credit Card</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="online">Online Payment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setConfirmingTx(null)}
+                            className="px-4 py-2 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/20"
+                        >
+                            Confirm Payment
                         </button>
                     </div>
                 </form>

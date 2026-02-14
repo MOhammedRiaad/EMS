@@ -32,7 +32,8 @@ export const FastClientAddDrawer: React.FC<FastClientAddDrawerProps> = ({
         email: '',
         phone: '',
         studioId: initialStudioId || '',
-        packageId: ''
+        packageId: '',
+        paymentMethod: ''
     });
 
     const [packages, setPackages] = useState<Package[]>([]);
@@ -107,7 +108,8 @@ export const FastClientAddDrawer: React.FC<FastClientAddDrawerProps> = ({
                 try {
                     await packagesService.assignPackage({
                         clientId: client.id,
-                        packageId: formData.packageId
+                        packageId: formData.packageId,
+                        paymentMethod: formData.paymentMethod || undefined
                     });
                 } catch (pkgErr: any) {
                     console.error('Failed to assign package:', pkgErr);
@@ -281,6 +283,25 @@ export const FastClientAddDrawer: React.FC<FastClientAddDrawerProps> = ({
                                     </div>
                                 )}
                             </div>
+
+                            {formData.packageId && (
+                                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                        Payment Status
+                                    </label>
+                                    <select
+                                        value={formData.paymentMethod}
+                                        onChange={e => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-[13px] transition-all dark:text-white"
+                                    >
+                                        <option value="">Pending / Pay Later</option>
+                                        <option value="cash">Paid - Cash</option>
+                                        <option value="card">Paid - Credit Card</option>
+                                        <option value="bank_transfer">Paid - Bank Transfer</option>
+                                    </select>
+                                </div>
+                            )}
+
                             <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
                                 Selecting a package will automatically assign it to the client upon creation.
                             </p>

@@ -17,6 +17,11 @@ export enum TransactionType {
   REFUND = 'refund',
 }
 
+export enum TransactionStatus {
+  PAID = 'paid',
+  PENDING = 'pending',
+}
+
 export enum TransactionCategory {
   PACKAGE_SALE = 'package_sale',
   SESSION_FEE = 'session_fee',
@@ -58,6 +63,16 @@ export class Transaction {
   @Column({ type: 'varchar', length: 30 })
   category: TransactionCategory;
 
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: TransactionStatus.PAID,
+  })
+  status: TransactionStatus;
+
+  @Column({ name: 'payment_method', length: 20, nullable: true })
+  paymentMethod: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;
 
@@ -69,6 +84,15 @@ export class Transaction {
     nullable: true,
   })
   runningBalance: number;
+
+  @Column({
+    name: 'client_running_balance',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  clientRunningBalance: number;
 
   @Column({ name: 'reference_type', length: 50, nullable: true })
   referenceType: string;

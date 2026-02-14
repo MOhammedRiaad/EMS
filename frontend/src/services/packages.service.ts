@@ -48,6 +48,9 @@ export interface Transaction {
     category: string;
     amount: number;
     runningBalance: number;
+    clientRunningBalance?: number;
+    status: 'paid' | 'pending';
+    paymentMethod?: string;
     description: string;
     createdAt: string;
 }
@@ -198,6 +201,16 @@ export const packagesService = {
             body: JSON.stringify(data)
         });
         if (!response.ok) throw new Error('Failed to create transaction');
+        return response.json();
+    },
+
+    confirmPayment: async (transactionId: string, paymentMethod: string): Promise<Transaction> => {
+        const response = await fetch(`${API_URL}/transactions/${transactionId}/confirm-payment`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ paymentMethod })
+        });
+        if (!response.ok) throw new Error('Failed to confirm payment');
         return response.json();
     }
 };

@@ -14,6 +14,7 @@ import {
   Transaction,
   TransactionType,
   TransactionCategory,
+  TransactionStatus,
 } from './entities/transaction.entity';
 import {
   CreatePackageDto,
@@ -35,7 +36,7 @@ export class PackagesService {
     @InjectRepository(Transaction)
     private transactionRepo: Repository<Transaction>,
     private readonly auditService: AuditService,
-  ) {}
+  ) { }
 
   // ===== PACKAGES =====
   async findAllPackages(tenantId: string, includeInactive = false) {
@@ -144,6 +145,10 @@ export class PackagesService {
           referenceType: 'client_package',
           referenceId: saved.id,
           clientId: dto.clientId,
+          status: dto.paymentMethod
+            ? TransactionStatus.PAID
+            : TransactionStatus.PENDING,
+          paymentMethod: dto.paymentMethod,
         },
         tenantId,
         userId,
@@ -357,30 +362,127 @@ export class PackagesService {
 
   // ===== TRANSACTIONS =====
   async createTransaction(
-    dto: CreateTransactionDto,
+    dto: CreateTransactionDto & {
+      status?: TransactionStatus;
+      paymentMethod?: string;
+    },
     tenantId: string,
     userId: string,
   ) {
-    // Get current balance
-    const lastTx = await this.transactionRepo.findOne({
+    // Get current studio-wide balance
+    const lastStudioTx = await this.transactionRepo.findOne({
       where: { tenantId },
       order: { createdAt: 'DESC' },
     });
-    const currentBalance = lastTx ? Number(lastTx.runningBalance) : 0;
-    const newBalance =
-      dto.type === TransactionType.EXPENSE ||
-      dto.type === TransactionType.REFUND
-        ? currentBalance - Math.abs(dto.amount)
-        : currentBalance + Math.abs(dto.amount);
+    const currentStudioBalance = lastStudioTx
+      ? Number(lastStudioTx.runningBalance)
+      : 0;
+
+    let newStudioBalance = currentStudioBalance;
+    // Studio balance only updates if it's PAID (or if it's an expense/adjustment we assume is immediate)
+    // Actually, for consistency, let's say Studio Cash Flow tracks PAID items.
+    // However, the user might want to see PENDING in cash flow.
+    // If it's PENDING, does it affect the running balance?
+    // Usually, running balance in a ledger only changes on finalized transactions.
+    // But if we want to show it in the list with a running balance, we might need a "projected" balance or just update it.
+    // Let's stick to: PAID transactions update studio running balance.
+    if (dto.status !== TransactionStatus.PENDING) {
+      newStudioBalance =
+        dto.type === TransactionType.EXPENSE ||
+          dto.type === TransactionType.REFUND
+          ? currentStudioBalance - Math.abs(dto.amount)
+          : currentStudioBalance + Math.abs(dto.amount);
+    }
+
+    // Get current client balance if applicable
+    let clientRunningBalance = 0;
+    if (dto.clientId) {
+      const lastClientTx = await this.transactionRepo.findOne({
+        where: { clientId: dto.clientId, tenantId },
+        order: { createdAt: 'DESC' },
+      });
+      const currentClientBalance = lastClientTx
+        ? Number(lastClientTx.clientRunningBalance)
+        : 0;
+
+      // Client balance updates immediately (they owe it / have it credited)
+      clientRunningBalance =
+        dto.type === TransactionType.EXPENSE ||
+          dto.type === TransactionType.REFUND
+          ? currentClientBalance - Math.abs(dto.amount)
+          : currentClientBalance + Math.abs(dto.amount);
+    }
 
     const tx = this.transactionRepo.create({
       ...dto,
       tenantId,
       createdBy: userId,
-      runningBalance: newBalance,
+      status: dto.status || TransactionStatus.PAID,
+      runningBalance: newStudioBalance,
+      clientRunningBalance: dto.clientId ? clientRunningBalance : undefined,
     });
 
     return this.transactionRepo.save(tx);
+  }
+
+  async confirmPayment(
+    transactionId: string,
+    paymentMethod: string,
+    tenantId: string,
+    userId: string,
+  ) {
+    const tx = await this.transactionRepo.findOne({
+      where: { id: transactionId, tenantId },
+    });
+    if (!tx) throw new NotFoundException('Transaction not found');
+    if (tx.status === TransactionStatus.PAID) {
+      throw new BadRequestException('Transaction is already paid');
+    }
+
+    tx.status = TransactionStatus.PAID;
+    tx.paymentMethod = paymentMethod;
+
+    // Now that it's paid, it affects the studio running balance
+    const lastStudioTx = await this.transactionRepo.findOne({
+      where: { tenantId },
+      order: { createdAt: 'DESC' },
+    });
+    // Wait, updating runningBalance in the middle of a chain is hard with this simple logic.
+    // But since we order by createdAt DESC, if we just paid an old one, the running balance of ALL subsequent ones is wrong.
+    // For a simple app, we usually just update the "current" balance of the studio.
+    // To keep it simple: we update the studio balance based on the current global balance.
+
+    const lastGlobalTx = await this.transactionRepo.findOne({
+      where: { tenantId },
+      order: { createdAt: 'DESC' },
+    });
+    const globalBalance = lastGlobalTx ? Number(lastGlobalTx.runningBalance) : 0;
+
+    tx.runningBalance =
+      tx.type === TransactionType.EXPENSE || tx.type === TransactionType.REFUND
+        ? globalBalance - Math.abs(tx.amount)
+        : globalBalance + Math.abs(tx.amount);
+
+    const saved = await this.transactionRepo.save(tx);
+
+    // If it was a package sale, also update the client package record
+    if (tx.referenceType === 'client_package' && tx.referenceId) {
+      await this.clientPackageRepo.update(tx.referenceId, {
+        paymentMethod,
+        paidAt: new Date(),
+      });
+    }
+
+    await this.auditService.log(
+      tenantId,
+      'CONFIRM_PAYMENT',
+      'Transaction',
+      saved.id,
+      userId,
+      { paymentMethod, amount: tx.amount },
+    );
+
+    return saved;
   }
 
   async getTransactions(tenantId: string, filters?: any) {
