@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, User, Lock, Mail, Building2, AlertCircle, ChevronRight, ChevronLeft, Check, X, Loader2, CreditCard, CheckCircle2, Users, Activity, HardDrive } from 'lucide-react';
+import { UserPlus, User, Lock, Mail, Building2, AlertCircle, ChevronRight, ChevronLeft, Check, X, Loader2, CheckCircle2, Users, Activity, HardDrive } from 'lucide-react';
 import { tenantService } from '../../services/tenant.service';
 import { authService, type Plan } from '../../services/auth.service';
 import '../../styles/variables.css';
