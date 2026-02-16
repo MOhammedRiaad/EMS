@@ -7,7 +7,7 @@ import { devicesService, type Device } from '../../../services/devices.service';
 import { sessionsService } from '../../../services/sessions.service';
 import { toast } from '../../../utils/toast';
 import { format, addMinutes, parse } from 'date-fns';
-import { Clock, MapPin, User, Activity, Smartphone, FileText } from 'lucide-react';
+import { Clock, MapPin, User, Activity, Smartphone, FileText, Plus } from 'lucide-react';
 
 interface QuickBookModalProps {
     isOpen: boolean;
@@ -205,19 +205,32 @@ const QuickBookModal: React.FC<QuickBookModalProps> = ({ isOpen, onClose, onSucc
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Client <span className="text-red-500">*</span>
                     </label>
-                    <SearchableSelect
-                        options={clientOptions}
-                        value={selectedClientId}
-                        onChange={setSelectedClientId}
-                        onSearchChange={(val) => {
-                            handleClientSearch(val);
-                            setQuickAddSearchTerm(val);
-                        }}
-                        placeholder="Search for a client..."
-                        required
-                        onAddNew={() => setIsAddDrawerOpen(true)}
-                        onAddNewLabel="Add Client"
-                    />
+                    <div className="flex gap-2 items-start">
+                        <div className="flex-1">
+                            <SearchableSelect
+                                options={clientOptions}
+                                value={selectedClientId}
+                                onChange={setSelectedClientId}
+                                onSearchChange={(val) => {
+                                    handleClientSearch(val);
+                                    setQuickAddSearchTerm(val);
+                                }}
+                                placeholder="Search for a client..."
+                                required
+                                onAddNew={() => setIsAddDrawerOpen(true)}
+                                onAddNewLabel="Add Client"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsAddDrawerOpen(true)}
+                            className="shrink-0 p-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all shadow-sm flex items-center justify-center"
+                            title="Add New Client"
+                            style={{ height: '42px', width: '42px' }}
+                        >
+                            <Plus size={20} />
+                        </button>
+                    </div>
                     {/* Hacky way to update search results when typing */}
                     {/* SearchableSelect doesn't expose onSearchChange. We might need to modify it or assume it filters local options. 
                         Wait, SearchableSelect DOES filter local options. 
